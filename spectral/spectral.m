@@ -1,29 +1,47 @@
+function spectral(varargin)
 %  
 % calculate crossspectral density for each pixel with it's surrounding 8 pixels
 %javaaddpath( [gitpath '\2Pimage\java\Jimutil\Jimutil.jar'])
+%
+% Optional input: string with folder name and trans file name, (e.g. blafolder\mouse_Trans.dat)
+% When input is not given a pop-up will ask for that filename
+%
+%%
+
+%% Get the filename
+if exist('varargin', 'var') && nargin == 1
+    strfp = varargin{1};
+    [fp,fn] = fileparts(strfp);
+    fp = [fp '\'];
+else
+    [fn, fp] = uigetfile('*_Trans.dat');   
+    strfp = [fp fn];
+end
 
 %license checkout Distrib_Computing_Toolbox
 %distcomp.feature( 'LocalUseMpiexec', false )
 %start parallel pool
 gcp
 
+mfn = strsplit(fn, '_Trans');
+
 %% READ SLICES _________________________________
 %Hor oriented slice (b=0; y value from Image) or 
 %Vert oriented slice (b=1; x value from image)
-[fn, fp] = uigetfile('*_Trans.dat');
+
 % ZT = Spect.Zslice([fp fn] );
 % dim = ZT.getDimensions();
 % freq = ZT.getFrequency();
-[dim, frequency] = Zgetinfo([fp fn]);
+[dim, frequency] = Zgetinfo(strfp);
 
 %split off '_Trans.dat'
-mfn = strsplit(fn, '_Trans');
+
 %load([fp mfn{1}(1:end-6) '.mat']);
  
 %% SPECTRAL POWER OF SURROUNDING 8 PIXELS
 
 %now open as memory mapped file
-sbxt = memmapfile([fp fn], 'Format', 'uint16', 'Offset', 500);
+sbxt = memmapfile(strfp, 'Format', 'uint16', 'Offset', 500);
 
 b = 0; Wdth = dim(2);%horizontal orientation
 %b = 1; Wdth = dim(3);%vertical orientation
@@ -43,12 +61,13 @@ if rem(Lines, W) > 0
 end
 
 %since we decimate the signal to approximately 2Hx, 
-Df = floor(frequency/2); %decimation factor 
+Df = floor(frequency); %decimation factor 
 freq = frequency/Df;     %downsampled frequency
 
-f = 2.^(4:12); %possible segment lengths
-Segm = f(f>60*freq); % power of 2 %60 seconds = lowest wavelength
-Segm = Segm(1);
+% f = 2.^(4:12); %possible segment lengths
+% Segm = f(f>60*freq); % power of 2 %60 seconds = lowest wavelength
+% Segm = Segm(1);
+Segm = 128;
 
 Lng = dim(1); %length of image stack
 LngDec = floor(Lng/Df);
@@ -65,61 +84,60 @@ cnt1 = length(sampd2+1:Segm:LngDec-Segm+1);
 cnt = cnt0 + cnt1;
 SPic = zeros(sampd4+1, Wdth-2, W, Lines/W);
 Win = hamming(Segm); 
+%Win = 0.54 - 0.46*cos(2*pi.*(1:Segm)'/Segm);
 
 %%
- for r = 1:Lines/W
-     %slice = (1:W)+(W-2)*(double(r)-1); %W vertical locations
-     %D = ZT.Read(slice,b); %read horizontal lines of z ordered data
-     indices = (1:Wdth*BW) + W * Wdth *(r-1);
-     D = XYgetZ(indices, sbxt, Lng);
-     D = reshape(D, Lng, [] ); 
-     D = D(1:Lngf,:);
-     parfor i = 1:length(indices)
-         Dec(:,i) = decimate(double(D(:,i)), Df);
-     end
-     
-     Dec = reshape(Dec, LngDec, Wdth, BW); 
-    %reshape to block of Width x BW with Lng length
-     %to obtain 50% overlapping data segments and slicable for parallel computing   
-     D0 = Dec(1:cnt0*Segm,:,:);
-     D0 = reshape(D0, Segm, cnt0, Wdth, BW);
-     D1 = Dec(sampd2+1:sampd2+cnt1*Segm,:,:);  
-     D1 = reshape(D1, Segm, cnt1, Wdth, BW); 
-     
-     D = cat(2, D0, D1);
-     %D = reshape(D, Segm, cnt, Wdth, BW);
-     
-     CSpect = zeros(sampd4+1, Wdth-2, W, 8);
-     ASpect = zeros(sampd4+1, Wdth, BW);
-         
-     parfor j = 1:cnt
-         Tmp = double(squeeze(D(:,j,:,:)));
-         Tmp = reshape(Tmp, Segm, Wdth * BW);
-         Tmp = detrend(Tmp); 
-         Tmp = reshape(Tmp, Segm, Wdth, BW);
-         [C, A] = getcsdf(Tmp, Segm, Wdth, BW, Win);
-         CSpect = CSpect + C;
-         ASpect = ASpect + A;
-     end
-     
-     CSpect = CSpect./cnt;
-     ASpect = ASpect./cnt;
-     
-    % Powsum = getcoher(CSpect, ASpect);
-     Powsum = getcorpow(CSpect, ASpect);
-     SPic(:, :, :, r) = Powsum;
-     
-     disp([num2str(round(r*1000*W/Lines)/10) '%'])
- end
- 
- 
-  
- SPic = reshape(SPic, sampd4+1, Wdth-2, Lines); 
- SPic = shiftdim(SPic,1);
- SPic = padarray(SPic, [1 1 0]); %make original size by padding borders
+for r = 1:Lines/W
+    %slice = (1:W)+(W-2)*(double(r)-1); %W vertical locations
+    %D = ZT.Read(slice,b); %read horizontal lines of z ordered data
+    indices = (1:Wdth*BW) + W * Wdth *(r-1);
+    D = XYgetZ(indices, sbxt, Lng);
+    D = reshape(D, Lng, [] ); 
+    D = D(1:Lngf,:);
+    parfor i = 1:length(indices)
+        Dec(:,i) = decimate(double(D(:,i)), Df);
+    end
 
- save([fp mfn{1} '_SPSIG.mat'], 'SPic', 'Sax', 'freq')
- 
+    Dec = reshape(Dec, LngDec, Wdth, BW); 
+    %reshape to block of Width x BW with Lng length
+    %to obtain 50% overlapping data segments and slicable for parallel computing   
+    D0 = Dec(1:cnt0*Segm,:,:);
+    D0 = reshape(D0, Segm, cnt0, Wdth, BW);
+    D1 = Dec(sampd2+1:sampd2+cnt1*Segm,:,:);  
+    D1 = reshape(D1, Segm, cnt1, Wdth, BW); 
+
+    D = cat(2, D0, D1);
+    %D = reshape(D, Segm, cnt, Wdth, BW);
+
+    CSpect = zeros(sampd4+1, Wdth-2, W, 8);
+    ASpect = zeros(sampd4+1, Wdth, BW);
+
+    parfor j = 1:cnt
+        Tmp = double(squeeze(D(:,j,:,:)));
+        Tmp = reshape(Tmp, Segm, Wdth * BW);
+        Tmp = detrend(Tmp); 
+        Tmp = reshape(Tmp, Segm, Wdth, BW);
+        [C, A] = getcsdf(Tmp, Segm, Wdth, BW, Win);
+        CSpect = CSpect + C;
+        ASpect = ASpect + A;
+    end
+
+    CSpect = CSpect./cnt;
+    ASpect = ASpect./cnt;
+
+    % Powsum = getcoher(CSpect, ASpect);
+    Powsum = getcorpow(CSpect, ASpect);
+    SPic(:, :, :, r) = Powsum;
+
+    disp([num2str(round(r*1000*W/Lines)/10) '%'])
+end
+
+SPic = reshape(SPic, sampd4+1, Wdth-2, Lines); 
+SPic = shiftdim(SPic,1);
+SPic = padarray(SPic, [1 1 0]); %make original size by padding borders
+
+save([fp mfn{1} '_SPSIG.mat'], 'SPic', 'Sax', 'freq')
+
  %delete(gcp)
  %clear all
  

@@ -1,17 +1,32 @@
+function StackTranspose(varargin)
 %% Stack transpose, spectral correlation and roi segmentation
 % javaaddpath( [gitpath '\2Pimage\java\Jimutil\Jimutil.jar'])
+%
+% Optional input: string with folder name and trans file name, (e.g. blafolder\mouse_Trans.dat)
+% When input is not given a pop-up will ask for that filename
+%
 
-%% Transpose Stack from SBX file
 global info
-[fn , pn] = uigetfile('*.mat');
-if ~isempty(fn)
-    fnsplit = strsplit(fn, '.');
-    filename = fnsplit{1};
-    strfp = [pn filename];
-    load(strfp)
-    strfn = [strfp '.sbx'];
+%% Transpose Stack from SBX file
+if exist('varargin', 'var') && nargin == 2
+    strfn = varargin{1};
+    [fp,fn] = fileparts(strfn);
+    load(fullfile(fp, fn))
+     
+    strSavepath = varargin{2};
+
+else
+    [fn , pn] = uigetfile('*.sbx');
+    if ~isempty(fn)
+        strfn = fullfile(pn, fn);
+        fnsplit = strsplit(fn, '.');
+        fn = fnsplit{1};
+        strfp = [pn fn];
+        load(strfp)
+    end
+
+    strSavepath = uigetdir(pn,'Where to save the output file?');
 end
-strSavepath = uigetdir(pn,'Where to save the output file?');
 %save frequency with data file
 %freq = 30.1; %image sampling frequency
 if isfield(info, 'Freq')
@@ -30,7 +45,7 @@ max_idx = d.bytes/info.nsamples;
 
 %parameters for transposing
 Inf.StrPath = strSavepath; %Path for temporary files
-Inf.Save = [strSavepath '\' filename '_Trans.dat'];
+Inf.Save = [strSavepath '\' fn '_Trans.dat'];
 Inf.Source = strfn;        %source input .sbx file
 Inf.Dimensions = [info.Shape(1) info.Shape(2) info.Shape(3) max_idx];
 
