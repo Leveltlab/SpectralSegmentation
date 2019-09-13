@@ -1,5 +1,8 @@
-
-%get rois from cross spectral components
+%
+% Get ROIs from cross spectral components
+% Edit the ROIs with the RoiRejecterGUI
+% 
+%
 
  %% Load and Process Spectral Images:  load('SPic.mat')
 [fn, pn] = uigetfile('*_SPSIG.mat');
@@ -9,6 +12,10 @@ load(filename)
 Transfile = [filename(1:end-9) 'Trans.dat'];
 [sbxt, ~, freq] = transmemap(Transfile);
 fprintf('\nloaded\n')
+
+% Activate much tighter subplots
+% [subplot margin top&side],[figure bottomspace,topspace],[leftspace,rightspace]
+subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.06 0.05], [0.06 0.05]);
 
 % obtain average spectral density for each image: decays exponentially
 imgStack = log(SPic(:,:,2:end));
@@ -31,16 +38,12 @@ Spect = permute(Spect, [2 1 3]); %transposes the images,
 Spect = setminlevel(Spect); %set minimum level to zero
 
 BImg = max(Spect, [], 3);
-figure(1), imagesc(BImg), caxis(prctile(BImg(:), [0.01 99.9])), hold on
+figure; subplot(1,1,1)
+imagesc(BImg), caxis(prctile(BImg(:), [0.01 99.9])), hold on, colorbar
 
 
 %% check how the spectral looks (press any key to advance, ctrl+c to stop)
 nSpec = size(imgStackT,3);
-
-% Activate much tighter subplots
-% [subplot margin top&side],[figure bottomspace,topspace],[leftspace,rightspace]
-subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.06 0.05], [0.06 0.05]);
-
 
 % figure
 % subplot(1,1,1)
@@ -68,18 +71,48 @@ h.Ticks = h.Ticks; % prevent ticks from changing
 h.TickLabels = num2str(hTicks', '%2.2f');
 ylabel(h, 'spectral frequency', 'FontSize',12)
 
-%% Add maximum projection to ROI detection loop (from BackgroundImgSbx.m)
+
+%% Plot the maximum and average projection for comparison with spectral
 
 if exist('BImgA','var') && ~exist('BImgMax','var')
     BImgMax = BImgA;
 end
 
-imgM = BImgMax - min(BImgMax(:)); % image with Maximum projection
-imgM = imgM ./ (max(imgM(:))./max(Spect(:)));
-Spect = cat(3, imgM, Spect);
+% Plot and save picture
+hand2 = figure;
+colors = cmapL([1     1    1;...
+                1     1    0.75;...
+                0.75  1    0.5;...
+                0.25  0.75 0.5;...
+                0     0.25 0.5;...
+                0     0    0], 256);
+subplot(1,1,1)
+imagesc(log1p(BImgMax), prctile(log1p(BImgMax(:)), [0.01 99.8]))
+colormap(colors);
+title('log scaled maximum fluorescence image')
+h = colorbar;
+ylabel(h, 'maximum fluorescence', 'FontSize',12)
+% Save picture
+print(hand2, [fn(1:end-18) 'img_maximumFluorescence.png'],'-dpng', '-r400')
+
+if exist('BImgAverage','var') % Plot average fluorescence
+    colormap(colors);
+    hand3 = figure;
+    subplot(1,1,1)
+    imagesc(log1p(BImgAverage), prctile(log1p(BImgAverage(:)), [0.01 99.8]))
+    colormap(colors);
+    title('log scaled average fluorescence image')
+    h = colorbar;
+    ylabel(h, 'average fluorescence', 'FontSize',12)
+    % Save picture
+    print(hand3, [fn(1:end-18) 'img_averageFluorescence.png'],'-dpng', '-r400')
+end
+            
+vals = prctile(BImgMax(:),99.5);  % Cut off the highest 0.5% of values
+BImgMax(BImgMax>vals) = vals;
 
 figure;
-imagesc(CreateRGB({Spect(:,:,2), Spect(:,:,end), log1p(imgM)}, 'r b g'))
+imagesc(CreateRGB({Spect(:,:,1), Spect(:,:,end), log1p(BImgMax)}, 'r b g'))
 title('red: lowest frequency, blue highest low frequency, green: max projection')
 
 
@@ -140,8 +173,8 @@ end
 [~, peakFreq] = max(PP.SpecProfile);
 PP.peakFreq = Sax(peakFreq);
 
- %% Display  ROIS
-%figure(1), hold off,imagesc(BImg), colormap gray, hold on %, caxis([h0 h1])
+%% Display  ROIS
+ 
 %contours
 hold on
 Con = PP.Con;
@@ -174,12 +207,9 @@ for i = 1:PP.Cnt
 end
 
 
-%% Or reject Rois & look at signal with UI!
-
+%% Reject and add ROIs, & look at signal with UI!
 RoiRejecterGUI(Mask, PP, SPic, Transfile, Sax)
 
-%% Special Edition RoiRejecter: Extra input: Red image, GFP average image
-% RoiRejecterGUISE(Mask, PP, SPic, Transfile, BImgR, BImgA)
 
 %% Calculate power spectral density function for each roi and then save
 ln = length(Sax);
@@ -196,3 +226,5 @@ end
 
 save(filename, 'PP', 'Mask', 'BImg', 'Ps', 'spar', '-append')
 fprintf('saved.\n')
+
+

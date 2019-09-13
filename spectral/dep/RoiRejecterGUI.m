@@ -1,16 +1,63 @@
 function varargout = RoiRejecterGUI(varargin)
 %
-% The RoiRejecterGUI enables the visualisation of two-photon data, and it
+% RoiRejecterGUI enables the visualisation of two-photon data, and it
 % can show the signal of any place in the two-photon microscopy image over
 % time.
+%
+% when no input is given the RoiRejecter will ask for the spectral file,
+%   and the transposed data file
+% In case that input is given, the input should be:
+% RoiRejecterGUI(Mask, PP, SPic, Transfile, Sax)
+%   input 1: Mask, the 2D matrix which says which pixels are occupied by
+%               which ROI
+%   input 2: PP, struct with contour information, created by getspectrois.m
+%   input 3: SPic, SPectral images components, 3D matrix
+%   input 4: The filename of the transposed datafile
+%   input 5: Sax, the spectral axis, as created by spectral.m, that should
+%            correspond to the SPic variable
+%
+% 
+% The functionality of the RoiRejecter can be accessed with the 6 different
+% tabs on the right.
 % 
 % ROIs can be refined by:
-%       deletion: either by sliders that select based on ROI properties
-%                 or by manual clicking
-%       splitting (with pixel k-means clustering). Click on a ROI that
-%                 needs to be split.
-%       creation: click on a place in the image and the computer will try
-%                 to find a contour.
+%	deletion: either by sliders that select based on ROI properties
+%             or by manual clicking.       TAB 'Reject ROIs'
+%	splitting (with pixel k-means clustering). Click on a ROI that
+%             needs to be split.           TAB 'Split ROIs'
+%	creation: click on a place in the image and the computer will try
+%             to find a contour, the contour will be based on the
+%             current background image in the RoiRejecter, in case that
+%             that is a color image it will average the three colorchannels
+%             to create a grayscale image. TAB 'CreateROI'
+%	manual creation: manually draw a ROI by clicking on the main
+%                    background image.     TAB 'Manual ROI'
+%
+% Data can be visualised in the following ways:
+% FLUORESCENCE TIMETRACE (signal in bottom main axis)
+%   Show the timetrace fluorescence data of an ROI: 
+%   	in TAB 'Reject ROIs' toggle 'Plot ROI signal on ROI toggling', 
+%       and then white or blacklist a ROI.
+%   Show the data from a square selection of the data:
+%       in TAB 'Show data' toggle the 'select signal' button
+%   
+% MAIN IMAGE OPTIONS
+%   Load in any variable (that has the same size as the main background 
+%       image), by selecting the 'variable from workspace' option in the
+%       background view option in TAB 'Show data'
+%       In case you load in a 3D matrix a colormap will be created, that is
+%       defined in the function BackGrdView
+%   Comparing the current recording with other recordings is possible
+%       by selection the 'chronic' option in the background view option 
+%       in the TAB 'show data'. The background images in the chronic
+%       file will be averaged together, and then registered to the current
+%       background image in the RoiRejecter.
+%   the ROIs can be made colorful by selecting 'inner ROI corr' in the
+%       background view option in the TAB 'show data'. This will do the
+%       same analysis that 'Split ROIs' will do, for every ROI. Calculation
+%       can take a while.
+%
+%
 %
 %      H = ROIREJECTERGUI returns the handle to a new ROIREJECTERGUI or the handle to
 %      the existing singleton*.
@@ -94,7 +141,7 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
         % load data otherwise
         [fn, pn] = uigetfile('*SPSIG.mat');
         fprintf('Loading...\n')
-        load([pn fn],'Mask','PP','Sax','SPic','sig');
+        load([pn fn],'Mask','PP','Sax','SPic');
         fprintf('Done loading\n')
 
         [fn, pn] = uigetfile('*Trans*.dat', 'Select the file with 2P data');
@@ -748,7 +795,7 @@ function RejectInfoFunc(h)
         t{2} = sprintf('%3d ROIs rejected because threshold',sum(idx.Thres));
     else % The correlation threshold should be used
         selectedPoints = sum((idx.Black|idx.Size|idx.ThresCor) & ~idx.White);
-        t{2} = sprintf('%3d ROIs rejecter because correlation threshold',sum(idx.ThresCor));
+        t{2} = sprintf('%3d ROIs rejected because correlation threshold',sum(idx.ThresCor));
     end
     
     t{1} = sprintf('%3d ROIs rejected because size limits',sum(idx.Size));
@@ -1690,8 +1737,8 @@ function selSize_Callback(hObject, ~, h) %#ok
     setappdata(h.hGUI, 'switches', switches)
     
     % Update slider title text
-    h.selSizeTitle.String
-    h.selSizeTitle.String = {sprintf('selection size : %2.0f', hObject.Value*2)};
+    val = hObject.Value*2;
+    h.selSizeTitle.String = {sprintf('selection size : %2.0fx%2.0f=%4.0f pixels', val, val, val*val)};
 end
 
 
@@ -1867,7 +1914,7 @@ function backGrdView(selected, h)
                 
                 infoStr = ['variable should result in a matrix of doubles.',...
                            'first two dimensions should same as background image, may be 3D. ',...
-                           'three examples: BImgA   or   permute(log1p(SPic), [2 1 3])   or   cat(3, BImgAverage, BImgA)'];
+                           'three examples: BImgA   or   permute(log1p(SPic), [2 1 3])   or   cat(3, BImgAverage, BImgMax)'];
                 varName = inputdlg(infoStr, 'Import a variable from the workspace');
                 try
                     impImg = evalin('base',varName{:}); % load the requested variable
@@ -2085,8 +2132,8 @@ function DrawData(xm, ym, signal, h)
     switches.ylims(2,num) = max(signal);
     
     % Draw the box area from which the data is sampled
-    x = [xm(1), xm(1), xm(end), xm(end), xm(1)];
-    y = [ym(1),ym(end),ym(end),ym(1), ym(1)];
+    x = [xm(1), xm(1), xm(end), xm(end), xm(1)]-0.5;
+    y = [ym(1),ym(end),ym(end),ym(1), ym(1)]-0.5;
     h.selectedPlt(num) = plot(x,y,'color', colors.summer(num,:),...
         'linewidth',2,'hittest','off','Parent',h.mainAx);
     
