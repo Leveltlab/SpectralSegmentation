@@ -1,6 +1,9 @@
-%
+function getSpectrois(varargin)
+% 
 % get rois from cross spectral components
 %
+% input : SPSIG file : series of spectral images 
+%         spar : parameter structure (optional)
 % output: Mask: an image with the same size as BImg, with numbers that
 %               denote which ROI is present at which pixel
 %         
@@ -24,12 +27,31 @@
 %         spar: Spectral PARameters used to find the ROIs
 %
 %
+global DISPLAY
+DISPLAY = 0;
+if nargin == 2
+ filename = varargin{1};
+   
+ spar = varargin{2};
+ flds = fieldnames(spar);
+ aflds = { 'cutOffHz', 'border', 'areasz', 'minimaldistance', 'pixelthreshold', 'significance', 'fractionmax', 'roundedness', 'voxel'};
+ if sum(ismember(aflds, flds)) < 9
+     disp('Error; number of input values is not valid; please run : spar = Spectroiparm()')
+     return;
+ end
 
-
-%% Load and Process Spectral Images:  load('SPic.mat')
+elseif nargin == 1
+ filename = varargin{1};
+ 
+else
 
 [fn, pn] = uigetfile('*_SPSIG.mat');
 filename = [pn fn];
+
+spar = Spectroiparm(); %reads roi segmentation parameters from file
+end
+
+%% Load and Process Spectral Images:  load('SPic.mat')
 fprintf('\nloading...')
 load(filename)
 Transfile = [filename(1:end-9) 'Trans.dat'];
@@ -46,8 +68,8 @@ if vals(1)==-inf
 end
 imgStackT = permute(imgStack,[2 1 3]); % transpose the SPic variable so it's same as BImg
 
-cutOffHz = 0.2;
-Slow = find(Sax <= cutOffHz);
+cutOffHz = spar.cutoffHz;
+Slow = (Sax <= cutOffHz);
 Spect = imgStack(:,:,Slow);
 Spect = permute(Spect, [2 1 3]); %transposes the images,
 Spect = setminlevel(Spect); %set minimum level to zero
@@ -64,36 +86,6 @@ subplot(1,1,1)
 imagesc(BImg), caxis(prctile(BImg(:), [0.01 99.9])), hold on
 title(sprintf('spectral components max projection <%.1fHz', cutOffHz))
 
-
-%% check how the spectral looks (press any key to advance, ctrl+c to stop)
-nSpec = size(imgStackT,3);
-
-% figure
-% subplot(1,1,1)
-% for i = 1:nSpec
-%     imagesc(squeeze(imgStack(:,:,i)))
-%     title(sprintf('i = %d. frequency %.2fHz', i, Sax(i)))
-%     colorbar
-%     pause
-% end
-
-% A spectral image for all the different frequencies
-colors = flip(jet(nSpec));
-norma = false; % normalize each frequency?
-figure('units','normalized','position',[0.51 0.5 0.25 0.4]);
-subplot(1,1,1)
-SPicTCell = squeeze(num2cell(imgStackT, [1 2]));
-RGBspectral = CreateRGB2(SPicTCell, 1:nSpec, colors, norma);
-imagesc(RGBspectral)
-title('The intensity of the spectral density at all different frequencies')
-% Set the correct colorbar for this image
-colormap(colors)
-h = colorbar;
-hTicks = linspace(Sax(1),Sax(end),length(h.Ticks));
-h.Ticks = h.Ticks; % prevent ticks from changing
-h.TickLabels = num2str(hTicks', '%2.2f');
-ylabel(h, 'spectral frequency', 'FontSize',12)
-
 %% ROI selection based on cross spectral density
 % find ROIs with higest local maxima in low frequency component images
 
@@ -103,7 +95,6 @@ dim = size(Spect); %width, height, z
 Mask = zeros(dim(1:2)); 
 SpatialCorr = zeros(dim(1:2));
 
-spar = Spectroiparm(); %reads roi segmentation parameters from file
 for i = 1:dim(3)
     tic
     fprintf('iteration %2d/%2d: ', i, dim(3))
