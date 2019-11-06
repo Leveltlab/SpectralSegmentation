@@ -53,7 +53,7 @@ end
 
 %% Load and Process Spectral Images:  load('SPic.mat')
 fprintf('\nloading...')
-load(filename)
+load(filename, 'SPic', 'Sax')
 Transfile = [filename(1:end-9) 'Trans.dat'];
 [sbxt, ~, freq] = transmemap(Transfile);
 fprintf('\nloaded\n')

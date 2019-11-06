@@ -6,7 +6,8 @@ DISPLAY = 0;  %toggle roiselection display on or off
 valid = false;
 if exist('spar.mat', 'file')
      load spar.mat
-     aflds = { 'cutOffHz', 'border', 'areasz', 'minimaldistance', 'pixelthreshold', 'significance', 'fractionmax', 'roundedness', 'voxel'};
+     flds = fieldnames(spar);
+     aflds = { 'cutoffhz', 'border', 'areasz', 'minimaldistance', 'pixelthreshold', 'significance', 'fractionmax', 'roundedness', 'voxel'};
      if sum(ismember(aflds, flds)) == 9
          valid = true; 
      end
