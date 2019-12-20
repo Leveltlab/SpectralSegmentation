@@ -1,4 +1,4 @@
-function [Con, A, F, V] = PixelCor(Dim, F, sbxt, py, px, Iy, Ix, yrange, xrange, freq)
+function [Con, A, F, V, Ro, Rvar] = PixelCor(Dim, F, sbxt, py, px, Iy, Ix, yrange, xrange, freq, ThC)
 % Correlates all pixels in an ROI selected as valid in roisfromlocalmax, with 
 % the median trace associated with the pixels surrounding a max in the spectral image
 %
@@ -13,26 +13,35 @@ function [Con, A, F, V] = PixelCor(Dim, F, sbxt, py, px, Iy, Ix, yrange, xrange,
 %xrange : x indices of Voxel in Spectral Image
 %yrange : y indices of Voxel in Spectral Image
 %freq   : sampling frequency
+%ThC    : Correlation threshold cutoff for contourc height
 %Output
 %Con : new contour
 %A   : new area
 %F   : new voxel mask
 %V   : spatial map of pixel correlations in Voxel
+%Ro  : Roundedness
+%Rvar : %variance of pixel correlations
 %
-%Chris van der Togt, 2018
-
 %first extract the traces from the Trans file associated with
 %this ROI
+%Chris van der Togt, 2018
+%added correlation cutoff and median filtering of correlations
+%Chris van der Togt, 2019
+
+global DISPLAY
     Con = []; %found contour
-    A = []; %area of found contour
+    A = 0; %area of found contour
+    Ro = 0; %Roundedness of contour
+    Rvar = 0; %variance of pixel correlations
     Mt =  zeros(Dim);
     Mt(yrange, xrange) = F;
 
     Mt = logical(Mt');%transposed
     % Tix = find(Mt); %indices of ROI in transposed mask
     Sigpix = sbxt.Data.y(:,Mt(:));
-    Sp = [];
-    R = floor(freq);      
+    R = floor(freq);
+    
+    Sp = zeros(ceil(size(Sigpix,1)/R), size(Sigpix,2));      
     for q = 1:size(Sigpix,2)
         Sp(:,q) = decimate(double(Sigpix(:,q)), R); %signals for all pixels in ROI decimated by freq
     end
@@ -48,38 +57,57 @@ function [Con, A, F, V] = PixelCor(Dim, F, sbxt, py, px, Iy, Ix, yrange, xrange,
 
     Cor = corr(Msig, Sp, 'rows', 'pairwise');
     
-%   figure(4), plot(Cor)
+ %  figure(4), plot(Cor) 
 
 % In voxel
     V = zeros(size(Ft));
     V(linix) = Cor;
-    V = V';
+    
+%determine correlation strength at which to set contourc level
+    thr = ThC * max(abs(Cor)); 
 
-    mxm = max(abs(Cor));
-    mnm = min(abs(Cor));
-    thr = min(0.5, (mxm - mnm)/2 + mnm);
+    V = V'; %transpose back
+    if thr < 0.5
+     %smooth with median filter, since with lower cutoff more variable
+     %correlations are included leading to noisy contours
+        m = floor((1-thr)*3)* 2 + 1; %let median filter depend on threshold height
+        J = medfilt2(V, [m m]);
+    else
+        J = V;
+    end
     
  %get contour
-    c = contourc(V,[thr thr]);
+    c = contourc(J,[thr thr]);
     s = getcontourlines(c);
-    v = arrayfun(@(x) eq(x.c,1),s); %closed
-    iv = find(v);
+    v = arrayfun(@(x) eq(x.c,1),s); %which contours are closed
+    iv = find(v); %select these only
+
     for j = 1:length(iv)
         vx = s(iv(j)).x;
         vy = s(iv(j)).y;
+        %is my spectral max (px, py) in this contour?
         In = find(inpolygon(px,py,vx,vy),1);
         if ~isempty(In)
-           Con.x = vx;
-           Con.y = vy;
-           A = polyarea(vx,vy);
-           F(:) = 0;
-           F(inpolygon(Ix,Iy,vx,vy)) = 1;
-           
- %  figure(3), imagesc(V), hold on
- %  plot(Con.x, Con.y, 'w')
-%   drawnow
-%   pause(0.1)
+            %does this one have a valid area
+           Atmp = polyarea(vx,vy);
+           if Atmp > A
+                Con.x = vx;
+                Con.y = vy;
+                A = Atmp;
+                F(:) = 0;
+                Inix = inpolygon(Ix,Iy,vx,vy);
+                F(Inix) = 1;
+                %roundedness
+                Ro = perimarea(vx, vy);
+                %mean pixel variance in new contour
+                Rvar = mean(V(Inix).^2);
+           end
         end
-     end
-  
+    end
+    if A > 0 && DISPLAY == 1        
+        figure(3), imagesc(V), hold on
+        plot(Con.x, Con.y, 'w')
+        drawnow
+   end
+end
     

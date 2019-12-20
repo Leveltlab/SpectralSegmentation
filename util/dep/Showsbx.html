@@ -1,0 +1,29 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Untitled Document</title>
+</head>
+
+<body>
+<blockquote>
+  <p><strong>Showsbx
+  </strong></p>
+  <p>Showsbx is used to display image sequences recorded with a neurolabware 2 photon microscoop. Sbx files contain image data in a continuous binary format and to open and display the images, the program needs to import parameters form an accompanying mat file with the same file name. </p>
+  <p>Showsbx can display individual images at any position or as a movie if you press the <strong>run</strong> button. It also can display different channels if you press the <strong>chan</strong> button in the lower right corner. However only one channel can be displayed at the same time.</p>
+  <p>If the mmage data contains several depth sections, it will try to import the the neccessary parameters to slice the data appropriately, and you are given the choice to select one depth.</p>
+  <p>Pressing the <strong>right mouse</strong> button on the image area opens a context menu giving you two menu choices. </p>
+  <p>The first gives you the possibility to delete  the frame presently diplayed (Deleting a frame involves rewriting the whole file exluding the selected frame which can take a lot of time!!). </p>
+  <p>With the second item you can change the data value range that is diplayed (effectively changing brightness and contrast of the images). </p>
+  <p>Below the menu bar is a series of tools for cropping, averging, splitting,  aligning, exporting the signal from a selected region and to export an mp4 movie.</p>
+  <p><strong><img src="toolbar.PNG" width="143" height="29" alt="toolbar" /></strong></p>
+  <p>	The <strong>cropping</strong> tool allows you to select a square region within  the images. This has no immediate effect, but the values saved will be used to crop each image when aligning the images.</p>
+  <p>	<img src="sum.png" width="16" height="15" alt="Average" />	The <strong>averging</strong> tool allows you to average a selected number of images beginning at the image displayed.</p>
+  <p>	The <strong>splitting</strong> tool is used to split the image sequences in separate files for each imaging depth (this has become obsolete because a selected depth can be directly exported to Normcorre).</p>
+  <p><img src="a.png" width="17" height="19" alt="Align" />	The <strong>align</strong> tool calls Normcorre, developed by the Simons foundation, to align the images <strong>after selecting a depth and defining the optimal crop</strong>.</p>
+  <p>The <strong>export ROI</strong> signal tool is used to export the signal of a selected region to the matlab work space. After pressing this button an area selector is shown that can be used to select a desired region. After clicking in this region the signal is exported.</p>
+  <p><img src="iconvideo.png" width="18" height="18" alt="Movie" /> The <strong>movie </strong>button simply converts the image sequence at the <strong>selected depth,  cropped  and with the contrast and brightness presently</strong> selected to an mp4 movie file.</p>
+  <p>&nbsp;</p>
+</blockquote>
+</body>
+</html>
