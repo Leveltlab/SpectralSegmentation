@@ -2,7 +2,7 @@
 %take a tifstack and converts to sbx
 
 fp = uigetdir();
-files = dir([fp '/*.tif']);
+files = dir([fp '/*.tif*']);
 [~, fn] = fileparts(files(1).name);  
 [Fn, strSavepath] = uiputfile([fn '.sbx']);
 fileID = fopen([strSavepath Fn], 'w');
