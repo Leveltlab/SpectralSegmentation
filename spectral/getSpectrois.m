@@ -29,26 +29,25 @@ function getSpectrois(varargin)
 %
 global DISPLAY
 DISPLAY = 0;
-if nargin == 2
- filename = varargin{1};
-   
- spar = varargin{2};
- flds = fieldnames(spar);
- aflds = { 'cutOffHz', 'border', 'areasz', 'minimaldistance', 'pixelthreshold', 'significance', 'fractionmax', 'roundedness', 'voxel'};
- if sum(ismember(aflds, flds)) < 9
-     disp('Error; number of input values is not valid; please run : spar = Spectroiparm()')
-     return;
- end
+if exist('varargin', 'var') && nargin == 2
+    filename = varargin{1};
 
-elseif nargin == 1
- filename = varargin{1};
- 
+    spar = varargin{2};
+    flds = fieldnames(spar);
+    aflds = { 'cutOffHz', 'border', 'areasz', 'minimaldistance', 'pixelthreshold', 'significance', 'fractionmax', 'roundedness', 'voxel'};
+    if sum(ismember(aflds, flds)) < 9
+        disp('Error; number of input values is not valid; please run : spar = Spectroiparm()')
+        return;
+    end
+
+elseif exist('varargin', 'var') && nargin == 1
+    filename = varargin{1};
+
 else
+    [fn, pn] = uigetfile('*_SPSIG.mat');
+    filename = [pn fn];
 
-[fn, pn] = uigetfile('*_SPSIG.mat');
-filename = [pn fn];
-
-spar = Spectroiparm(); %reads roi segmentation parameters from file
+    spar = Spectroiparm(); %reads roi segmentation parameters from file
 end
 
 %% Load and Process Spectral Images:  load('SPic.mat')
@@ -68,7 +67,7 @@ if vals(1)==-inf
 end
 imgStackT = permute(imgStack,[2 1 3]); % transpose the SPic variable so it's same as BImg
 
-cutOffHz = spar.cutoffHz;
+cutOffHz = spar.cutOffHz;
 Slow = (Sax <= cutOffHz);
 Spect = imgStack(:,:,Slow);
 Spect = permute(Spect, [2 1 3]); %transposes the images,
@@ -103,7 +102,7 @@ for i = 1:dim(3)
     figure(1), hold off,imagesc(Img), colormap gray, hold on %, caxis([h0 h1])     
     [PP, Mask, SpatialCorr] = roisfromlocalmax(Img, PP, Mask, spar, sbxt, freq, SpatialCorr);   
 
-    str = sprintf('number of ROIs found: %5d. time elapsed = %.2fminutes\n', PP.Cnt, toc/60);
+    str = sprintf('%.2fHz, number of ROIs found: %5d. time elapsed = %.2fminutes\n', Sax(i), PP.Cnt, toc/60);
     fprintf(str)
     
     Con = PP.Con;
@@ -119,28 +118,18 @@ P = PP.P; % plot(x,y), plots at the position (y, x) in an image
 PP.P(1,:) = P(2,:);
 PP.P(2,:) = P(1,:);
 
-nSpec = size(imgStack,3);
-PP.SpecProfile = zeros(nSpec, PP.Cnt); % For each ROI save the spectral density values
-Mask3D = repmat(Mask, [1,1,nSpec]);
+% Retrieve the average spectral profile of the ROI
+[PP.SpecProfile, PP.peakFreq] = SpecProfileCalcFun(imgStackT, Mask, Sax);
 
 for i = 1:PP.Cnt
     %also redefine peak maxima based on projected maxima in BImg
     ROIi = Mask == i; 
-    npixels = sum(ROIi(:)); % number of pixels for this ROI
     PP.P(3,i) = max(BImg(ROIi)); % maximum
     PP.P(4,i) = min(BImg(ROIi)); % minimum
-    
-    % Retrieve the average spectral profile of the ROI
-    specProfile = reshape(imgStackT(Mask3D==i), [npixels, nSpec]);
-    PP.SpecProfile(:,i) = mean(specProfile);
     
     %average pixel correlation for each ROI
     PP.P(5,i) = mean(SpatialCorr(Mask==i));
 end
-
-% Calculate which frequency had the highest spectral density values for
-[~, peakFreq] = max(PP.SpecProfile);
-PP.peakFreq = Sax(peakFreq);
 
 save(filename, 'PP', 'Mask', 'BImg', 'spar', 'SpatialCorr', '-append')
 fprintf('saved.\n')

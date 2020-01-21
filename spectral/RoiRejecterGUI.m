@@ -79,7 +79,7 @@ function varargout = RoiRejecterGUI(varargin)
 % Made by: Leander de Kraker
 % 2018
 
-% Last Modified by GUIDE v2.5 24-Sep-2019 18:12:47
+% Last Modified by GUIDE v2.5 04-Oct-2019 19:28:35
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -147,26 +147,22 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
         SPSIGfile = [pn fn];
         load(SPSIGfile,'Mask','PP','Sax','SPic', 'SpatialCorr');
         fprintf('Done loading\n')
-
-        [fn, pn] = uigetfile('*Trans*.dat', 'Select the file with 2P data');
-        datafile = [pn fn];
+        
+        % Try to find the 2P transposed datafile based on given SPSIG file
+        datafile = [pn fn(1:end-9) 'Trans.dat'];
+        if exist(datafile,'file') ~= 2 % if not found, request it
+            [fn, pn] = uigetfile('*Trans*.dat', 'Select the file with 2P data');
+            if any(fn ~= 0)
+                datafile = [pn fn];
+            else
+                fprintf('cannot run RoiRejecterGUI without transposed data file\n')
+                return
+            end
+        end
     end
     
     % Memorymap the 2P signal file
     [sbxt, dim, freq] = transmemap(datafile);
-    
-    % The maximum ROI sizes can be very different per dataset, so the
-    % slider value gets edited here
-    h.maxSizeSlider.Max = round(max(PP.A),-1) + 10;
-    h.maxSizeSlider.Value = h.maxSizeSlider.Max;
-    
-    % Setting more useful limits for the  'minimum size rejection' slider
-    h.minSizeSlider.Min = round(min(PP.A)-1); % minimum value
-    h.minSizeSlider.Max = round(max(PP.A)+1); % maximum value
-    h.minSizeSlider.Value = round(min(PP.A)-1); % current value
-    
-    % Set the title of the transfile in the legend
-    h.infoTransfile.String = ['transfile = ', datafile];
     
     % Some colors we will use
     colors = struct();
@@ -183,9 +179,9 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     switches.alph    = h.AlphaSlider.Value; % alpha value for ROI contours
     switches.plotListing = h.plotListing.Value; % Plot signal of clicked ROI? false default
     switches.roiCorrIm = false; % roi correlation image is not made yet.
-    switches.minSize = h.minSizeSlider.Value; % The current minimum ROI size for rejection
-    switches.maxSize = h.maxSizeSlider.Value;
-    switches.originalCnt = PP.Cnt; % The current number of ROIs
+    switches.minSize = round(min(PP.A)-1); % The current minimum ROI size for rejection
+    switches.maxSize = round(max(PP.A),-1)+10; % set maximum ROI size value above biggest ROI
+    switches.originalROIs = PP.A; % The current list of ROI sizes (to check changes before save)
     switches.selSize = h.selSize.Value; % size of data selection
     switches.selNumMax = h.numSelectSlider.Value; % Number of max data tracers
     switches.selNumCur = 1; % Current datatrace to draw
@@ -198,6 +194,24 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     switches.creationThres = 80; % threshold for percentile pixelvalue new ROI inclusion
     switches.chronic = false;
     switches.backgrdCLim = [0 1]; % color axis limits of the background image in mainAx
+    switches.activeSignalAx = 2;
+    
+    
+    % Setting more useful limits for the  'minimum size rejection' slider
+    h.minSizeSlider.Min = switches.minSize; % minimum value
+    h.minSizeSlider.Max = switches.maxSize; % maximum value
+    h.minSizeSlider.Value = switches.minSize; % current value
+    h.minSizeTitle.String = {sprintf('Minimum size: %4.0f px', switches.minSize)};
+
+    % The maximum ROI sizes can be very different per dataset, so the
+    % slider value gets edited here
+    h.maxSizeSlider.Max = switches.maxSize;
+    h.maxSizeSlider.Value = switches.maxSize;
+    h.maxSizeTitle.String = {sprintf('Maximum size: %4.0f px', switches.maxSize)};
+    
+    sliderNames = {'minSize', 'maxSize', 'threshold' 'innerCorr', 'roundedness'};
+    sliderDefaults = nan([1, length(sliderNames)]);
+    switches.sliderSettings = array2table(sliderDefaults, 'variableNames',sliderNames);
     
     % idx are ROI indexes that tells which ROIs to reject
     idx = struct();
@@ -208,6 +222,7 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     idx.ThresCor = false(1,PP.Cnt);
     idx.Round = false(1,PP.Cnt);
     
+    Sax = Sax(2:end);
     imgStackT = permute(SPic(:,:,2:end),[2 1 3]);
     nSpect = size(imgStackT, 3);
     % If the spectral profiles are not yet there, calculate them
@@ -225,16 +240,26 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
         [~, peakFreq] = max(PP.SpecProfile);
         PP.peakFreq = Sax(peakFreq);
     end
-    
-    % If the SpatialCorr is not there yet, calculate it......
+    % If the creation method for the ROIs doesn't exist yet, initialize
+    if ~isfield(PP,'creationMethod')
+        % assume the ROIs that are present were created automatically
+        PP.creationMethod = repmat({'auto'}, [PP.Cnt, 1]);
+        warning("PP.creationMethod didn't exist, assuming existing ROIs were automatically created")
+    end
+    % If the SpatialCorr is not there yet, initialze empty placeholder and warn user
     if ~exist('SpatialCorr', 'var')
         SpatialCorr = zeros(size(Mask));
+        warning('SpatialCorr not present, calculate it later with SpatialCorrCalcRun.m!')
+    end
+    if ~isfield(PP, 'Rvar') % if Rvar doesn't exist, warn user and initialze zeros
+        PP.Rvar = zeros(PP.Cnt,1);
+        warning('PP.Rvar not present, calculate it later with SpatialCorrCalcRun.m!...')
     end
     
     % Data to keep accessable in every function
     data = struct();
     if exist('SPSIGfile','var')
-        data.SPSIGfile = SPSIGfile; %filename to save data to
+        data.SPSIGfile = SPSIGfile; % filename to save data to
     end
     data.xas = (1:dim(1))./freq;
     data.dim = dim;
@@ -256,22 +281,8 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     data.newRoi = []; % contour and ROI data for newly created ROI
     data.manRoi = struct('Con',struct('x',[],'y',[]),'mask',[],'A',0); % data of manually created ROI
     
-    
-    
-    % LEGEND
-    lines = gobjects(1,6);
-    x = [0.8 0.2]; y = [0 1];
-    h.legendAx.NextPlot = 'add';
-    lines(1) = plot(x,x,'-cx','Parent',h.legendAx);
-    lines(2) = plot(y,y,'xr','Parent',h.legendAx);
-    lines(3) = plot(x,x,'-r','Parent',h.legendAx);
-    lines(4) = plot(x,y,'-g','LineWidth',2,'Parent',h.legendAx);
-    lines(5) = plot(y,x,'-m','LineWidth',2,'Parent',h.legendAx); %#ok
-    hlegend  = legend(h.legendAx,...
-        {'Good ROIs','Sizes reject','Threshold reject','White listed','Black listed'}); %#ok
-    
-    
     % legend for Roi Creation axes
+    x = [0.8 0.2]; y = [0 1];
     lines = gobjects(1,4);
     h.createRoiLegend.NextPlot = 'add';
     h.createRoiLegend.Visible = 'off';
@@ -403,8 +414,9 @@ function backGrdView_CreateFcn(hObject, ~, ~) %#ok<DEFNU>
     % hObject    handle to backGrdView (see GCBO)
     % handles    empty - handles not created until after all CreateFcns called
 
-    hObject.String = {'Spectral', 'SpatialCorr', 'ROI corr', 'Mask', 'Chronic (red) & spectral (green)',...
-                       'Chronic', 'peak frequency', 'workspace variable'};
+    hObject.String = {'Spectral', 'Spectral color', 'SpatialCorr', 'ROI corr',...
+                      'Mask', 'Chronic (red) & spectral (green)',...
+                      'Chronic', 'peak frequency', 'workspace variable'};
     
     if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
         set(hObject,'BackgroundColor','white');
@@ -439,14 +451,10 @@ function majorToggles_Callback(hObject, ~, h) %#ok<DEFNU>
                 h.majorToggle4 = TurnOff(h.majorToggle4);
                 uistack(h.majorPanel4, 'bottom');
                 h.majorPanel4.Visible = 'off';
-            case 5 % Legend & info panel
+            case 5 % ROI Manual creation Panel
                 h.majorToggle5 = TurnOff(h.majorToggle5);
                 uistack(h.majorPanel5, 'bottom');
                 h.majorPanel5.Visible = 'off';
-            case 6 % ROI Manual creation Panel
-                h.majorToggle6 = TurnOff(h.majorToggle6);
-                uistack(h.majorPanel6, 'bottom');
-                h.majorPanel6.Visible = 'off';
         end
         
         % Turn requested panel on
@@ -455,51 +463,31 @@ function majorToggles_Callback(hObject, ~, h) %#ok<DEFNU>
                 h.majorToggle1 = TurnOn(h.majorToggle1);
                 h.majorPanel1.Visible = 'on';
                 uistack(h.majorPanel1, 'top');
-                % also turn the correct signal axis on
-                h.signalAx1.Visible = 'off'; 
-                uistack(h.signalAx1, 'bottom');
-                h.signalAx2.Visible = 'on';
-                uistack(h.signalAx2, 'top');
             case 2 % ROI splitting panel
                 h.majorToggle2 = TurnOn(h.majorToggle2);
                 h.majorPanel2.Visible = 'on';
                 uistack(h.majorPanel2, 'top');
-                % also turn the correct signal axis on
-                h.signalAx1.Visible = 'off'; 
-                uistack(h.signalAx1, 'bottom');
-                h.signalAx2.Visible = 'on';
-                uistack(h.signalAx2, 'top');
             case 3 % ROI creation panel
                 h.majorToggle3 = TurnOn(h.majorToggle3);
                 h.majorPanel3.Visible = 'on';
                 uistack(h.majorPanel3, 'top');
-                % also turn the correct signal axis on
-                h.signalAx1.Visible = 'off'; 
-                uistack(h.signalAx1, 'bottom');
-                h.signalAx2.Visible = 'on';
-                uistack(h.signalAx2, 'top');
             case 4 % Show Data panel
                 h.majorToggle4 = TurnOn(h.majorToggle4);
                 h.majorPanel4.Visible = 'on';
                 uistack(h.majorPanel4, 'top');
-                % also turn the correct signal axis on
-                h.signalAx1.Visible = 'on';
-                uistack(h.signalAx1, 'top');
-                h.signalAx2.Visible = 'off';
-                uistack(h.signalAx2, 'bottom');
-            case 5 % Legend & info panel
+            case 5 % ROI manual creation panel
                 h.majorToggle5 = TurnOn(h.majorToggle5);
                 h.majorPanel5.Visible = 'on';
                 uistack(h.majorPanel5, 'top');
-            case 6 % ROI manual creation panel
-                h.majorToggle6 = TurnOn(h.majorToggle6);
-                h.majorPanel6.Visible = 'on';
-                uistack(h.majorPanel6, 'top');
-                % also turn the correct signal axis on
-                h.signalAx1.Visible = 'off'; 
-                uistack(h.signalAx1, 'bottom');
-                h.signalAx2.Visible = 'on';
-                uistack(h.signalAx2, 'top');
+        end
+        
+        if buttonN ~= 4 && switches.activeSignalAx == 1
+            % If the sigselect signal axis was on, but the major toggle was
+            % not set to 4, replace the visible signal axis with signalAx2
+            h.signalAx1.Visible = 'off'; 
+            uistack(h.signalAx1, 'bottom');
+            h.signalAx2.Visible = 'on';
+            uistack(h.signalAx2, 'top');
         end
         
         % Save new current panel
@@ -526,7 +514,9 @@ function minorToggles_Callback(hObject, ~, h) %#ok<DEFNU>
     % Turn the previous one that was on -> off
     if ~strcmp(switches.currentMinor, 'none')
         % Check for every possible button because we don't want to use eval
-        if strcmp(switches.currentMinor, 'corrButton')
+        if strcmp(switches.currentMinor, 'plotROIsButton')
+            h.plotROIsButton = TurnOff(h.plotROIsButton);
+        elseif strcmp(switches.currentMinor, 'corrButton')
             h.corrButton = TurnOff(h.corrButton);
         elseif strcmp(switches.currentMinor, 'sigSelectButton')
             h.sigSelectButton = TurnOff(h.sigSelectButton);
@@ -549,6 +539,27 @@ function minorToggles_Callback(hObject, ~, h) %#ok<DEFNU>
     if toggled
         hObject = TurnOn(hObject);
         switches.currentMinor = buttonName;
+        
+        % In case of sigSelect button, activate SignalAx1
+        if strcmp(buttonName, 'sigSelectButton')
+            switches.activeSignalAx = 1;
+            % also turn the correct signal axis on
+            h.signalAx1.Visible = 'on';
+            uistack(h.signalAx1, 'top');
+            h.signalAx2.Visible = 'off';
+            uistack(h.signalAx2, 'bottom');
+            
+        elseif switches.activeSignalAx == 1
+            % If active button is not sigSelectButton but active signal
+            % Axes is 1, activate signalAx2
+            switches.activeSignalAx = 2;
+            % also turn the correct signal axis on
+            h.signalAx1.Visible = 'off'; 
+            uistack(h.signalAx1, 'bottom');
+            h.signalAx2.Visible = 'on';
+            uistack(h.signalAx2, 'top');
+            
+        end
     else
         switches.currentMinor = 'none';
     end
@@ -613,41 +624,11 @@ end
 
 
 %% Select ROIs for deletion functions %% 
-function WhiteList(pos, h)
-    % Add or remove ROIs to the white listed list, saving them from
-    % rejection. Gets called when whitebutton is on and there was a click
-    % on the mainAx.
-    data = getappdata(h.hGUI, 'data');
-    idx = getappdata(h.hGUI, 'idx');
-    
-    id = data.Mask(round(pos(2)), round(pos(1))); % Which ROI was clicked on?
-    if id > 0
-        % If the plotlisting is turned on plot the signal of this ROI
-        switches = getappdata(h.hGUI, 'switches');
-        if switches.plotListing
-            % Plot the signal of the ROI you just clicked
-            sbxt = getappdata(h.hGUI, 'sbxt');
-            signal = mean(sbxt.Data.y(:,data.Mask'==id),2);
-            h.signalAx2.NextPlot = 'replacechildren';
-            plot(data.xas, signal, 'color', [0 0.7 0], 'Parent', h.signalAx2);
-            h.signalAx2.YLim = [round(min(signal),-2)-100,...
-                                round(max(signal),-2)+100];
-        end
-        
-        idx.White(id) = mod(idx.White(id)+1,2); % Toggle ROI to whitelist
-        if idx.Black(id) == 1 % Get out of blacklist
-            idx.Black(id) = 0;
-        end
-    end
-    
-    setappdata(h.hGUI, 'idx', idx)
-    RejectInfoFunc(h)
-    UpdateRois(h)
-end
-    
 
-function BlackList(pos, h)
-    % add and remove ROIs to the black list to ensure deletion
+function SelectROI(pos, h, do)
+    % This function is called when either the blacklist, whitelist or plot
+    % ROI button is toggled and there has been a click on the main axes.
+    
     data = getappdata(h.hGUI, 'data');
     idx = getappdata(h.hGUI, 'idx');
     
@@ -655,19 +636,32 @@ function BlackList(pos, h)
     if id > 0
         % If the plotlisting is turned on plot the signal of this ROI
         switches = getappdata(h.hGUI, 'switches');
-        if switches.plotListing
+        if switches.plotListing || strcmp(switches.currentMinor, 'plotROIsButton')
             % Plot the signal of the ROI you just clicked
             sbxt = getappdata(h.hGUI, 'sbxt');
             signal = mean(sbxt.Data.y(:,data.Mask'==id),2);
             h.signalAx2.NextPlot = 'replacechildren';
-            plot(data.xas, signal, 'color', [0.7 0 0], 'Parent', h.signalAx2);
-            h.signalAx2.YLim = [round(min(signal),-2)-100,...
-                                round(max(signal),-2)+100];
+            plot(data.xas, signal, 'color', [0 0 0], 'Parent', h.signalAx2);
+            ylims = [round(min(signal),-2)-100, round(max(signal),-2)+100];
+            xlims = h.signalAx2.XLim;
+            h.signalAx2.YLim = ylims;
+            % Say which ROI is being plotted, at 90% height of the signalAx 
+            str = sprintf('ROI %d', id);
+            text(xlims(1)+diff(xlims)/100, ylims(2)-diff(ylims)/20, str,...
+                'Parent',h.signalAx2, 'Clipping', 'on')
         end
         
-        idx.Black(id) = mod(idx.Black(id)+1,2); % Toggle ROI to blacklist
-        if idx.White(id) == 1 % Get out of whitelist
-            idx.White(id) = 0;
+        switch do
+            case 'black' % Add and remove ROIs to the black list to ensure deletion
+                idx.Black(id) = mod(idx.Black(id)+1,2); % Toggle ROI to blacklist
+                if idx.White(id) == 1 % Get out of whitelist
+                    idx.White(id) = 0;
+                end
+            case 'white' % Add and remove ROIs to the white list to ensure survival
+                idx.White(id) = mod(idx.White(id)+1,2); % Toggle ROI to whitelist
+                if idx.Black(id) == 1 % Get out of blacklist
+                    idx.Black(id) = 0;
+                end                
         end
     end
     
@@ -682,13 +676,14 @@ function minSizeSlider_Callback(hObject, ~, h) %#ok<DEFNU>
     % Callback function to control minimum size limit
     switches = getappdata(h.hGUI, 'switches');
     switches.minSize = hObject.Value;
+    switches.sliderSettings.minSize = hObject.Value;
     setappdata(h.hGUI, 'switches', switches)
     RejectRoiSizes(h)
     RejectInfoFunc(h)
     UpdateRois(h)
     
     % Update slider title text
-    h.minSizeTitle.String = {sprintf('Minimum size : %4.0f', hObject.Value)};
+    h.minSizeTitle.String = {sprintf('Min size: %4.0f px', hObject.Value)};
 end
 
 
@@ -697,13 +692,14 @@ function maxSizeSlider_Callback(hObject, ~, h) %#ok<DEFNU>
     % Callback function to control minimum size limit
     switches = getappdata(h.hGUI, 'switches');
     switches.maxSize = hObject.Value;
+    switches.sliderSettings.maxSize = hObject.Value;
     setappdata(h.hGUI, 'switches', switches)
     RejectRoiSizes(h)
     RejectInfoFunc(h)
     UpdateRois(h)
     
     % Update slider title text
-    h.maxSizeTitle.String = {sprintf('Maximum size : %4.0f', hObject.Value)};
+    h.maxSizeTitle.String = {sprintf('Max size: %4.0f px', hObject.Value)};
 end
 
 
@@ -723,11 +719,13 @@ end
 function thresSlider_Callback(hObject, ~, h) %#ok<DEFNU>
     % changes how many ROIs are rejected based on creation threshold
     threshold = hObject.Value;
-    h.thresTitle.String = sprintf('threshold: %.2f',threshold);
+    h.thresTitle.String = sprintf('Threshold: %.2f',threshold);
     
+    switches = getappdata(h.hGUI, 'switches');
     idx = getappdata(h.hGUI, 'idx');
     data = getappdata(h.hGUI, 'data');
     PP = data.PP;
+    switches.sliderSettings.threshold = hObject.Value;
     
     if threshold > 0
         % Calculate ROI indexes to delete based on given threshold and data
@@ -739,6 +737,7 @@ function thresSlider_Callback(hObject, ~, h) %#ok<DEFNU>
         idx.Thres = false(1,PP.Cnt);
     end
     
+    setappdata(h.hGUI, 'switches', switches)
     setappdata(h.hGUI, 'idx', idx) % save new indexes
     RejectInfoFunc(h)
     UpdateRois(h) % apply coloring to ROIs
@@ -750,11 +749,13 @@ function thresCorSlider_Callback(hObject, ~, h) %#ok<DEFNU>
     % Changes how ROI are rejected based on 'mean inner correlation
     % coefficients of raw signals' threshold
     threshold = hObject.Value;
-    h.thresCorTitle.String = sprintf('threshold mean inner correlation: %.2f',threshold);
+    h.thresCorTitle.String = sprintf('Mean inner corr: %.2f',threshold);
     
+    switches = getappdata(h.hGUI, 'switches');
     idx = getappdata(h.hGUI, 'idx');
     data = getappdata(h.hGUI, 'data');
     PP = data.PP;
+    switches.sliderSettings.innerCorr = hObject.Value;
     
     if size(PP.P,1) == 5 % Check if the inner correlation values are in the data
         if threshold > 0
@@ -767,10 +768,10 @@ function thresCorSlider_Callback(hObject, ~, h) %#ok<DEFNU>
         h.thresCorTitle.ForegroundColor = [1 0 0];
     end
     
+    setappdata(h.hGUI, 'switches', switches)
     setappdata(h.hGUI, 'idx', idx) % save new indexes
     RejectInfoFunc(h)
     UpdateRois(h) % apply coloring to ROIs
-    
 end
 
 
@@ -778,11 +779,14 @@ end
 % --- Executes on slider movement.
 function roundnessSlider_Callback(hObject, ~, h) %#ok<DEFNU>
 	% Remove ROIs based on their roundness
+    threshold = hObject.Value;
+    h.roundnessSliderTitle.String = sprintf('Min roundness: %.2f',threshold);
+    
+    switches = getappdata(h.hGUI, 'switches');
     data = getappdata(h.hGUI, 'data');
     idx = getappdata(h.hGUI, 'idx');
     
-    threshold = hObject.Value;
-    h.roundnessSliderTitle.String = sprintf('minimum roundness: %.2f',threshold);
+    switches.sliderSettings.roundedness = hObject.Value;
     
     % Calculate the roundness of all ROIs
     roundness = zeros(1,data.PP.Cnt);
@@ -792,6 +796,7 @@ function roundnessSlider_Callback(hObject, ~, h) %#ok<DEFNU>
     
     idx.Round = roundness < threshold; % true for not round enough ROIs
     
+    setappdata(h.hGUI, 'switches', switches)
     setappdata(h.hGUI, 'idx', idx) % save new indexes
     RejectInfoFunc(h)
     UpdateRois(h) % apply coloring to ROIs
@@ -817,7 +822,7 @@ function RejectInfoFunc(h)
     t{3} = sprintf('%3d ROIs rejected because of roundness threshold', sum(idx.Round));
     t{4} = sprintf('%3d ROIs manually rejected',sum(idx.Black));
     t{5} = sprintf('%3d ROIs white listed',sum(idx.White));
-    t{6} = '_______________________________';
+    t{6} = '_________________';
     t{7} = sprintf('%3d of %3d ROIs will be deleted:\n %3d remain',...
         selectedPoints, data.PP.Cnt, (data.PP.Cnt-selectedPoints));
     summary = strjoin(t,'\n');
@@ -848,6 +853,7 @@ function deleteButton_Callback(~, ~, h) %#ok<DEFNU>
         PP.P(:,idxDel) = [];
         PP.SpecProfile(:,idxDel) = [];
         PP.peakFreq(idxDel) = [];
+        PP.creationMethod(idxDel) = [];
         PP.Cnt = size(PP.P,2);
         
         % Update the selected points list
@@ -1018,14 +1024,15 @@ function CreateRoi(h, do)
             % for this new ROI as well
             if size(data.PP.P, 1) == 5
                 signal = sbxt.Data.y(:, MaskNew'==1);
-                signaldecim = [];
+                shorten = floor(data.freq);
+                signaldecim = zeros(ceil(size(signal,1)/shorten), size(signal,2));
                 cord1D = sub2ind(size(data.Mask'),xcord, ycord);
                 signalCenter = mean(sbxt.Data.y(:, cord1D-2:cord1D+2),2);
-                %signals for all pixels in ROI decimated by freq
+                % signals for all pixels in ROI decimated by freq
                 for i = 1:size(signal,2) 
-                    signaldecim(:,i) = decimate(double(signal(:,i)), floor(data.freq));
+                    signaldecim(:,i) = decimate(double(signal(:,i)), shorten);
                 end
-                signalCenterDecim = decimate(double(signalCenter), floor(data.freq));
+                signalCenterDecim = decimate(double(signalCenter), shorten);
                 corVal = mean(corr(signalCenterDecim,signaldecim,'rows','pairwise'));
                 newRoi.P = [newRoi.P; corVal];
             end
@@ -1055,10 +1062,10 @@ function CreateRoi(h, do)
             str{2} = sprintf('maximum value:  %.3f', maxval);
             % Do not allow any sized ROI to be saved. ROI needs to be
             % bigger then 35 pixels
-            if newRoi.A < 20
+            if newRoi.A < 10
                 str{3} = sprintf('size: %d px <- VERY LOW!', newRoi.A);
                 switches.creationAllow = false; % do not allow this ROI to be saved
-            elseif newRoi.A < 35
+            elseif newRoi.A < 20
                 str{3} = sprintf('size: %d px <- LOW!', newRoi.A);
                 switches.creationAllow = false;
             else
@@ -1148,6 +1155,7 @@ function applyNewRoi_Callback(~, ~, h) %#ok<DEFNU>
         data.PP.A = [data.newRoi.A, data.PP.A];
         data.PP.P = [data.newRoi.P, data.PP.P];
         data.PP.Con = [data.newRoi.Con, data.PP.Con];
+        data.PP.creationMethod = [{'manual click'}; data.PP.creationMethod];
         data.PP.Cnt = data.PP.Cnt + 1;
         
         % Update the spectral profiles and peak frequency
@@ -1358,6 +1366,7 @@ function applyManRoi_Callback(~, ~, h) %#ok<DEFNU>
         data.PP.A = [data.manRoi.A, data.PP.A];
         data.PP.P = [data.manRoi.P, data.PP.P];
         data.PP.Con = [data.manRoi.Con, data.PP.Con];
+        data.creationMethod = [{'manual draw'}; data.PP.creationMethod];
         data.PP.Cnt = data.PP.Cnt + 1;
         
         % Update the spectral profiles and peak frequency
@@ -1609,6 +1618,7 @@ function applyClustering_Callback(~, ~, h) %#ok
         PP.P(:,roi) = [];
         PP.SpecProfile(:,roi) = [];
         PP.peakFreq(roi) = [];
+        PP.creationMethod(roi) = [];
         Mask(Mask==roi) = 0;
         Mask(Mask>roi) = Mask(Mask>roi) - 1; % Close the gap that was just created
         Mask(Mask>0) = Mask(Mask>0) + nnew; % Make room for the new ROIs
@@ -1635,7 +1645,7 @@ function applyClustering_Callback(~, ~, h) %#ok
                 signalCenter = mean(sbxt.Data.y(:,cord1D-1:cord1D+1),2);
                 signalCenter = decimate(double(signalCenter), floor(data.freq));
                 signalOthers = sbxt.Data.y(:,data.pos(data.clIdx==n(i)));
-                signalOthersdecim = [];
+                signalOthersdecim = zeros(ceil(size(signalOthers,1)/floor(data.freq)), size(signalOthers,2));
                 for j = 1:size(signalOthers,2)
                     signalOthersdecim(:,j) = decimate(double(signalOthers(:,j)),floor(data.freq));
                 end
@@ -1644,7 +1654,8 @@ function applyClustering_Callback(~, ~, h) %#ok
             else
                 PP.P = [[xmass; ymass; maxval; threshold], PP.P];
             end
-            PP.A = [polyarea(C(i).x,C(i).y), PP.A];
+            PP.A = [sum(Mask(:)==i), PP.A];
+            PP.creationMethod = [{'splitted'}; PP.creationMethod];
             
             % Calculate spectral profiles
             nSpec = size(data.imgStackT,3);
@@ -1889,11 +1900,51 @@ function backGrdView(selected, h)
                 h.im.CData = data.BImg;
                 colormap(gray)
                 
-            case 2 % SpatialCorr
+            case 2 % Spectral image, colored by frequency
+                
+                % Cheat view toggle so you don't have to switch to other
+                % view before you can select view 2 again
+                switches.viewToggle = 999; 
+                
+                s = data.Sax; % spectral frequency axis
+                % Get which frequencies to show
+                question = [sprintf('which frequency (range) to select? min=%.2fHz, max=%.2fHz\n',...
+                                    s(1), s(end)),...
+                            'If you enter nothing all frequencies will be selected',...
+                            sprintf('\nlowest selected frequency will be red, highest will be blue\n'),...
+                            'colormap will be jet'];
+                answer = inputdlg(question, 'spectral colored by intensity at different frequencies');
+                if isempty(answer)  % cancel was pressed
+                    sselect = 1:length(s); % spectral frequency selection
+                elseif isempty(answer{:}) % ok was pressed without input
+                    sselect = 1:length(s);
+                else
+                    stoselect = sort(str2num(answer{:})); % which frequency range to select
+                    if isempty(stoselect) % letters were given so now stoselect is empty
+                        stoselect = s([1 end]); % select all frequencies
+                    elseif length(stoselect) == 1
+                        % If only one frequency was given, make sure that a
+                        % frequency can be used by using a range around the given frequency
+                        fstep = mean(diff(s)); % difference in frequencies
+                        stoselect = [stoselect(1)-fstep*2, stoselect(1)+fstep*2];
+                    end
+                    sselect = find(s>=stoselect(1) & s<=stoselect(2));
+                end
+                
+                nsselect = length(sselect);
+                if nsselect == 0 % no frequency was selected because of bad input range, select lowest frequency
+                    sselect  = 1:length(s);
+                    nsselect = length(sselect);
+                end
+                colors = flipud(jet(nsselect));
+                
+                h.im.CData = CreateRGB2(num2cell(log1p(data.imgStackT), [1 2]), sselect, colors, true, true);
+                
+            case 3 % SpatialCorr
                 h.im.CData = data.SpatialCorr;
                 colormap(jet)
                 
-            case 3 % ROI corners signal correlations image
+            case 4 % ROI corners signal correlations image
                 if switches.roiCorrIm == false % image needs to be created
                     sbxt = getappdata(h.hGUI, 'sbxt');
                     
@@ -1939,13 +1990,13 @@ function backGrdView(selected, h)
                 h.legendText6.ForegroundColor = 'w'; % white
                 h.legendText6.Visible = 'on';
                 
-            case 4 % Mask view
+            case 5 % Mask view
                 picMask = data.Mask;
                 picMask(picMask==0) = data.PP.Cnt+100;
                 h.im.CData = picMask;
                 colormap(flipud(gray))
                 
-            case 5 % Chronic & current backgroudn overlay view
+            case 6 % Chronic & current backgroudn overlay view
                 if ~switches.chronic % Load the chronic recording
                     importChronicFile(h)
                     data = getappdata(h.hGUI, 'data');
@@ -1953,7 +2004,7 @@ function backGrdView(selected, h)
                 end
                 h.im.CData = CreateRGB({data.BImg, data.chronicImg}, 'g r');
                 
-            case 6 % Chronic view only
+            case 7 % Chronic view only
                 if ~switches.chronic % Load the chronic recording
                     importChronicFile(h)
                     data = getappdata(h.hGUI, 'data');
@@ -1961,7 +2012,7 @@ function backGrdView(selected, h)
                 end
                 h.im.CData = CreateRGB({data.chronicImg}, 'r');
                 
-            case 7 % Colors are based on what the peak frequency is
+            case 8 % Colors are based on what the peak frequency is
                 picMask  = data.Mask;
                 img = zeros(size(picMask));
                 for i = 1:data.PP.Cnt
@@ -1971,7 +2022,7 @@ function backGrdView(selected, h)
                 colors = [0 0 0; jet(255)]; % jet with black
                 colormap(colors)
                 
-            case 8 % Import variable from workspace
+            case 9 % Import variable from workspace
                 
                 % cheat view toggle so you don't have to switch to other view before you can import another time
                 switches.viewToggle = 999; 
@@ -1996,7 +2047,16 @@ function backGrdView(selected, h)
                         
                         % Create a color image if necessary
                         if length(impDim) == 3
-                            colors = flip(jet(impDim(3))); % COLORMAPPING
+                            if impDim(3)==2
+                                % 2 colors : red, green
+                                colors = [1 0 0; 0 1 0]; 
+                            elseif impDim(3)==3
+                                % 3 colors : red, green, brighter blue
+                                colors = [1 0 0; 0 1 0; 0.1 0.1 1];
+                            else
+                                % more colors: jet colormap
+                                colors = flip(jet(impDim(3))); 
+                            end
                             impImgCell = squeeze(num2cell(impImg, [1 2]));
                             answer = questdlg('normalize color image for every data slice and color?',...
                                 'normalize?',...
@@ -2023,7 +2083,7 @@ function backGrdView(selected, h)
         end
         h.im.HitTest = 'off';
         caxis([min(h.im.CData(:)), max(h.im.CData(:))])
-        set(gca,'Ydir','reverse')
+        h.mainAx.YDir = 'reverse';
         setappdata(h.hGUI, 'switches', switches); % Save current backgroundview
         guidata(h.hGUI, h); % Save the handle of im
 
@@ -2263,18 +2323,18 @@ function mainAx_ButtonDownFcn(~, eventdata, h) %#ok<DEFNU>
         setappdata(h.hGUI, 'switches', switches)
         CreateRoi(h,'new')
         
-    elseif switches.currentMajor == 6 % The Manual ROI creation panel
+    elseif switches.currentMajor == 5 % The Manual ROI creation panel
         % The manual ROI creation panel is active -> be ready for Contour
         % selection
         ManualRoi(position, eventdata.Button, h)
         
     elseif strcmp(switches.currentMinor, 'whiteButton')
         % select ROI for white listing
-        WhiteList(position, h)
+        SelectROI(position, h, 'white')
         
     elseif strcmp(switches.currentMinor, 'blackButton')
         % select ROI for black listing
-        BlackList(position, h)
+        SelectROI(position, h, 'black')
         
     elseif strcmp(switches.currentMinor, 'sigSelectButton')
         % Select 2P signal from mouse click surrounding selsize x selsize pixels
@@ -2301,6 +2361,9 @@ function mainAx_ButtonDownFcn(~, eventdata, h) %#ok<DEFNU>
         
         LocalCorr(xmesh, ymesh, signal, centersignal, h)
         
+    elseif strcmp(switches.currentMinor, 'plotROIsButton')
+        % Plot the ROI signal that is clicked
+        SelectROI(position, h, 'nothing')
     end
 end
 
@@ -2343,8 +2406,8 @@ function backgrdCLim_Apply(x, h)
     xMax = switches.backgrdCLim(2);
     
     % Calculate to which line the click was closest
-    diff = abs([xMin-x, xMax-x]);
-    [~, idx] = min(diff);
+    difference = abs([xMin-x, xMax-x]);
+    [~, idx] = min(difference);
     
     % Edit the line that was closest to the click
     if idx == 1
@@ -2357,7 +2420,11 @@ function backgrdCLim_Apply(x, h)
     
     % Set the color limits
     if length(size(h.im.CData))==2 % if the background image is 2D use Caxis
-        set(h.mainAx, 'clim',switches.backgrdCLim)
+        if diff(switches.backgrdCLim) > 0 % if CLimits are valied apply them
+            set(h.mainAx, 'clim',switches.backgrdCLim)
+        else % In case CLimits are not increasing, force them
+            set(h.mainAx, 'clim', [switches.backgrdCLim(1), switches.backgrdCLim(1)+0.1])
+        end
     else % 3D CData requires direct mapping of the color values
         % reset colors to original, which should always be range 0-1
         img = (h.im.CData - min(h.im.CData(:))) / range(h.im.CData(:));
@@ -2381,28 +2448,44 @@ function saveButton_Callback(~, ~, h) %#ok
     SpatialCorr = data.SpatialCorr;
     SpatialCorr(Mask==0) = 0;
     
-    if data.PP.Cnt == switches.originalCnt
+    if isequal(data.PP.A, switches.originalROIs)
         h.saveButton.String = {'No change'};
         pause(2)
-        h.saveButton.String = {'Save'};
-    else
-        if isfield(data, 'SPSIGfile')
-            save(data.SPSIGfile, 'PP', 'Mask', 'BImg', 'SpatialCorr', '-append')
-            % TODO: update the SpatialCorr!!!
-            disp('Changes saved to SPSIG file')
-            h.SaveButton.String = {'to SPSIG file'};
-        else
-            h.SaveButton.String = {'to workspace'};
+        try
+            h.saveButton.String = {'Save'};
+        catch
+            fprintf('GUI is closed probably.\n')
         end
-        
+    else
         h.saveButton = TurnOn(h.saveButton);
+        
+        % If at least one of the sliders is edited, save their settings
+        saveSliders = ~all(isnan(table2array(switches.sliderSettings)));
+        
+        if isfield(data, 'SPSIGfile')
+            h.saveButton.String = {'to SPSIG file'};
+            pause(0.01)
+            save(data.SPSIGfile, 'PP', 'Mask', 'BImg', 'SpatialCorr', '-append')
+            if saveSliders
+                rrSliderSettings = switches.sliderSettings;
+                save(data.SPSIGfile, 'rrSliderSettings', '-append')
+            end
+            % TODO: update the SpatialCorr!!!
+            disp('Changes saved to SPSIG file & workspace')
+        else
+            h.saveButton.String = {'to workspace'};
+        end
         
         assignin('base', 'Mask', Mask);
         assignin('base', 'PP', PP);
         assignin('base', 'BImg', BImg);
         assignin('base', 'SpatialCorr', SpatialCorr);
+        if saveSliders
+            rrSliderSettings = switches.sliderSettings;
+            assignin('base', 'rrSliderSettings', rrSliderSettings);
+        end
         
-        switches.originalCnt = data.PP.Cnt;
+        switches.originalROIs = data.PP.A;
         setappdata(h.hGUI,'switches',switches);
         
         try
@@ -2415,8 +2498,4 @@ function saveButton_Callback(~, ~, h) %#ok
             fprintf('You closed fast after saving. Saving successfull\n')
         end
     end
-    
 end
-
-
-
