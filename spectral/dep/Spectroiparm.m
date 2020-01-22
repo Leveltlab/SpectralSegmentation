@@ -42,7 +42,7 @@ if ~isempty(answer)
     spar.voxel = str2double(answer{5});
     spar.cutoffcorr = str2double(answer{6});
     
-    if strcmpi(answer(6), 'on')
+    if strcmpi(answer(7), 'on')
         DISPLAY = 1;
     end
     

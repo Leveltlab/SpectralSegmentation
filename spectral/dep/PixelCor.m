@@ -94,9 +94,9 @@ global DISPLAY
                 Con.x = vx;
                 Con.y = vy;
                 A = Atmp;
-                F(:) = 0;
+                F(:) = 0; %surround pixels
                 Inix = inpolygon(Ix,Iy,vx,vy);
-                F(Inix) = 1;
+                F(Inix) = 1; %pixels in contour
                 %roundedness
                 Ro = perimarea(vx, vy);
                 %mean pixel variance in new contour
