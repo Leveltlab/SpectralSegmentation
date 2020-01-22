@@ -21,7 +21,7 @@ fractionmax = 0.25;% Higest fraction of maxima (pnt) to use
 VoxelSz = 60;      % Determines area to find contours
 % All rois should be within the size of an area of VoxelSz x VoxelSz    
 threshold = 0.90;  % Contour threshold greater than percentile of pixel range
-Significance = 0.95; % Maximum shoud be greater than percentile of pixel range
+Significance = 0.90; % Maximum shoud be greater than percentile of pixel range
 PAf = 0.70;        % Minimal ratio perimeter to squared area; roundedness factor (circle = 1.0)
 cutoffcorr = 0.5;  % Cutoff threshold for pixel correlations
 
@@ -82,7 +82,7 @@ SigTh = round(Significance*SzImg);
 [Iy, Ix] = find(ones(VoxelSz,VoxelSz));
 
 %find a particular max
-%find(pnt(:,1) == 268 & pnt(:,2) == 84)
+%find(pnt(:,1) == 387 & pnt(:,2) == 135)
 
 Cnt = Savedrois.Cnt;
 for i = 1:Nmp
@@ -179,20 +179,20 @@ for i = 1:Nmp
                             Con = NwCon;
                             Con.y = Con.y + lyw - 1;
                             Con.x = Con.x + lxw - 1;
-                            F = NwF;
+                            F = NwF; %new voxel mask (roi pixels:1, surround: 0)
                         
                             SCM = SC(lyw:hyw, lxw:hxw);
                             SCM(F>0) = NwV(F>0); % Substitute
-                            SC(lyw:hyw, lxw:hxw) = SCM; % Update correlation map
+                            SC(lyw:hyw, lxw:hxw) = SCM; % Update correlation map R^2
 
                             Cnt = Cnt + 1;
                             Savedrois.Con(Cnt) = Con;
                             Savedrois.A(Cnt) = NwA;
+                            Savedrois.Rvar(Cnt) = Rvar;
+                            Savedrois.Roundedness(Cnt) = Ro;
+                            Savedrois.P(1:3,Cnt) = pnt(i,:)';
                             
-                            Savedrois.P(1:3,Cnt) = pnt(i,:)'; 
-                            Savedrois.P(4, Cnt) = th;
-                            Savedrois.P(5, Cnt) = Rvar;
-                            M(F>0) = Cnt;
+                             M(F>0) = Cnt;
                             Mask(lyw:hyw, lxw:hxw) = M;
                             
                         elseif NwA > area(1) && Ro < PAf  %not round enough but large area, => increase threshold
@@ -261,6 +261,7 @@ for i = 1:Nmp
                     Con1.x = Con1.x + wx(1) - 1;
                     Savedrois.Con(In) = Con1;
                     Savedrois.A(In) = A1;
+                    
                     Mask(Mask == In) = 0; %remove original roi
                     M(M==In) = 0;         %also from voxel mask
                     M(F1>0) = In;         %set replaced first (M cut from global Mask)
@@ -272,6 +273,7 @@ for i = 1:Nmp
                     Savedrois.Con(Cnt) = NwCon;
                     Savedrois.A(Cnt) = NwA;
                     Savedrois.Rvar(Cnt) = Rvar;
+                    Savedrois.Roundedness(Cnt) = Ro;
                     Savedrois.P(1:3,Cnt) = pnt(i,:)';
                     M(NwF>0) = Cnt;
                     % figure(4), imagesc(M)
