@@ -34,8 +34,8 @@ if exist('varargin', 'var') && nargin == 2
 
     spar = varargin{2};
     flds = fieldnames(spar);
-    aflds = { 'cutOffHz', 'border', 'areasz', 'minimaldistance', 'pixelthreshold', 'significance', 'fractionmax', 'roundedness', 'voxel'};
-    if sum(ismember(aflds, flds)) < 9
+    aflds = {'cutOffHz', 'border', 'areasz', 'roundedness', 'voxel', 'cutoffcorr'};
+    if sum(ismember(aflds, flds)) < 6
         disp('Error; number of input values is not valid; please run : spar = Spectroiparm()')
         return;
     end
