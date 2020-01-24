@@ -10,7 +10,7 @@ else
 end
 dx = diff(p(:,1));
 dy = diff(p(:,2));
-A = polyarea(x, y);
+A = polyarea(p(:,1), p(:,2));
 P = sum(sqrt(dx.^2 + dy.^2));
 F = 4*pi*A/(P*P);
 %F = sqrt(A)/P;

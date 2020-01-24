@@ -11,17 +11,14 @@ function getSpectrois(varargin)
 %         PP.Cnt: The number of ROIs
 %         PP.Con contours: for every ROI defined by x and y values
 %         PP.A: area of the contour in pixels
+%         PP.Rvar : average pixel covariance
 %         PP.SpecProfile: the mean values of spectral density for every
 %                         frequency in every ROI
 %         PP.peakFreq: Which frequency has the highest spectral power value
 %         PP.P: Values for every ROI
 %         PP.P: row 1: x values of the pixel with highest value in the BImg
 %         PP.P: row 2: y values of the pixel with highest value in the BImg
-%         PP.P: row 3: the minimum value of BImg in each ROI
-%         PP.P: row 4: the maximum value of BImg in each ROI
-%         PP.P: row 5: The average correlation value of the fluorescence
-%                      signal from the 'seed'/highest value pixel with the
-%                      signal from all other pixels in the ROI
+%         PP.P: row 3: the maximum value of BImg in each ROI
 %
 %         SpatialCorr:
 %         spar: Spectral PARameters used to find the ROIs
@@ -34,8 +31,8 @@ if exist('varargin', 'var') && nargin == 2
 
     spar = varargin{2};
     flds = fieldnames(spar);
-    aflds = { 'cutOffHz', 'border', 'areasz', 'minimaldistance', 'pixelthreshold', 'significance', 'fractionmax', 'roundedness', 'voxel'};
-    if sum(ismember(aflds, flds)) < 9
+    aflds = { 'cutOffHz', 'border', 'areasz', 'roundedness', 'voxel', 'cutoffcorr'};
+    if sum(ismember(aflds, flds)) < 6
         disp('Error; number of input values is not valid; please run : spar = Spectroiparm()')
         return;
     end
@@ -76,7 +73,7 @@ Spect = setminlevel(Spect); %set minimum level to zero
 
 % Activate much tighter subplots
 % [subplot margin top&side],[figure bottomspace,topspace],[leftspace,rightspace]
-subplot = @(m,n,p) subtightplot (m, n, p, [0.075 0.005], [0.05 0.07], [0.09 0.01]);
+%subplot = @(m,n,p) subtightplot (m, n, p, [0.075 0.005], [0.05 0.07], [0.09 0.01]);
 
 BImg = max(Spect, [], 3);
 
@@ -125,10 +122,6 @@ for i = 1:PP.Cnt
     %also redefine peak maxima based on projected maxima in BImg
     ROIi = Mask == i; 
     PP.P(3,i) = max(BImg(ROIi)); % maximum
-    PP.P(4,i) = min(BImg(ROIi)); % minimum
-    
-    %average pixel correlation for each ROI
-    PP.P(5,i) = mean(SpatialCorr(Mask==i));
 end
 
 save(filename, 'PP', 'Mask', 'BImg', 'spar', 'SpatialCorr', '-append')
