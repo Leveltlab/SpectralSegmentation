@@ -2,11 +2,14 @@ function [RGB] = CreateRGB2(data, slices, colors, varargin)
 % Create RGB 2
 %
 % input:
-%   - data: cell array with 2D matrixes
+%   - data: 1D cell array with 2D matrixes
 %   - slices: vector saying which cells to use for RGB image.
 %   - colors: In which color values that correspond to the data matrixes.
 %   - optional - 'normalize': true or false. Normalizes each data slice
-%   -          - 'wbalance' : white balances the final RGB image
+%   -          - 'wbalance' : true of false. White balances final RGB image
+% 
+% output:
+%   - RGB: 2D double [height x width x 3] of largest 2D double in data 
 % 
 % Create a colorfull image by overlaying 2D images from a cell array using
 % a requested SPECIFIC COLORMAP

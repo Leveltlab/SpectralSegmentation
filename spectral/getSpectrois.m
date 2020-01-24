@@ -71,14 +71,9 @@ Spect = permute(Spect, [2 1 3]); %transposes the images,
 Spect = setminlevel(Spect); %set minimum level to zero
 
 
-% Activate much tighter subplots
-% [subplot margin top&side],[figure bottomspace,topspace],[leftspace,rightspace]
-%subplot = @(m,n,p) subtightplot (m, n, p, [0.075 0.005], [0.05 0.07], [0.09 0.01]);
-
 BImg = max(Spect, [], 3);
 
 figure('units','normalized','position',[0.51 0.1 0.25 0.4]);
-subplot(1,1,1)
 imagesc(BImg), caxis(prctile(BImg(:), [0.01 99.9])), hold on
 title(sprintf('spectral components max projection <%.1fHz', cutOffHz))
 
@@ -96,7 +91,7 @@ for i = 1:dim(3)
     fprintf('iteration %2d/%2d: ', i, dim(3))
     Img = Spect(:,:,i); 
     Img(Mask>0) = 0;
-    figure(1), hold off,imagesc(Img), colormap gray, hold on %, caxis([h0 h1])     
+    figure(1), hold off, imagesc(Img), colormap gray, hold on   
     [PP, Mask, SpatialCorr] = roisfromlocalmax(Img, PP, Mask, spar, sbxt, freq, SpatialCorr);   
 
     str = sprintf('number of ROIs found (%.2fHz): %5d. time elapsed = %.2fminutes\n', Sax(i), PP.Cnt, toc/60);

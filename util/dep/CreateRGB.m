@@ -63,16 +63,14 @@ end
 % 
 c = {'r', 'g', 'b'};
 
-i = 0;
 % Put slices in requested color channels
-for sli = slices
-    i = i + 1;
+for i = slices
     for channel = 1:3
         % Put in the colorchannel if requested
         if ismember(c{channel}, colors{i})
-            RGB(1:dims(sli, 1), 1:dims(sli, 2), channel) = ...
-                RGB(1:dims(sli,1), 1:dims(sli,2), channel) + data{sli};
-            cvals(sli,channel) = 1;
+            RGB(1:dims(i, 1), 1:dims(i, 2), channel) = ...
+                RGB(1:dims(i,1), 1:dims(i,2), channel) + data{i};
+            cvals(i,channel) = 1;
         end
     end
 end
