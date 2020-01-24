@@ -3,7 +3,7 @@ function varargout = RoiRejecterGUI(varargin)
 % RoiRejecterGUI enables the visualisation of two-photon data, and it
 % can show the signal of any place in the two-photon microscopy image over
 % time.
-%
+% 
 % when no input is given the RoiRejecter will ask for the spectral file,
 %   and the transposed data file
 % In case that input is given, the input should be:
@@ -15,7 +15,7 @@ function varargout = RoiRejecterGUI(varargin)
 %   input 4: The filename of the transposed datafile
 %   input 5: Sax, the spectral axis, as created by spectral.m, that should
 %            correspond to the SPic variable
-%
+% 
 % 
 % The functionality of the RoiRejecter can be accessed with the 6 different
 % tabs on the right.
@@ -32,7 +32,7 @@ function varargout = RoiRejecterGUI(varargin)
 %             to create a grayscale image. TAB 'CreateROI'
 %	manual creation: manually draw a ROI by clicking on the main
 %                    background image.     TAB 'Manual ROI'
-%
+% 
 % Data can be visualised in the following ways:
 % FLUORESCENCE TIMETRACE (signal in bottom main axis)
 %   Show the timetrace fluorescence data of an ROI: 
@@ -128,7 +128,8 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
             SpatialCorr = varargin{6};
         end
         
-        if ~isstruct(PP) % Little checks for variable correctness
+        % Little checks for variable correctness
+        if ~isstruct(PP) 
             warning('\n\nWrong variables are given probably! PP should be struct\n\n')
             return
         end
@@ -159,6 +160,48 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
                 return
             end
         end
+    end
+    
+    
+    Sax = Sax(2:end);
+    imgStackT = permute(SPic(:,:,2:end),[2 1 3]);
+    % If the spectral profiles are not yet there, calculate them
+    if ~isfield(PP,'SpectralProfile')
+        [PP.SpecProfile, PP.peakFreq] = SpecProfileCalcFun(log(imgStackT), Mask, 1:PP.Cnt, Sax);
+        fprintf('PP.SpecProfile was not present, calculated it now\n')
+    end
+    % If the creation method for the ROIs doesn't exist yet, initialize
+    if ~isfield(PP,'creationMethod')
+        % assume the ROIs that are present were created automatically
+        PP.creationMethod = repmat({'auto'}, [PP.Cnt, 1]);
+    end
+    % If the SpatialCorr is not there yet, initialze empty placeholder and warn user
+    if ~exist('SpatialCorr', 'var')
+        SpatialCorr = zeros(size(Mask));
+        warning('SpatialCorr not present, calculate it later with SpatialCorrCalcRun.m!')
+    end
+    % if Rvar doesn't exist, warn user and initialze zeros
+    if ~isfield(PP, 'Rvar') 
+        if size(PP.P,1)==5
+            PP.Rvar = PP.P(5,:);
+            fprintf('PP.Rvar not present, used PP.P(5,:) as PP.Rvar\n')
+        else
+            PP.Rvar = zeros(PP.Cnt,1);
+            warning('PP.Rvar not present, calculate it later with SpatialCorrCalcRun.m!...')
+        end
+    end
+    % If Roundedness doesn't exist calculate it
+    if ~isfield(PP, 'Roundedness')
+        % Calculate the roundness of all ROIs
+        PP.Roundedness = zeros(1,PP.Cnt);
+        for i = 1:PP.Cnt
+            PP.Roundedness(i) = perimarea(PP.Con(i).x, PP.Con(i).y);
+        end
+    end
+    % If PP.P has too many rows, delete them
+    if size(PP.P,1)>2
+        fprintf('Deleting rows from PP.P because it should only have ROIs center x & y (2 rows)!\n')
+        PP.P(3:end,:) = [];
     end
     
     % Memorymap the 2P signal file
@@ -209,6 +252,10 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     h.maxSizeSlider.Value = switches.maxSize;
     h.maxSizeTitle.String = {sprintf('Maximum size: %4.0f px', switches.maxSize)};
     
+    h.thresSlider.Max = max(PP.SpecProfile(:))+0.05;
+    h.thresSlider.Min = min(max(PP.SpecProfile))-0.05;
+    h.thresSlider.Value = h.thresSlider.Min;
+    
     sliderNames = {'minSize', 'maxSize', 'threshold' 'innerCorr', 'roundedness'};
     sliderDefaults = nan([1, length(sliderNames)]);
     switches.sliderSettings = array2table(sliderDefaults, 'variableNames',sliderNames);
@@ -222,39 +269,6 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     idx.ThresCor = false(1,PP.Cnt);
     idx.Round = false(1,PP.Cnt);
     
-    Sax = Sax(2:end);
-    imgStackT = permute(SPic(:,:,2:end),[2 1 3]);
-    nSpect = size(imgStackT, 3);
-    % If the spectral profiles are not yet there, calculate them
-    if ~isfield(PP,'SpectralProfile')
-        PP.SpecProfile = zeros(nSpect, PP.Cnt); % For each ROI save the spectral density values
-        for i = 1:PP.Cnt
-            % Retrieve the average spectral profile of the ROI
-            ROIi = Mask == i; 
-            npixels = sum(ROIi(:)); % number of pixels for this ROI
-            ROIi3D = repmat(ROIi, [1,1,nSpect]);
-            specProfile = reshape(imgStackT(ROIi3D), [npixels, nSpect]);
-            PP.SpecProfile(:,i) = mean(log(specProfile));
-        end
-        % Calculate which frequency had the highest spectral density values for
-        [~, peakFreq] = max(PP.SpecProfile);
-        PP.peakFreq = Sax(peakFreq);
-    end
-    % If the creation method for the ROIs doesn't exist yet, initialize
-    if ~isfield(PP,'creationMethod')
-        % assume the ROIs that are present were created automatically
-        PP.creationMethod = repmat({'auto'}, [PP.Cnt, 1]);
-        warning("PP.creationMethod didn't exist, assuming existing ROIs were automatically created")
-    end
-    % If the SpatialCorr is not there yet, initialze empty placeholder and warn user
-    if ~exist('SpatialCorr', 'var')
-        SpatialCorr = zeros(size(Mask));
-        warning('SpatialCorr not present, calculate it later with SpatialCorrCalcRun.m!')
-    end
-    if ~isfield(PP, 'Rvar') % if Rvar doesn't exist, warn user and initialze zeros
-        PP.Rvar = zeros(PP.Cnt,1);
-        warning('PP.Rvar not present, calculate it later with SpatialCorrCalcRun.m!...')
-    end
     
     % Data to keep accessable in every function
     data = struct();
@@ -365,7 +379,7 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     plot(data.xas, signal, 'k','Parent', h.signalAx2)
     h.signalAx2.YDir = 'normal';
     h.signalAx2.XLim = [data.xas(1), data.xas(end)];
-
+    
     % Select 2P signal from mouse click surrounding selsize x selsize pixels
     % The GUI starts with selecting the data on the positon of ROI 1
     [xmesh, ymesh, signal] = SelectData(data.PP.P([1,2],1), switches.selSize, h, 'mean');
@@ -717,7 +731,7 @@ end
 
 % --- Executes on slider movement.
 function thresSlider_Callback(hObject, ~, h) %#ok<DEFNU>
-    % changes how many ROIs are rejected based on creation threshold
+    % changes how many ROIs are rejected based on maximum spectral power
     threshold = hObject.Value;
     h.thresTitle.String = sprintf('Threshold: %.2f',threshold);
     
@@ -727,15 +741,7 @@ function thresSlider_Callback(hObject, ~, h) %#ok<DEFNU>
     PP = data.PP;
     switches.sliderSettings.threshold = hObject.Value;
     
-    if threshold > 0
-        % Calculate ROI indexes to delete based on given threshold and data
-        Df = PP.P(3,:) - PP.P(4,:); % max ? - threshold
-        RngD = Df - min(Df);
-        RngD = RngD./max(RngD);
-        idx.Thres = (RngD < threshold);
-    else
-        idx.Thres = false(1,PP.Cnt);
-    end
+    idx.Thres = (max(PP.SpecProfile) < threshold);
     
     setappdata(h.hGUI, 'switches', switches)
     setappdata(h.hGUI, 'idx', idx) % save new indexes
@@ -757,15 +763,11 @@ function thresCorSlider_Callback(hObject, ~, h) %#ok<DEFNU>
     PP = data.PP;
     switches.sliderSettings.innerCorr = hObject.Value;
     
-    if size(PP.P,1) == 5 % Check if the inner correlation values are in the data
-        if threshold > 0
-            idx.ThresCor = (PP.P(5,:) < threshold);
-        else
-            idx.ThresCor = false(1,PP.Cnt);
-        end
+    % Check if the inner correlation values are in the data
+    if threshold > 0
+        idx.ThresCor = (PP.Rvar < threshold);
     else
-        h.thresCorTitle.String = 'required data missing!';
-        h.thresCorTitle.ForegroundColor = [1 0 0];
+        idx.ThresCor = false(1, PP.Cnt);
     end
     
     setappdata(h.hGUI, 'switches', switches)
@@ -788,13 +790,7 @@ function roundnessSlider_Callback(hObject, ~, h) %#ok<DEFNU>
     
     switches.sliderSettings.roundedness = hObject.Value;
     
-    % Calculate the roundness of all ROIs
-    roundness = zeros(1,data.PP.Cnt);
-    for i = 1:data.PP.Cnt
-        roundness(i) = perimarea(data.PP.Con(i).x, data.PP.Con(i).y);
-    end
-    
-    idx.Round = roundness < threshold; % true for not round enough ROIs
+    idx.Round = data.PP.Roundedness < threshold; % true for not round enough ROIs
     
     setappdata(h.hGUI, 'switches', switches)
     setappdata(h.hGUI, 'idx', idx) % save new indexes
@@ -853,6 +849,8 @@ function deleteButton_Callback(~, ~, h) %#ok<DEFNU>
         PP.P(:,idxDel) = [];
         PP.SpecProfile(:,idxDel) = [];
         PP.peakFreq(idxDel) = [];
+        PP.Roundedness(idxDel) = [];
+        PP.Rvar(idxDel) = [];
         PP.creationMethod(idxDel) = [];
         PP.Cnt = size(PP.P,2);
         
@@ -886,7 +884,7 @@ function deleteButton_Callback(~, ~, h) %#ok<DEFNU>
         UpdateMainImg(h)
     end
 end
-    
+
 
 %% ROI creation functions
 % --- Executes on slider movement.
@@ -915,7 +913,7 @@ function CreateRoi(h, do)
         % Make sure the searchfield isn't outside of the image
         piecex = pos(2)-voxelSz:pos(2)+voxelSz; % x coordinates of the patch of data
         piecey = pos(1)-voxelSz:pos(1)+voxelSz; % y coordinates of the patch of data
-
+        
         piecex(piecex<1) = [];
         piecey(piecey<1) = [];
         piecex(piecex>data.dim(3)) = [];
@@ -1018,46 +1016,19 @@ function CreateRoi(h, do)
             newRoi.Con.x = con.x + piecey(1) - 1;
             newRoi.Con.y = con.y + piecex(1) - 1;
             newRoi.A = sum(MaskTemp(:));
-            newRoi.P = [x+piecey(1)-1; y+piecex(1)-1; threshold; maxval];
-            
-            % If the correlation values are saved (in PP.P(5,:)) calculate
-            % for this new ROI as well
-            if size(data.PP.P, 1) == 5
-                signal = sbxt.Data.y(:, MaskNew'==1);
-                shorten = floor(data.freq);
-                signaldecim = zeros(ceil(size(signal,1)/shorten), size(signal,2));
-                cord1D = sub2ind(size(data.Mask'),xcord, ycord);
-                signalCenter = mean(sbxt.Data.y(:, cord1D-2:cord1D+2),2);
-                % signals for all pixels in ROI decimated by freq
-                for i = 1:size(signal,2) 
-                    signaldecim(:,i) = decimate(double(signal(:,i)), shorten);
-                end
-                signalCenterDecim = decimate(double(signalCenter), shorten);
-                corVal = mean(corr(signalCenterDecim,signaldecim,'rows','pairwise'));
-                newRoi.P = [newRoi.P; corVal];
-            end
+            newRoi.P = [x+piecey(1)-1; y+piecex(1)-1];
+            newRoi.Roundedness = perimarea(con.x, con.y);
             
             % Plot the signal of the found ROI
             h.signalAx2.NextPlot = 'replacechildren';
-            if size(data.PP.P,1) == 5
-                str = cell(5,1);
-                % If the correlation with the max was calculated, plot both
-                plot(data.xas, signalCenter, 'color', [0 0 0.5 0.2], 'Parent', h.signalAx2)
-                h.signalAx2.NextPlot = 'add';
-                plot(data.xas, mean(signal,2), 'color', [0.5 0 0], 'Parent', h.signalAx2)
-                legend(h.signalAx2, {'signal of the brightest pixels','signal of the new ROI'})
-                h.signalAx2.YLim = [round(min(signaldecim(:)),-2)-100, round(max(signalCenter),-2)+100];
-                str{5} = sprintf('average signal correlation=%.2f',corVal);
-            else
-                str = cell(4,1);
-                signal = mean(sbxt.Data.y(:, MaskNew'==1),2);
-                plot(data.xas, signal, 'color', [0.5 0 0], 'Parent', h.signalAx2)
-                legend(h.signalAx2, {'signal of the new ROI'})
-                h.signalAx2.YLim = [round(min(signal),-2)-100, round(max(signal),-2)+100];
-                h.signalAx2.YLim = [round(min(signal),-2)-100, round(max(signal),-2)+100];
-            end
+            
+            signal = mean(sbxt.Data.y(:, MaskNew'==1),2);
+            plot(data.xas, signal, 'color', [0.5 0 0], 'Parent', h.signalAx2)
+            legend(h.signalAx2, {'signal of the new ROI'})
+            h.signalAx2.YLim = [round(min(signal),-2)-100, round(max(signal),-2)+100];
             h.signalAx2.YDir = 'normal';
             % Info about the new neuron
+            str = cell(4,1);
             str{1} = sprintf('threshold value: %.3f', threshold);
             str{2} = sprintf('maximum value:  %.3f', maxval);
             % Do not allow any sized ROI to be saved. ROI needs to be
@@ -1071,11 +1042,10 @@ function CreateRoi(h, do)
             else
                 str{3} = sprintf('size: %d px', newRoi.A);
             end
-            roundedness = perimarea(con.x, con.y);
-            if roundedness<0.4
-                str{4} = sprintf('roundedness=%.2f <- LOW!', roundedness);
+            if newRoi.Roundedness<0.4
+                str{4} = sprintf('roundedness=%.2f <- LOW!', newRoi.Roundedness);
             else
-                str{4} = sprintf('roundedness=%.2f', roundedness);
+                str{4} = sprintf('roundedness=%.2f', newRoi.Roundedness);
             end
             h.creationRoiText.String =  strjoin(str, '\n');
             h.creationRoiText.FontWeight =  'normal';
@@ -1135,11 +1105,13 @@ end
 function applyNewRoi_Callback(~, ~, h) %#ok<DEFNU>
     % Apply the new ROI
     switches = getappdata(h.hGUI, 'switches');
-    data = getappdata(h.hGUI, 'data');
-    idx = getappdata(h.hGUI, 'idx');
     
     if switches.creationAllow
-        
+        % Acces more GUI data
+        data = getappdata(h.hGUI, 'data');
+        idx = getappdata(h.hGUI, 'idx');
+        sbxt = getappdata(h.hGUI, 'sbxt');
+
         h.applyNewRoi = TurnOn(h.applyNewRoi);
         h.applyNewRoi.String = {'Applying new ROI'};
         % Update indexes
@@ -1150,22 +1122,24 @@ function applyNewRoi_Callback(~, ~, h) %#ok<DEFNU>
         idx.Black = [false,idx.Black];
         idx.White = [true, idx.White]; % immediately whitelist
 
+        % Calculate Rvar and update SpatialCorr
+        [cor, roiidx, corVal] = SpatialCorrCalcFun(sbxt, data.freq, data.newMask, 1, data.newRoi.P, true);
+        data.SpatialCorr(roiidx) = cor(roiidx);
+        
         % Update the data
         data.Mask = data.newMask;
         data.PP.A = [data.newRoi.A, data.PP.A];
         data.PP.P = [data.newRoi.P, data.PP.P];
         data.PP.Con = [data.newRoi.Con, data.PP.Con];
         data.PP.creationMethod = [{'manual click'}; data.PP.creationMethod];
+        data.PP.Rvar = [corVal, data.PP.Rvar];
+        data.PP.Roundedness = [data.newRoi.Roundedness, data.PP.Roundedness];
         data.PP.Cnt = data.PP.Cnt + 1;
         
         % Update the spectral profiles and peak frequency
-        nSpec = size(data.imgStackT,3);
-        ROIi = data.Mask == 1;
-        ROIi3D = repmat(ROIi, [1,1,nSpec]);
-        specProfile = reshape(data.imgStackT(ROIi3D), [sum(ROIi(:)), nSpec]);
-        data.PP.SpecProfile = [mean(log(specProfile))' data.PP.SpecProfile];
-        [~, peakFreq] = max(data.PP.SpecProfile);
-        data.PP.peakFreq = data.Sax(peakFreq);
+        [specProfile, peakFreq] = SpecProfileCalcFun(log(data.imgStackT), data.Mask, 1, data.Sax);
+        data.PP.SpecProfile = [specProfile, data.PP.SpecProfile];
+        data.PP.peakFreq = [peakFreq, data.PP.peakFreq];
         
         switches.creationAllow = false;
         
@@ -1240,18 +1214,13 @@ function ManualRoi(pos, button, h)
             imgTemp = data.BImg;
             imgTemp(manMask==0) = min(data.BImg(:)); 
             [maxVal, maxy] = max(imgTemp);
-            [maxVal, maxx] = max(maxVal);
+            [~, maxx] = max(maxVal);
             maxy = maxy(maxx);
-            [maxCord] = sub2ind(size(manMask'), maxx, maxy);
+%             [maxCord] = sub2ind(size(manMask'), maxx, maxy);
         
             [~,~,contourPixels] = BufferMask(double(manMask),2);
             
-            data.manRoi.P = zeros(4,1);
-            data.manRoi.P(1) = maxx; % x coordinate of brightest point
-            data.manRoi.P(2) = maxy; % y coordinate of brightest point
-            data.manRoi.P(3) = mean(data.BImg(contourPixels==1));
-            data.manRoi.P(4) = maxVal;  % maximum value of BImg in ROI
-            str = cell(2,1); % Print text for new manual mask
+            data.manRoi.P = [maxx; maxy] ; % x & y coordinates of brightest point
             
             % Plot image of new manual mask
             h.manRoiAx.NextPlot = 'replacechildren';
@@ -1263,28 +1232,24 @@ function ManualRoi(pos, button, h)
             h.manRoiAx.YLim = [min(y)-20, max(y)+20];            
             h.manRoiAx.YDir = 'reverse';
             
-            % If the correlation values are saved (in PP.P(5,:)) calculate
-            % for this new ROI as well
+            % Get signals
             sbxt = getappdata(h.hGUI, 'sbxt');
-            signal = sbxt.Data.y(:, manMask');
-            signaldecim = zeros(ceil(size(signal,1)/floor(data.freq)), size(signal,2));
-            signalCenter = mean(sbxt.Data.y(:, maxCord-2:maxCord+2),2);
-            %signals for all pixels in ROI decimated by freq
-            for i = 1:size(signal,2) 
-                signaldecim(:,i) = decimate(double(signal(:,i)), floor(data.freq));
+            manMaskidx = find(manMask');
+            if length(manMaskidx)>50
+                manMaskidx(1:3:end) = []; % Remove some indexes to aliviate stress on the computer
             end
-            signalCenter = decimate(double(signalCenter), floor(data.freq));
+                
+            signal = mean(sbxt.Data.y(:, manMaskidx),2);
 
             % Plot the signal of the found ROI
             h.signalAx2.NextPlot = 'replacechildren';
-            plot(signalCenter, 'color', [0 0 0.5 0.4], 'Parent', h.signalAx2)
+            plot(signal, 'color', [0.5 0 0], 'Parent', h.signalAx2)
             h.signalAx2.NextPlot = 'add';
-            plot(mean(signaldecim,2), 'color', [0.5 0 0], 'Parent', h.signalAx2)
-            legend(h.signalAx2, {'signal of the brightest pixels','signal of the new ROI'})
-            h.signalAx2.YLim = [round(min([mean(signal,2); signalCenter]),-2)-100,...
-                                round(max([mean(signal,2); signalCenter]),-2)+100];
+            h.signalAx2.YLim = [round(min(signal),-1)-10,...
+                                round(max(signal),-1)+10];
             h.signalAx2.YDir = 'normal';
             
+            str = cell(6,1); % Print text for new manual mask
             if npixels > 35 % MINIMUM NUMBER OF PIXELS FOR ROI: ALLOW CREATION
                 switches.creationManAllow = true;
                 str{1} = sprintf('contour size = %d pixels', npixels);
@@ -1302,11 +1267,6 @@ function ManualRoi(pos, button, h)
             str{5} = 'green = Background image';
             str{6} = 'blue = contourpixels';
             
-            if size(data.PP.P, 1)==5 % or inner correlation value
-                corVal = mean(corr(signalCenter,signaldecim,'rows','pairwise'));
-                data.manRoi.P = [data.manRoi.P; corVal];
-                str = [str(1:3); sprintf('mean inner correlation: %.3f', corVal); str(4:end) ];
-            end
             h.manRoiText.String =  strjoin(str, '\n');
             
         else
@@ -1359,6 +1319,7 @@ function applyManRoi_Callback(~, ~, h) %#ok<DEFNU>
         % close the contour
         data.manRoi.Con.x = [data.manRoi.Con.x, data.manRoi.Con.x(1)];
         data.manRoi.Con.y = [data.manRoi.Con.y, data.manRoi.Con.y(1)];
+        roundedness = perimarea(data.manRoi.Con.x, data.manRoi.Con.y);
         
         % Update the data
         data.Mask(data.Mask>0) = data.Mask(data.Mask>0) + 1;
@@ -1366,17 +1327,20 @@ function applyManRoi_Callback(~, ~, h) %#ok<DEFNU>
         data.PP.A = [data.manRoi.A, data.PP.A];
         data.PP.P = [data.manRoi.P, data.PP.P];
         data.PP.Con = [data.manRoi.Con, data.PP.Con];
-        data.creationMethod = [{'manual draw'}; data.PP.creationMethod];
+        data.PP.creationMethod = [{'manual draw'}; data.PP.creationMethod];
         data.PP.Cnt = data.PP.Cnt + 1;
+        data.PP.Roundedness = [roundedness, data.PP.Roundedness];
         
         % Update the spectral profiles and peak frequency
-        nSpec = size(data.imgStackT,3);
-        ROIi = data.Mask == 1;
-        ROIi3D = repmat(ROIi, [1,1,nSpec]);
-        specProfile = reshape(data.imgStackT(ROIi3D), [sum(ROIi(:)), nSpec]);
-        data.PP.SpecProfile = [mean(log(specProfile))' data.PP.SpecProfile];
-        [~, peakFreq] = max(data.PP.SpecProfile);
-        data.PP.peakFreq = data.Sax(peakFreq);
+        [specProfile, peakFreq] = SpecProfileCalcFun(log(data.imgStackT), data.Mask, 1, data.Sax);
+        data.PP.SpecProfile = [specProfile, data.PP.SpecProfile];
+        data.PP.peakFreq = [peakFreq, data.PP.peakFreq];
+        
+        % Update the SpatialCorr and Rvar
+        sbxt = getappdata(h.hGUI, 'sbxt');
+        [cor, roiidx, corVal] = SpatialCorrCalcFun(sbxt, data.freq, data.Mask, 1, data.manRoi.P([1 2]), true);
+        data.SpatialCorr(roiidx) = cor(roiidx);
+        data.PP.Rvar = [corVal, data.PP.Rvar];
         
         bad = find(diff(unique(data.Mask))>1);
         if isempty(bad) % Save the updated handles
@@ -1594,12 +1558,12 @@ end
 function applyClustering_Callback(~, ~, h) %#ok
     idx = getappdata(h.hGUI, 'idx');
     data = getappdata(h.hGUI, 'data');
-    if size(data.PP.P,1)==5 % if pixel correlations are in the PP.P variable
-        sbxt = getappdata(h.hGUI, 'sbxt'); % load the raw data
-    end
+    sbxt = getappdata(h.hGUI, 'sbxt'); % load the raw data
+    
     PP = data.PP;
     Mask = data.Mask;
     C = data.clCon;
+    SpatialCorr = data.SpatialCorr;
     switches = getappdata(h.hGUI, 'switches');
     roi = switches.splitRoi;
     
@@ -1612,18 +1576,19 @@ function applyClustering_Callback(~, ~, h) %#ok
         nnew = length(n);
 
         % The old roi gets deleted
-        threshold = PP.P(3,roi);
         PP.Con(roi) = [];
         PP.A(roi) = [];
         PP.P(:,roi) = [];
         PP.SpecProfile(:,roi) = [];
         PP.peakFreq(roi) = [];
         PP.creationMethod(roi) = [];
+        PP.Rvar(roi) = [];
+        PP.Roundedness(roi) = [];
         Mask(Mask==roi) = 0;
         Mask(Mask>roi) = Mask(Mask>roi) - 1; % Close the gap that was just created
         Mask(Mask>0) = Mask(Mask>0) + nnew; % Make room for the new ROIs
         PP.Cnt = PP.Cnt - 1 + nnew;
-
+        
         % New ones get inserted
         for i = nnew:-1:1
             
@@ -1634,37 +1599,24 @@ function applyClustering_Callback(~, ~, h) %#ok
             newCon = struct('x', C(n(i)).y, 'y', C(n(i)).x);
             PP.Con = [newCon, PP.Con];
             
-            maxval = max(data.BImg(Mask==i));
             xmass = round(mean(C(n(i)).y)); % centre of mass of this new ROI
             ymass = round(mean(C(n(i)).x));
-            if size(PP.P, 1)==5
-                % Calculate the average correlation of the signal of each
-                % pixel in the ROI with the signal of the 3 pixels around
-                % the brightest pixels of the ROI per cluster
-                cord1D = sub2ind(size(data.Mask'),xmass, ymass);
-                signalCenter = mean(sbxt.Data.y(:,cord1D-1:cord1D+1),2);
-                signalCenter = decimate(double(signalCenter), floor(data.freq));
-                signalOthers = sbxt.Data.y(:,data.pos(data.clIdx==n(i)));
-                signalOthersdecim = zeros(ceil(size(signalOthers,1)/floor(data.freq)), size(signalOthers,2));
-                for j = 1:size(signalOthers,2)
-                    signalOthersdecim(:,j) = decimate(double(signalOthers(:,j)),floor(data.freq));
-                end
-                corVal = mean(corr(signalCenter, signalOthersdecim, 'rows', 'pairwise'));
-                PP.P = [[xmass; ymass; maxval; threshold; corVal], PP.P];
-            else
-                PP.P = [[xmass; ymass; maxval; threshold], PP.P];
-            end
+            
+            % Calculate spatial corr
+            [cor, roiidx, rvar] = SpatialCorrCalcFun(sbxt, data.freq, Mask, i, [xmass ymass], true);
+            SpatialCorr(roiidx) = cor(roiidx);
+            PP.Rvar = [rvar, PP.Rvar];
+            
+            % adddd more infoo
+            PP.P = [[xmass; ymass], PP.P];
             PP.A = [sum(Mask(:)==i), PP.A];
+            PP.Roundedness = [perimarea(newCon.x, newCon.y), PP.Roundedness];
             PP.creationMethod = [{'splitted'}; PP.creationMethod];
             
             % Calculate spectral profiles
-            nSpec = size(data.imgStackT,3);
-            ROIi = Mask == i;
-            ROIi3D = repmat(ROIi, [1,1,nSpec]);
-            specProfile = reshape(data.imgStackT(ROIi3D), [sum(ROIi(:)), nSpec]);
-            PP.SpecProfile = [mean(log(specProfile))' PP.SpecProfile];
-            [~, peakFreq] = max(PP.SpecProfile);
-            PP.peakFreq = [data.Sax(peakFreq), PP.peakFreq];
+            [specProfile, peakFreq] = SpecProfileCalcFun(log(data.imgStackT), Mask, i, data.Sax);
+            PP.SpecProfile = [specProfile, PP.SpecProfile];
+            PP.peakFreq = [peakFreq, PP.peakFreq];
         end
 
         % Update the rejection lists
@@ -1684,6 +1636,7 @@ function applyClustering_Callback(~, ~, h) %#ok
         % Save the clustered ROIs
         data.PP = PP;
         data.Mask = Mask;
+        data.SpatialCorr = SpatialCorr;
         setappdata(h.hGUI, 'data', data)
         setappdata(h.hGUI, 'switches', switches)
         setappdata(h.hGUI, 'idx', idx)
@@ -1772,7 +1725,6 @@ function [xmesh, ymesh, signal, varargout] = SelectData(pos, selSize, h, modus)
     % Selects data from the sbx file using coordinates the main axes image
     sbxt = getappdata(h.hGUI, 'sbxt');
     data = getappdata(h.hGUI, 'data');
-    switches = getappdata(h.hGUI, 'switches');
     dim = data.dim;
     x = round(pos(1));
     y = round(pos(2));
@@ -1955,9 +1907,9 @@ function backGrdView(selected, h)
                         fprintf('\nprobably some ROIs are too small, adjusting buffer zone\n')
                         [piece, check] = GetRoiCorners(data.Mask, data.PP, 0, 20, 'size');
                     end
-
+                    
                     [newMask, ~, ~, ~, ~] = CorrRoiCorners(piece, check, data.Mask, sbxt, data.dim);
-
+                    
                     % Plotting
                     newMaskc = squeeze(num2cell(newMask, [1 2]));
                     [data.roiCorrImg, ~] = CreateRGB(newMaskc, 'r g b gb');                 
@@ -1966,7 +1918,7 @@ function backGrdView(selected, h)
                     
                     switches.roiCorrIm = true;
                     setappdata(h.hGUI, 'data', data)
-                 
+                    
                 else % Image is already made
                     h.im.CData = data.roiCorrImg;
                 end
@@ -2041,42 +1993,51 @@ function backGrdView(selected, h)
                     impImg = evalin('base',varName{:}); % load the requested variable
                     originDim = size(data.BImg);
                     impDim = size(impImg);
-                    if isa(impImg, 'double')...
-                            && impDim(1) == originDim(1)...
-                            && impDim(2) == originDim(2)
-                        
-                        % Create a color image if necessary
-                        if length(impDim) == 3
-                            if impDim(3)==2
-                                % 2 colors : red, green
-                                colors = [1 0 0; 0 1 0]; 
-                            elseif impDim(3)==3
-                                % 3 colors : red, green, brighter blue
-                                colors = [1 0 0; 0 1 0; 0.1 0.1 1];
-                            else
-                                % more colors: jet colormap
-                                colors = flip(jet(impDim(3))); 
-                            end
-                            impImgCell = squeeze(num2cell(impImg, [1 2]));
-                            answer = questdlg('normalize color image for every data slice and color?',...
-                                'normalize?',...
-                                'yes','no','no');
-                            switch answer
-                                case 'yes'
-                                    norma = true;
-                                case 'no'
-                                    norma = false;
-                            end
-                            impImg = CreateRGB2(impImgCell, 1:impDim(3), colors, norma, norma);
-                        elseif length(impDim) > 3
-                            msgbox('variables with more than 3 dimensions not supported', 'error')
+                    if isa(impImg, 'double')
+                        % Check if the imported image needs transposing
+                        if impDim(1) ~= originDim(1) && impDim(1) == originDim(2)
+                            impImg = permute(impImg, [2 1 3]);
+                            impDim = size(impImg); % Update impDim
                         end
-                        
-                        % Apply the chosen variable
-                        h.im.CData = impImg;
+                        % If sizes are correct, let's plot the imported image
+                        if  impDim(1) == originDim(1) && impDim(2) == originDim(2)
+                            % Create a color image if necessary
+                            if length(impDim) == 3
+                                if impDim(3)==2
+                                    % 2 colors : red, green
+                                    colors = [1 0 0; 0 1 0]; 
+                                elseif impDim(3)==3
+                                    % 3 colors : red, green, brighter blue
+                                    colors = [1 0 0; 0 1 0; 0.1 0.1 1];
+                                else
+                                    % more colors: jet colormap
+                                    colors = flip(jet(impDim(3))); 
+                                end
+                                impImgCell = squeeze(num2cell(impImg, [1 2]));
+                                answer = questdlg('normalize color image for every data slice and color?',...
+                                    'normalize?',...
+                                    'yes','no','no');
+                                switch answer
+                                    case 'yes'
+                                        norma = true;
+                                    case 'no'
+                                        norma = false;
+                                end
+                                impImg = CreateRGB2(impImgCell, 1:impDim(3), colors, norma, norma);
+                            elseif length(impDim) > 3
+                                msgbox('variables with more than 3 dimensions not supported', 'error')
+                            end
+
+                            % Apply the chosen variable
+                            h.im.CData = impImg;
+                        else
+                            str = sprintf('Imported image seems to have incorrect size! original(%dx%d) vs imported(%dx%d): %s',...
+                                originDim(1), originDim(2), impDim(1), impDim(2), varName{:});
+                            msgbox(str, 'error')
+                        end
                     end
                 catch ME
-                    str = sprintf('unable to load requested variable!: %s', varName{:});
+                    str = sprintf('Unable to load requested variable!: %s', varName{:});
                     msgbox(str, 'error')
                     throw(ME)
                 end
@@ -2446,9 +2407,9 @@ function saveButton_Callback(~, ~, h) %#ok
     Mask = data.Mask;
     BImg = data.BImg;
     SpatialCorr = data.SpatialCorr;
-    SpatialCorr(Mask==0) = 0;
+%     SpatialCorr(Mask==0) = 0; % remove values where there's no ROI
     
-    if isequal(data.PP.A, switches.originalROIs)
+    if isequal(PP.A, switches.originalROIs)
         h.saveButton.String = {'No change'};
         pause(2)
         try
@@ -2499,3 +2460,4 @@ function saveButton_Callback(~, ~, h) %#ok
         end
     end
 end
+

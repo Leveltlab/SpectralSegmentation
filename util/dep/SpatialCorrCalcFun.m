@@ -4,8 +4,6 @@ function [cor, roiidx, rvar] = SpatialCorrCalcFun(sbxt, freq, mask, roiNr, origi
 % 
 % Can also calculate the variance of the correlation!
 % 
-% This function can be executed to a SPSIG file via SpatialCorrCalcRun.m
-% 
 % inputs: 
 %   sbxt: sbxt from transemap(transfile), 
 %   freq: 1x1 double, acuisition frequency of 2P data

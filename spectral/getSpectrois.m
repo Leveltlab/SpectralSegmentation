@@ -115,14 +115,16 @@ P = PP.P; % plot(x,y), plots at the position (y, x) in an image
 PP.P(1,:) = P(2,:);
 PP.P(2,:) = P(1,:);
 
-% Retrieve the average spectral profile of the ROI
-[PP.SpecProfile, PP.peakFreq] = SpecProfileCalcFun(imgStackT, Mask, Sax);
-
 for i = 1:PP.Cnt
     %also redefine peak maxima based on projected maxima in BImg
     ROIi = Mask == i; 
     PP.P(3,i) = max(BImg(ROIi)); % maximum
 end
 
+% Retrieve the average spectral profile of the ROI
+[PP.SpecProfile, PP.peakFreq] = SpecProfileCalcFun(imgStackT, Mask, 1:PP.Cnt, Sax);
+
+% Save
 save(filename, 'PP', 'Mask', 'BImg', 'spar', 'SpatialCorr', '-append')
 fprintf('saved.\n')
+

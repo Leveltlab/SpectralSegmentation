@@ -40,7 +40,7 @@ end
 
 % Get the Specprofile & peak frequency
 tic
-[PP.SpecProfile, PP.peakFreq] = SpecProfileCalcFun(spec, Mask, Sax);
+[PP.SpecProfile, PP.peakFreq] = SpecProfileCalcFun(spec, Mask, 1, Sax);
 fprintf('done (%.1f seconds)\n',  toc)
 
 
