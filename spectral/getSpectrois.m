@@ -119,9 +119,17 @@ PP.P(1,:) = P(2,:);
 PP.P(2,:) = P(1,:);
 
 % Retrieve the average spectral profile of the ROI
-[PP.SpecProfile, PP.peakFreq] = SpecProfileCalcFun(imgStackT, Mask, 1:PP.Cnt, Sax);
+[PP.SpecProfile, PP.peakFreq] = SpecProfileCalcFun(imgStackT, Mask, Sax);
 
-% Save
+for i = 1:PP.Cnt
+    %also redefine peak maxima based on projected maxima in BImg
+    ROIi = Mask == i; 
+    PP.P(3,i) = max(BImg(ROIi)); % maximum
+    PP.P(4,i) = min(BImg(ROIi)); % minimum
+    
+    %average pixel correlation for each ROI
+    PP.P(5,i) = mean(SpatialCorr(Mask==i));
+end
+
 save(filename, 'PP', 'Mask', 'BImg', 'spar', 'SpatialCorr', '-append')
 fprintf('saved.\n')
-
