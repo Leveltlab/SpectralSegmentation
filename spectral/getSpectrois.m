@@ -99,7 +99,7 @@ for i = 1:dim(3)
     figure(1), hold off,imagesc(Img), colormap gray, hold on %, caxis([h0 h1])     
     [PP, Mask, SpatialCorr] = roisfromlocalmax(Img, PP, Mask, spar, sbxt, freq, SpatialCorr);   
 
-    str = sprintf('%.2fHz, number of ROIs found: %5d. time elapsed = %.2fminutes\n', Sax(i), PP.Cnt, toc/60);
+    str = sprintf('number of ROIs found (%.2fHz): %5d. time elapsed = %.2fminutes\n', Sax(i), PP.Cnt, toc/60);
     fprintf(str)
     
     Con = PP.Con;
