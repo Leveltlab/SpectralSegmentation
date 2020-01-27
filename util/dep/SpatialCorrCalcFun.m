@@ -1,11 +1,12 @@
 function [cor, roiidx, rvar] = SpatialCorrCalcFun(sbxt, freq, mask, roiNr, originPos, varargin)
+% [cor, roiidx, rvar] = SpatialCorrCalcFun(sbxt, freq, mask, roiNr, originPos, true)
 % Calculate the spatial corr of a ROI: correlation of the signal of
 % individual pixels with the signal of the median of 9 central ROI pixels
 % 
 % Can also calculate the variance of the correlation!
 % 
 % inputs: 
-%   sbxt: sbxt from transemap(transfile), 
+%   sbxt: transposed memorymapped sbxt from transemap(transfile), 
 %   freq: 1x1 double, acuisition frequency of 2P data
 %   mask: 2D double [height x width], the positions/ id's of ROIs
 %   roiNr: which ROI to calculate the spatialcorr etc from
@@ -26,7 +27,22 @@ function [cor, roiidx, rvar] = SpatialCorrCalcFun(sbxt, freq, mask, roiNr, origi
 % Get whether to calculate rvar or not
 if nargin == 6
     calcRvar = varargin{1};
+else
+    calcRvar = false;
 end
+
+% Check if we got the actual coordinates for this ROI, or all coordinates
+if size(originPos, 1)>1 && size(originPos, 2)>1
+    % Check if we need to transpose the coordinates...
+    if size(originPos, 2)==2 && size(originPos, 1)>2
+        originPos = originPos';
+    end
+    originPos = originPos([1 2], roiNr); 
+end
+
+% And round the coordinates to integers
+originPos = round(originPos); 
+
 
 maskT = mask';
 roiidx = find(maskT==roiNr); % The 2D indexes of the ROI, from transposed mask
