@@ -119,12 +119,12 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
             [fn, pn] = uigetfile('*Trans*.dat', 'Select the file with 2P data');
             datafile = [pn fn];
         end
-        if nargin == 8
+        if nargin >= 8
             Sax = varargin{5};
         else
             Sax = 1:size(SPic,3);
         end
-        if nargin == 9
+        if nargin >= 9
             SpatialCorr = varargin{6};
         end
         
@@ -166,7 +166,7 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     Sax = Sax(2:end);
     imgStackT = permute(SPic(:,:,2:end),[2 1 3]);
     % If the spectral profiles are not yet there, calculate them
-    if ~isfield(PP,'SpectralProfile')
+    if ~isfield(PP,'SpecProfile')
         [PP.SpecProfile, PP.peakFreq] = SpecProfileCalcFun(log(imgStackT), Mask, 1:PP.Cnt, Sax);
         fprintf('PP.SpecProfile was not present, calculated it now\n')
     end
