@@ -1890,7 +1890,8 @@ function backGrdView(selected, h)
                 end
                 colors = flipud(jet(nsselect));
                 
-                h.im.CData = CreateRGB2(num2cell(log1p(data.imgStackT), [1 2]), sselect, colors, true, true);
+                imdata = num2cell(log1p(data.imgStackT), [1 2]);
+                h.im.CData = CreateRGB2(imdata(sselect), colors, true, true);
                 
             case 3 % SpatialCorr
                 h.im.CData = data.SpatialCorr;
@@ -2023,7 +2024,7 @@ function backGrdView(selected, h)
                                     case 'no'
                                         norma = false;
                                 end
-                                impImg = CreateRGB2(impImgCell, 1:impDim(3), colors, norma, norma);
+                                impImg = CreateRGB2(impImgCell, colors, norma, norma);
                             elseif length(impDim) > 3
                                 msgbox('variables with more than 3 dimensions not supported', 'error')
                             end

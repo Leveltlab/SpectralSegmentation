@@ -1,9 +1,8 @@
-function [RGB] = CreateRGB2(data, slices, colors, varargin)
+function [RGB] = CreateRGB2(data, colors, varargin)
 % Create RGB 2
 %
 % input:
 %   - data: 1D cell array with 2D matrixes
-%   - slices: vector saying which cells to use for RGB image.
 %   - colors: In which color values that correspond to the data matrixes.
 %   - optional - 'normalize': true or false. Normalizes each data slice
 %   -          - 'wbalance' : true of false. White balances final RGB image
@@ -35,22 +34,22 @@ dims = cat(1,dims{:});
 maxdim(1) = max(dims(:,1));
 maxdim(2) = max(dims(:,2));
 RGB = zeros(maxdim(1), maxdim(2), 3);
-nslices = length(slices);
+nslices = length(data);
 
 for i = 1:nslices
     
     if norma
         % normalize intensities of the channel
-        data{slices(i)} = (data{slices(i)}-min(data{slices(i)}(:)))./ range(data{slices(i)}(:));
+        data{i} = (data{i}-min(data{i}(:)))./ range(data{i}(:));
     else
-        data{slices(i)} = data{slices(i)}-min(data{slices(i)}(:));
+        data{i} = data{i}-min(data{i}(:));
     end
     % 
     for c = 1:3
         if colors(i,c)>0
             % RGB update = old colorchannel values + imgage i * colormap  value
             RGB(1:dims(i,1),1:dims(i,2),c) = RGB(1:dims(i,1),1:dims(i,2),c) + ...
-                                             data{slices(i)} .* colors(i,c);
+                                             data{i} .* colors(i,c);
         end
     end
 end

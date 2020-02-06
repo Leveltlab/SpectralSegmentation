@@ -217,7 +217,7 @@ if exist('SPic','var') && exist('Sax', 'var')
     figure('units','normalized','position',[0.52 0.5 0.25 0.4]);
     subplot(1,1,1)
     SPicTCell = squeeze(num2cell(imgStack, [1 2]));
-    RGBspectral = CreateRGB2(SPicTCell, 1:nSpec, colors, norma);
+    RGBspectral = CreateRGB2(SPicTCell, colors, norma);
     
     imagesc(RGBspectral)
     title('The intensity of the spectral density at all different frequencies')

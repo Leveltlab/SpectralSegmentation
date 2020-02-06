@@ -184,7 +184,7 @@ if length(toplot)==3
 elseif length(toplot)==2
     colors = [1 0 0; 0 1 0.5];
 end
-RGB = CreateRGB2(BImg, toplot, colors);
+RGB = CreateRGB2(BImg(toplot), colors);
 
 figure; subplot(1,1,1)
 imagesc(RGB)
@@ -406,7 +406,7 @@ for i = find(abs(rotAng)>0.03) % If rotation angle < 0.03, don't rotate
 end
 
 % Show the rotated images
-RGB = CreateRGB2(BImg2, toplot, colors);
+RGB = CreateRGB2(BImg2(toplot), colors);
 figure; subplot(1,1,1)
 imagesc(permute(RGB, [2,1,3]));
 title('registered background rotation corrected')
@@ -819,7 +819,7 @@ for i = 2:nfiles
     end
 end
 
-RGB = CreateRGB2(nLinksMask, toplot, colors);
+RGB = CreateRGB2(nLinksMask(toplot), colors);
 figure
 imagesc(permute(RGB, [2 1 3]))  
 text(20, 450, filenames{1}(1:14),'color',[1 1 1])
@@ -996,7 +996,7 @@ toplot = find(hasImg>0);
 colors = flipud(cmapL([0 0 1; 0 1 1; 0 1 0; 1 0.7 0; 1 0 0; 0.7 0 1], length(toplot)));
 
 % toplot(1:2:end) = [];
-RGB = CreateRGB2(interImgs, toplot, colors(toplot,:));
+RGB = CreateRGB2(interImgs(toplot), colors(toplot,:));
 
 resizing = 2;
 RGB = imresize(RGB, 2);
