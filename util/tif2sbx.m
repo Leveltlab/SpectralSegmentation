@@ -1,16 +1,18 @@
 %function tif2sbx()
-%take a tifstack and converts to sbx
+%takes a tifstack and converts to sbx
 
 fp = uigetdir();
 files = dir([fp '/*.tif*']);
 [~, fn] = fileparts(files(1).name);  
 [Fn, strSavepath] = uiputfile([fn '.sbx']);
 fileID = fopen([strSavepath Fn], 'w');
-        
+
+hwb = waitbar(0, 'writing sbx file');
 for i = 1:length(files)
     fname = fullfile(fp, files(i).name);
     im = imread(fname);
     fwrite(fileID,im,'uint16');
+    waitbar(i/length(files), hwb, 'writing sbx file')
 end       
 fclose(fileID);
    
@@ -28,5 +30,5 @@ Strfreq = inputdlg('What is the framerate for this image sequence?');
 info.Freq = str2double(Strfreq);
 info.recordsPerBuffer = 0;
 
-save([strSavepath Fn(1:end-4)], 'info');
-   
+save([strSavepath Fn(1:end-4) '.mat'], 'info');
+close(hwb)  

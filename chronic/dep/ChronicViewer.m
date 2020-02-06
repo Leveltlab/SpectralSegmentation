@@ -25,9 +25,8 @@ contAlpha = 0.4;
 autoZoom = false;
 oldZoom = [1, dims(1), 1, dims(2)];
 viewToggle = 1;
-% colors = strsplit('r b g gb rb rg r g b r'); % The colors for the sessions
-% colors = colors(1:nfiles);
-colors = flipud(cmapL([0 0 1; 0 1 1; 0 1 0; 1 1 0; 1 0 0; 1 0 1], nfiles));
+colors = strsplit('r b g gb rb rg r g b r'); % The colors for the sessions
+colors = colors(1:nfiles);
 
 % Activate tight subplotting
 % [subplot margin side&top],[figure bottomspace,topspace],[leftspace,rightspace]
@@ -40,6 +39,10 @@ hImgAx.ButtonDownFcn = @hImgDown;
 hImg = imagesc(zeros(dims([1 2])),'hittest','off');
 axis([1, dims(2), 1, dims(1)])
 
+% Get color values that the recordings will get
+[~, cvals] = CreateRGB(repmat({zeros(2)}, [nfiles 1]),1:nfiles,colors(1:nfiles));
+cvals(cvals<1) = 0.4; % Adjust brightness of colors because blue is unreadable otherwise
+
 % Draw contours and legend
 hCons = {};
 hLegendText = gobjects(nfiles,1);
@@ -48,13 +51,13 @@ for i = 1:nfiles
     hCons{i} = gobjects(1,contours(i).Cnt);
     for j = 1:contours(i).Cnt
         hCons{i}(j) = plot(contours(i).Con(j).y, contours(i).Con(j).x,...
-            'color',[colors(i,:), contAlpha],'hittest','off');
+            'color',[cvals(i,:), contAlpha],'hittest','off');
     end
     
     % Write colored legend text
-    names{i} = names{i}(1:16); % Shorten the filename
+    names{i} = names{i}(1:20); % Shorten the filename
     names{i} = strrep(names{i},'_',' '); % replace underscores with spaces
-    hLegendText(i) = text(3,dims(1)-12-i*12,names{i},'color',colors(i,:));
+    hLegendText(i) = text(3,dims(1)-12-i*12,names{i},'color',cvals(i,:));
 end
 
 % Positions of the other UI elements
@@ -124,8 +127,10 @@ nLinks = sum(linkMat~=0, 2);
 % length(score)
 % length(nLinks)
 % [nLinks, score]
-[~, sorted]=  sortrows([nLinks score], 'descend');
-linkMat = [nLinks(sorted), linkMat(sorted,:), score(sorted,:)];
+[~, sorted]=  sortrows([nLinks score]);
+sorted = flipud(sorted);
+linkMat = [nLinks(sorted), linkMat(sorted,:), score(sorted)];
+% linkMat = [nLinks, linkMat, score];
 hRoisTable.ColumnWidth = [{35}, num2cell(repmat(35, [1, nfiles]))];
 hRoisTable.ColumnName = [{'n links'}, titles, {'score'}];
 hRoisTable.ColumnEditable = [false, true(1,nfiles), false];
@@ -295,14 +300,14 @@ function UpdateView
         colors2 = colors;
         nShow = length(sShow2);
         if nShow < 9
-            colors2 = colors(sShow2,:);
+            colors2 = colors(sShow2);
         end
         
         % ViewToggle selection
         if viewToggle == 1 || viewToggle == 2 
             
             if viewToggle == 1 % Background images
-                hImg.CData = CreateRGB2(BImg2, sShow2, colors2);
+                hImg.CData = CreateRGB(BImg2, sShow2, colors2);
             else % Mask view!
                 MasksShow = Masks2;
                 for x = sShow2(:)' % ROI selection
@@ -360,7 +365,7 @@ function UpdateView
         % Put the normal colors if the view is not linkview 2
         if viewToggle ~= 4
             for x = 1:nfiles
-                hLegendText(x).Color = colors(x,:);
+                hLegendText(x).Color = cvals(x,:);
             end
         end
         

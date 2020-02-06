@@ -30,7 +30,7 @@ if exist('varargin', 'var') && nargin == 2 % In case both sbx and spsig file nam
     sbxName = varargin{1};
     spsigName = varargin{2};
     % find if the filename has to be edited, mat and SPSIG has to be removed
-    delimeterPos = regexp(sbxName,{'_SPSIG','.mat','sbx'}); 
+    delimeterPos = regexp(sbxName,{'_SPSIG','.mat','sbx'});
     delimeterPos = delimeterPos(~cellfun('isempty',delimeterPos));
     if ~isempty(delimeterPos)
     	sbxName = sbxName(1:delimeterPos{1}-1);
@@ -51,11 +51,17 @@ elseif exist('varargin', 'var') && nargin == 1 % in case only sbx filename is gi
 else  % If not called/ executing with input, request file
     [fn , pn] = uigetfile('*.sbx','get the sbx file to read the data from');
     sbxName = [pn fn(1:end-4)];
-    if fn == 0
+    if fn == 0 % if nothing was selected quit
+        fprintf('No file selected')
         return
     end
-    [fn , pn] = uigetfile('*_SPSIG.mat','get the SPSIG file to save the images to');
-    spsigName = [pn fn(1:end-4)];
+    
+    % Guess for the SPSIG file name
+    spsigName = [sbxName '_SPSIG']; 
+    if exist(spsigName,'file') ~= 2 % if not found, request it
+        [fn , pn] = uigetfile('*_SPSIG.mat','get the SPSIG file to save the images to');
+        spsigName = [pn fn(1:end-4)];
+    end
     plotter = true;
     
 end
@@ -66,7 +72,7 @@ fprintf('Creating background image for %s\n', sbxName)
 
 % Activate much tighter subplots
 % [subplot margin top&side],[figure bottomspace,topspace],[leftspace,rightspace]
-subplot = @(m,n,p) subtightplot (m, n, p, [0.075 0.005], [0.05 0.07], [0.05 0.01]);
+subplot = @(m,n,p) subtightplot (m, n, p, [0.075 0.005], [0.05 0.07], [0.07 0.01]);
 
 colors = cmapL('greenFancy', 256);
 
@@ -188,13 +194,52 @@ end
 fprintf('done calculating :)\n')
 
 
+%% check how the spectral looks
+
+load(spsigName, 'Sax', 'SPic')
+
+if exist('SPic','var') && exist('Sax', 'var')
+
+    imgStack = log(SPic(:,:,2:end));
+    Sax(1) = []; %first spectral component is the average power over al components
+
+    vals = sort(unique(imgStack(:))); % remove -inf values
+    if vals(1)==-inf
+        imgStack(imgStack==-inf) = vals(2);
+    end
+    imgStack = permute(imgStack,[2 1 3]); % transpose the SPic variable so it's same as BImg
+
+    nSpec = size(imgStack,3);
+
+    % A spectral image for all the different frequencies
+    colors = flip(jet(nSpec));
+    norma = false; % normalize each frequency?
+    figure('units','normalized','position',[0.52 0.5 0.25 0.4]);
+    subplot(1,1,1)
+    SPicTCell = squeeze(num2cell(imgStack, [1 2]));
+    RGBspectral = CreateRGB2(SPicTCell, 1:nSpec, colors, norma);
+    
+    imagesc(RGBspectral)
+    title('The intensity of the spectral density at all different frequencies')
+    % Set the correct colorbar for this image
+    colormap(colors)
+    h = colorbar;
+    hTicks = linspace(Sax(1),Sax(end),length(h.Ticks));
+    h.Ticks = h.Ticks; % prevent ticks from changing
+    h.TickLabels = num2str(hTicks', '%2.2f');
+    ylabel(h, 'spectral frequency', 'FontSize',12)
+else
+    fprintf('Unable to load SPic and Sax (Spectral Axis) from spsigName\n')
+    fprintf('Not creating colored spectral image\n')
+end
+
 %% The end: save it
 
 save(spsigName, 'BImgMax','BImgAverage','infoimg','-append')
 if nchannels >= 2
     save(spsigName, 'BImgMaxC2','BImgAverageC2','-append')
 end
-fprintf('saved background images\n\n')
+fprintf('saved background images to %s\n\n',spsigName)
 
 end
 
