@@ -79,7 +79,7 @@ function varargout = RoiRejecterGUI(varargin)
 % Made by: Leander de Kraker
 % 2018
 
-% Last Modified by GUIDE v2.5 04-Oct-2019 19:28:35
+% Last Modified by GUIDE v2.5 07-Feb-2020 15:27:37
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -2396,6 +2396,130 @@ function backgrdCLim_Apply(x, h)
     end
     
     setappdata(h.hGUI, 'switches', switches)
+end
+
+%% Help call function
+% --- Executes on button press in any of the '?' help buttons
+function Help_Callback(~, eventdata, ~) %#ok<DEFNU>
+    switch eventdata.Source.Tag
+        case 'plotRoisHelp' % in tab Show data
+            strTitle = 'plot Roi signal help';
+            str = ['When "Plot Roi Signal" is toggled the signal of ROIs you '...
+                   'click on will be plotted'];
+               
+        case 'corrHelp' % in tab Show data
+            strTitle = 'local time traces correlation help';
+            str = {['When "local timetraces correlation" is toggled, '...
+                   'you can click on the main image, and the median signal of the 9 '...
+                   'pixels where you clicked will be correlated with the signal from'...
+                   ' the surrounding 256 pixels. The correlation values are then'...
+                   ' shown in the main image.']};
+               str{3} = 'This can be helpful to see individual neurons and close dendrites, which have a correlated signal.';
+               
+        case 'sigSelectHelp' % in tab Show data
+            strTitle = 'main image signal plotting help';
+            str = {['When "plot signal from main image" is toggled, '...
+                   'you can click on the main image, and the signal from that place will be retrieved from'...
+                   ' the stacktransposed data and plotted in the signal axes below the main axes.']};
+            str{3} = ['The Number of data selections that can be shown simultaneously is determined by the '...
+                      '"number of selections" slider. When selecting more signals than the maximum that can be shown '...
+                      'the oldest selected signal will be replaced. '...
+                      'If you change the number of selections the plot will first be reset to empty.'];
+            str{5} = ['The number of retrieved pixels is determined by'...
+                      ' the "Selection size slider."'];
+               
+        case 'backGrdHelp' % in tab Show data
+            strTitle = 'main background image help';
+            str = {['In the histogram the brightness distribution of the background image in the '...
+                    'main axes is shown.']};
+            str{2} = ['The color axes limits of the background image can '...
+                    'be changed by clicking in the histogram. The limit closest to the click will '...
+                    'be moved to the clicked point.'];
+            str{5} = 'Different backgrounds can be selected with the dropdown menu:';
+            str{7} = 'Spectral: maximum projection of spectral density 0 - 0.4Hz';
+            str{9} = ['Spectral color: Select frequencies from spectral density, '...
+                    'multiple frequencies shown with multiple colors'];
+            str{11} = 'SpatialCor: correlation values from inside ROIs, from 9 ROI seed pixels to all other pixels';
+            str{13} = ['ROI corr: correlation values from inside ROIs, from the 4 corners, each consisting of ~9 pixels '...
+                      'to all other pixels. So 4 correlation values per pixel of the ROI, each shown in a different color.'...
+                      '. It is good view to identify ROIs with multiple signal sources'];
+            str{15} = 'Mask: shows the mask, brightest ROIs have the lowest ROI nr.';
+            str{17} = ['chronic1: imports BImg2 from a chronic.mat file, averages the '...
+                       'different BImg (representative spectral images) from all the recordings'...
+                       ' and then registers that average projection to the current recording in the "RoiRejecterGUI"'...
+                       ' The current spectral is shown in green, and '];
+            str{19} = 'chronic2: same as chronic 1 but does not show the current spectral image';
+            str{21} = ['peak frequency: Every ROI has its highest spectral density at a specific frequency'...
+                       'the lower frequencies are shown in blue, higher frequency ROIs in red (colormap jet (rainbow))'];
+            str{23} = 'variable from workspace: import any variable of the correct background size into the RoiRejecter';
+            
+        case 'manRoiHelp' % in tab Manual ROI
+            strTitle = 'ROI drawing help';
+            str = {'Left click to create a corner point for the new ROI contour.'};
+            str{2} = ['If you want to stop drawing the ROI, keep left clicking until no '...
+                      'line segments/ corner points remain.'];
+            str{3} = ['If you would completely overwrite an existing ROI, the RoiRejecterGUI '...
+                       'will refuse to create your requested ROI.'];
+            str{4} = ['Large ROIs can be slow to edit because a lot of signal has to be retrieved.'];
+            
+        case 'createRoiHelp' % in tab CreateROI
+            strTitle = 'auto ROI creation help';
+            str = {['The CreateROI functionality finds a ROI based on the current background image.'...
+                   'If the current background image is a color image, the different color channels (Red, green, blue) '...
+                   'will be averaged together.']};
+            str{2} = 'Decrease the threshold to include more pixels into the new ROI.';
+            str{3} = 'Do not forget to press apply when you want to save the new ROI.';
+            
+        case 'roiSelectHelp' % in tab Reject ROIs
+            strTitle = 'ROI selection/ rejection help';
+            str = {['when "white listing" is toggled you can click on ROIs and those'...
+                    ' will not be deleted by the slider criteria.']};
+            str{2} = ['When "black listing" is toggled you can click on ROIs and the will'...
+                      ' be deletedwhen pressing the "apply deletions" button.'];
+            str{4} = ['When the "Plot sinal on ROI toggling" toggle is toggled the signal'...
+                      ' of a ROI will be retrieved and plotted in the signal axes when a ROI'...
+                      ' gets added/ removed from the black/ white listing.'];
+            
+        case 'rejectionSlidersHelp' % in tab Reject ROIs
+            strTitle = 'ROI rejection sliders help';
+            str = {'Selections can be based on'};
+            str{3} = 'ROI (minimum) size: based on variable PP.A.';
+            str{4} = ['ROI (maximum) size: also based on variable PP.A. '...
+                     'If the size critera will delete a ROI it will turn the cross in the ROI red.'];
+            str{5} = '';
+            str{7} = ['threshold slider: mean inner correlation: variable PP.Rvar. '...
+                      'If the threshold critera will delete a ROI it will turn the contour of the ROI red.'];
+            str{9} = ['minimum roundedness slider: based on PP.Roundedness, calculated by perimarea.m . '...
+                      'If the roundedness critera will delete a ROI it will turn the cross in the ROI magenta.'];
+            
+        case 'splitRoiHelp' % in tab Split ROIs
+            strTitle = 'ROI splitting help';
+            str = {'Start by clicking on a ROI in the main image that you want to split into multiple parts'};
+            str{3} = ['When you clicked on the ROI signal from the four corners (left, right, up & down) will be selected'...
+                ', that signal will be correlated to all the pixels of the ROI.'...
+                ' These 4 correlation values per pixel are then used in K-means clustering to cluster the pixels of the ROI.'];
+            str{4} = ' The number of clusters that need to be found has to be set with the "number of clusters" slider';
+            str{6}= ['When "Add another refernce point" or "Delete clusters" is toggled, you can click in any of the two'...
+                ' images in the tab to use their functionality.'];    
+            str{8} = ['If the corners did not take nice enough signals (if the ROI is way to big for the neuron for example),'...
+                 ' you can add more reference points from which the signal will be correlated to the rest of the ROI.'];
+            str{9} = ['When adding more reference points, only four references will be visible in the correlation visualisation'...
+                      ', otherwise the colors become too ambiguous.'];
+            str{10} = 'Toggle "Delete cluster" to remove one or more clusters.';
+            str{12}= 'Do not forget to press "apply" when you are happy with the clustering.';
+            
+        case 'saveHelp' % Main Save button
+            strTitle = 'Save info';
+            str = {['If the "RoiRejecter" was called with input, the save function will only save'...
+            	' the PP, Mask and SpatialCorr variables to the workspace.']};
+            str{3} = [' If the "RoiRejecter" has loaded a SPSIG.mat file the save button will ALSO save'...
+            	' the PP, Mask and SpatialCorr variables to the SPSIG, overwriting existing ones.'];
+            
+        otherwise
+            strTitle = 'otherwise is an error';
+            str = sprintf('Unknown tag pressed?!?! %s', eventdata.Source.Tag);
+    end
+    msgbox(str, strTitle)
 end
 
 %% Save changes function
