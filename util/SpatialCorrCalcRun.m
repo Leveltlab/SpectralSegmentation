@@ -23,9 +23,9 @@ nameSbx = [pnSbx, fnSbx];
 nameSpsig = [pnSpsig, fnSpsig];
 load(nameSpsig, 'PP', 'Mask', 'SpatialCorr')
 
-% enlarge the ROI masks for extra viewing pleasure!
-[~,~,maskExtra] = BufferMask(Mask, 2); 
-Mask = Mask + maskExtra;
+% % enlarge the ROI masks for extra viewing pleasure!
+% [~,~,maskExtra] = BufferMask(Mask, 2); 
+% Mask = Mask + maskExtra;
 
 % Checking whether or not SpatialCorr already exists
 if exist('SpatialCorr', 'var')

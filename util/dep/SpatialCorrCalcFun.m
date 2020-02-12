@@ -57,7 +57,11 @@ end
 
 % Get the origin point of the ROI with 8 surrounding pixels: seedpixels
 seed = zeros(size(maskT), 'logical');
-seed(originPos(1)-1:originPos(1)+1, originPos(2)-1:originPos(2)+1) = true;
+seedy = originPos(1)-1:originPos(1)+1;
+seedx = originPos(2)-1:originPos(2)+1;
+seedy(seedy<1 | seedy>size(maskT,1)) = []; % remove indexes that are outside mask
+seedx(seedx<1 | seedx>size(maskT,2)) = [];
+seed(seedy, seedx) = true;
 seedidx = find(seed);
 [~, seedidx] = intersect(roiidx, seedidx); % exlude pixels outside ROI
 

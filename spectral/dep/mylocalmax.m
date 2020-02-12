@@ -37,7 +37,7 @@ end
 
  [xv, yv] = find(cent_map);
  v = arrayfun(@(x,y) cent_map(x,y), xv, yv);
- cent = [xv,yv, v]; %x posistion, y position, max value
+ cent = [xv,yv, v]; %x position, y position, max value
  [~, ix] = sort(cent(:,3),'descend');
  cent = cent(ix,:);
      
