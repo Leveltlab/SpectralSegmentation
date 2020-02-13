@@ -19,11 +19,10 @@ BackgroundImgSbx;
 getSpectrois
 
 %% Remove or add ROIS manually, display and compare roi sets
-RoiRejecterGUI()  %or % RoiRejecterGUISE()
+RoiRejecterGUI()
 
 %% Retrieve the signals associated with these rois from the aligned data
-%and deconvolve signals
 retrievesignals
 
 %% deconvolve signals
-
+DeconvolveSignals
