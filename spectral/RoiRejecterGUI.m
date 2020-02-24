@@ -1982,7 +1982,7 @@ function backGrdView(selected, h)
                 
                 infoStr = ['variable should result in a matrix of doubles.',...
                            'first two dimensions should same as background image, may be 3D. ',...
-                           'three examples: BImgA   or   permute(log1p(SPic), [2 1 3])   or   cat(3, BImgAverage, BImgMax)'];
+                           'three examples: BImgA   or  log1p(SPic)   or   cat(3, BImgAverage, BImgMax)'];
                 varName = inputdlg(infoStr, 'Import a variable from the workspace');
                 
                 % quit if nothing was typed
@@ -2310,7 +2310,7 @@ function mainAx_ButtonDownFcn(~, eventdata, h) %#ok<DEFNU>
     elseif strcmp(switches.currentMinor, 'corrButton')
         % Local correlation visualisation
         
-        [xmesh, ymesh, signal, centersignal] = SelectData(position, 16, h, '');
+        [xmesh, ymesh, signal, centersignal] = SelectData(position, 24, h, '');
         
         % subsampling for long signals
         time = 1:length(centersignal);
@@ -2447,7 +2447,7 @@ function Help_Callback(~, eventdata, ~) %#ok<DEFNU>
             str{17} = ['chronic1: imports BImg2 from a chronic.mat file, averages the '...
                        'different BImg (representative spectral images) from all the recordings'...
                        ' and then registers that average projection to the current recording in the "RoiRejecterGUI"'...
-                       ' The current spectral is shown in green, and '];
+                       ' The current spectral is shown in green, and the registered chronic in red'];
             str{19} = 'chronic2: same as chronic 1 but does not show the current spectral image';
             str{21} = ['peak frequency: Every ROI has its highest spectral density at a specific frequency'...
                        'the lower frequencies are shown in blue, higher frequency ROIs in red (colormap jet (rainbow))'];
@@ -2486,7 +2486,7 @@ function Help_Callback(~, eventdata, ~) %#ok<DEFNU>
             str{3} = 'ROI (minimum) size: based on variable PP.A.';
             str{4} = ['ROI (maximum) size: also based on variable PP.A. '...
                      'If the size critera will delete a ROI it will turn the cross in the ROI red.'];
-            str{5} = '';
+            str{5} = 'threshold slider: maximum spectral density in the ROI (max of specProfile)';
             str{7} = ['threshold slider: mean inner correlation: variable PP.Rvar. '...
                       'If the threshold critera will delete a ROI it will turn the contour of the ROI red.'];
             str{9} = ['minimum roundedness slider: based on PP.Roundedness, calculated by perimarea.m . '...
