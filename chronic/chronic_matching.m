@@ -36,7 +36,8 @@ while selecting
         
         % Try to extract the date from after the first _ in the filename
         try
-            filedate(i) = datetime(filepaths{i}(pos(end-1)+1:pos(end)-1), 'inputformat','yyyyMMdd');
+            strdate = strrep(strrep(filepaths{i}(pos(end-1)+1:pos(end)-1), '-', ''), '_', '');
+            filedate(i) = datetime(strdate, 'inputformat','yyyyMMdd');
             
         catch ME % Extraction failed
             if strcmp(ME.identifier, 'MATLAB:datetime:ParseErr') % Ask user for input
@@ -76,7 +77,7 @@ for i = 1:nfiles
 end
 toc
 
-clearvars selecting str pos i questionStr answerStr
+clearvars selecting str pos i questionStr answerStr datestr
 
 %% Backing up data variable
 data2 = data;
@@ -145,40 +146,16 @@ end
 
 clearvars mini maxi Img idx i vals channel Maskextra
 
-%% Plot
+% Plot %
 
 % Activate much tighter subplots
 % [subplot margin top&side],[figure bottomspace,topspace],[leftspace,rightspace]
 subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0 0], [0 0]);
 
 toplot = 1:nfiles; % sessions to plot
-% Create Rainbowy color channel allocations for nfiles, with bias to blue,
-% green, red unmixed allocation: 'r', 'g' and 'b'
-% colors = strsplit('b b bg g g gr r r rb'); 
-% chosenColors = round(linspace(1,length(colors),nfiles));
-% colors = colors(chosenColors);
-% % Because rb is the last color it will always get chosen, but I don't want
-% % that, I would prefer red if it isn't present already
-% if ~ismember(colors, 'r') 
-%     colors{end} = 'r';
-% end
-% % toplot = [1 2 3 4];
-% % colors = 'r g b gb';
-% 
-% figure; subplot(1,1,1)
-% [RGB, cvals] = CreateRGB(BImg, colors);
-% imagesc(permute(RGB,[2 1 3]))
-% for i = toplot
-%     text(20, 20+i*17, datestr(filedate(i)),'color',cvals(i,:),...
-%         'fontweight','bold','fontsize',12)
-% end
-% 
-% figure; subplot(1,1,1)
-% imagesc(permute(CreateRGB(Masks, colors, 'binary'),[2 1 3]))
-% title('non-registered masks')
 
+% Create Rainbowy color channel allocations for nfiles, with bias to blue,
 colors = flipud(cmapL([0 0 1; 0 1 1; 0 1 0; 1 0.7 0; 1 0 0; 0.7 0 1], length(toplot)));
-% colors = flipud(cmapL([0 0 1; 0 1 1; 0 1 0; 1 0.7 0; 1 0 0], length(toplot)));
 if length(toplot)==3
     colors = [1 0 0; 0 1 0; 0.3 0.3 1];
 elseif length(toplot)==2
@@ -247,8 +224,8 @@ maxdim(2) = max(dims(:,2));
 % buffersize = 100;
 buf = 16;
 
-w = dims(1,1)-buf;
-h = dims(1,2)-buf;
+w = min(dims(:,1))-buf;
+h = min(dims(:,2))-buf;
 
 x = zeros(1, nfiles); % x offset for images
 y = zeros(1, nfiles);
@@ -528,7 +505,7 @@ maxdim(2) = max(dims(:,2));
 
 % Linking ROIs with each other, by just checking if there is a certain % 
 % overlap between them
-thres = 0.51; % overlap needed
+thres = 0.6; % overlap needed
 
 % Checking overlap between the ROIs
 % inRoi:  column1: linked ROI of other mask
@@ -660,19 +637,21 @@ for i = 2:nfiles
     [~,sorted] = sort(linkMat2(:,i));
     linkMat2 = linkMat2(sorted,:);
     [rois, limits] = unique(linkMat2(:,i));
-    limits(end+1) = length(linkMat2)+1;
-    dif = diff(limits); % number of elements with ROI j
-    % If one of the recordings matched another ROI keep it. So even if
-    % the matched ROI is not found via some of the recordings, it can still
-    % get linked with those recordings.
-    for j = 2:length(rois)
-        if dif(j) > 1
-            rows = limits(j):(limits(j)+dif(j)-1);
-            linkMat2(limits(j),:) = max(linkMat2(rows,:));
+    if length(limits) > 1
+        limits(end+1) = size(linkMat2,1)+1;
+        dif = diff(limits); % number of elements with ROI j
+        % If one of the recordings matched another ROI keep it. So even if
+        % the matched ROI is not found via some of the recordings, it can still
+        % get linked with those recordings.
+        for j = 2:length(rois)
+            if dif(j) > 1
+                rows = limits(j):(limits(j)+dif(j)-1);
+                linkMat2(limits(j),:) = max(linkMat2(rows,:));
+            end
         end
+        % Now we made sure we don't lose any links, squish the matrix
+        linkMat2 = linkMat2([1:limits(2), limits(3:end-1)'],:);
     end
-    % Now we made sure we don't lose any links, squish the matrix
-    linkMat2 = linkMat2([1:limits(2), limits(3:end-1)'],:);
 end
 
 % clearvars i j c otherMasks own compared idx rois limits
