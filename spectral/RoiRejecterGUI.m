@@ -2400,7 +2400,7 @@ end
 
 %% Help call function
 % --- Executes on button press in any of the '?' help buttons
-function Help_Callback(~, eventdata, ~) %#ok<DEFNU>
+function Help_Callback(~, eventdata, h) %#ok<DEFNU>
     switch eventdata.Source.Tag
         case 'plotRoisHelp' % in tab Show data
             strTitle = 'plot Roi signal help';
@@ -2514,6 +2514,12 @@ function Help_Callback(~, eventdata, ~) %#ok<DEFNU>
             	' the PP, Mask and SpatialCorr variables to the workspace.']};
             str{3} = [' If the "RoiRejecter" has loaded a SPSIG.mat file the save button will ALSO save'...
             	' the PP, Mask and SpatialCorr variables to the SPSIG, overwriting existing ones.'];
+            
+            % Also say which SPSIG file is loaded
+            data = getappdata(h.hGUI, 'data');
+            if isfield(data, 'SPSIGfile')
+                str{5} = ['loaded file: ' data.SPSIGfile];
+            end
             
         otherwise
             strTitle = 'otherwise is an error';
