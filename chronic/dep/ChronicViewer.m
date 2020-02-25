@@ -307,7 +307,7 @@ function UpdateView
                     idx = linkMat(rShow, x+1);
                     MasksShow{x}(~ismember(MasksShow{x},idx)) = 0;
                 end
-                hImg.CData = CreateRGB(MasksShow, sShow2, colors2, 'binary');
+                hImg.CData = CreateRGB(MasksShow(sShow2), colors2, 'binary');
             end
             
             % legend Text
