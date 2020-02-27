@@ -1839,13 +1839,6 @@ function backGrdView(selected, h)
         data = getappdata(h.hGUI, 'data');
         h.mainAx.NextPlot = 'add';
     
-    
-        % Legend text off
-        h.legendText2.Visible = 'off';
-        h.legendText3.Visible = 'off';
-        h.legendText4.Visible = 'off';
-        h.legendText5.Visible = 'off';
-        h.legendText6.Visible = 'off';
         
         switch selected
             case 1 % Spectral image
@@ -1925,23 +1918,6 @@ function backGrdView(selected, h)
                 end
                 
                 colormap(gray)
-                
-                % info text about colors
-                h.legendText2.String = 'left';
-                h.legendText2.ForegroundColor = 'r'; % red
-                h.legendText2.Visible = 'on';
-                h.legendText3.String = 'right';
-                h.legendText3.ForegroundColor = 'g'; % green
-                h.legendText3.Visible = 'on';
-                h.legendText4.String = 'top';
-                h.legendText4.ForegroundColor = 'b'; % blue
-                h.legendText4.Visible = 'on';
-                h.legendText5.String = 'bottom';
-                h.legendText5.ForegroundColor = 'c'; % cyan = green + blue
-                h.legendText5.Visible = 'on';
-                h.legendText6.String = 'corner correlations good overlap';
-                h.legendText6.ForegroundColor = 'w'; % white
-                h.legendText6.Visible = 'on';
                 
             case 5 % Mask view
                 picMask = data.Mask;
@@ -2068,62 +2044,10 @@ function importChronicFile(h)
     chronicImg = mean(reshape(cell2mat(chronicImg),[dims(1),dims(2),length(chronicImg)]),3)';
 
     % Register the chronic dataset to this dataset
-    waBa = waitbar(1/3, 'translating chronic image'); % Waitbar
-    buffer = 100;
-    reference = chronicImg(buffer:size(data.BImg,1)-buffer, buffer:size(data.BImg,2)-buffer);
-    reference = reference-mean(reference(:));
-    base = data.BImg-mean(data.BImg(:));
-    correl = xcorr2(base,reference);
-    [~,snd] = max(correl(:));
-    [ij, ji] = ind2sub(size(correl),snd);
-    x = size(base,1) - ij - buffer;
-    y = size(base,2) - ji - buffer;
-    % Cutting or padding the chornic image if necessary
-    if x>=1 % Cut top
-        chronicImg = chronicImg(x:end, :);
-    else % Padd top % Maybe add a +1; code untested because condition doesn't happen often
-        chronicImg(-x+1:-x+size(chronicImg,1),:) = chronicImg;
-    end
-    if y>=1 % Cut left beginning
-        chronicImg = chronicImg(:, y:end);
-    else % Padd left beginning
-        chronicImg(:,-y+1:-y+size(chronicImg,2)) = chronicImg;
-    end
-    if size(chronicImg,1) > size(data.BImg,1) % Cut bottom
-        chronicImg(size(data.BImg,1)+1:end,:) = [];
-    else % padd bottom
-        chronicImg(size(data.BImg,1),1) = 0;
-    end
-    if size(chronicImg,2) > size(data.BImg,2) % Cut right side
-        chronicImg(:,size(data.BImg,2)+1:end) = [];
-    else % padd right side
-        chronicImg(1,size(data.BImg,2)) = 0;
-    end
-
-    % Rotation by checking rotations
-    waitbar(2/3, waBa, 'rotating chronic image'); % Waitbar
-    rotation = -1:0.1:1; % rotations to apply: counterclockwise to clockwise degrees
-    simil  = zeros(1, length(rotation));
-    % correl = zeros(nfiles, length(rotation));
-    buffer = 30; % buffer image edges because rotation makes part fall off
-    BImgRef = data.BImg(buffer:end-buffer, buffer:end-buffer);
-    for j = 1:length(rotation)
-        BImgRot = imrotate(chronicImg, rotation(j),'bicubic','crop');
-        BImgRot = BImgRot(buffer:end-buffer, buffer:end-buffer);
-        simil(j)= corr2(BImgRot, BImgRef);
-    end
-
-    % Best rotations
-    [~, rotIdx] = max(simil);
-    rotAng = rotation(rotIdx);
-
-    chronicImg = imrotate(chronicImg, rotAng,'bicubic', 'crop');
+    data.chronicImg = Register2Imgs(data.BImg, chronicImg);
 
     % Save the chronic, registered background image
-    data.chronicImg = chronicImg;
     switches.chronic = true;
-    close(waBa)
-
     setappdata(h.hGUI, 'data', data)
     setappdata(h.hGUI, 'switches', switches)
 end
