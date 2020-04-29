@@ -17,7 +17,7 @@ function varargout = RoiRejecterGUI(varargin)
 %            correspond to the SPic variable
 % 
 % 
-% The functionality of the RoiRejecter can be accessed with the 6 different
+% The functionality of the RoiRejecter can be accessed with the 5 different
 % tabs on the right.
 % 
 % ROIs can be refined by:
@@ -29,13 +29,13 @@ function varargout = RoiRejecterGUI(varargin)
 %             to find a contour, the contour will be based on the
 %             current background image in the RoiRejecter, in case that
 %             that is a color image it will average the three colorchannels
-%             to create a grayscale image. TAB 'CreateROI'
+%             to create a grayscale image. TAB 'Create ROI'
 %	manual creation: manually draw a ROI by clicking on the main
 %                    background image.     TAB 'Manual ROI'
 % 
 % Data can be visualised in the following ways:
-% FLUORESCENCE TIMETRACE (signal in bottom main axis)
-%   Show the timetrace fluorescence data of an ROI: 
+% FLUORESCENCE TIME TRACE (signal in bottom main axis)
+%   Show the time trace fluorescence data of an ROI: 
 %   	in TAB 'Reject ROIs' toggle 'Plot ROI signal on ROI toggling', 
 %       and then white or blacklist a ROI.
 %   Show the data from a square selection of the data:
@@ -252,8 +252,8 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     h.maxSizeSlider.Value = switches.maxSize;
     h.maxSizeTitle.String = {sprintf('Maximum size: %4.0f px', switches.maxSize)};
     
-    h.thresSlider.Max = max(PP.SpecProfile(:))+0.05;
-    h.thresSlider.Min = min(max(PP.SpecProfile))-0.05;
+    h.thresSlider.Max = max(mean(PP.SpecProfile))+0.05;
+    h.thresSlider.Min = min(mean(PP.SpecProfile))-0.05;
     h.thresSlider.Value = h.thresSlider.Min;
     
     sliderNames = {'minSize', 'maxSize', 'threshold' 'innerCorr', 'roundedness'};
@@ -741,7 +741,7 @@ function thresSlider_Callback(hObject, ~, h) %#ok<DEFNU>
     PP = data.PP;
     switches.sliderSettings.threshold = hObject.Value;
     
-    idx.Thres = (max(PP.SpecProfile) < threshold);
+    idx.Thres = (mean(PP.SpecProfile) < threshold);
     
     setappdata(h.hGUI, 'switches', switches)
     setappdata(h.hGUI, 'idx', idx) % save new indexes
@@ -2333,7 +2333,7 @@ function Help_Callback(~, eventdata, h) %#ok<DEFNU>
                
         case 'corrHelp' % in tab Show data
             strTitle = 'local time traces correlation help';
-            str = {['When "local timetraces correlation" is toggled, '...
+            str = {['When "local time traces correlation" is toggled, '...
                    'you can click on the main image, and the median signal of the 9 '...
                    'pixels where you clicked will be correlated with the signal from'...
                    ' the surrounding 256 pixels. The correlation values are then'...
@@ -2386,9 +2386,9 @@ function Help_Callback(~, eventdata, h) %#ok<DEFNU>
                        'will refuse to create your requested ROI.'];
             str{4} = ['Large ROIs can be slow to edit because a lot of signal has to be retrieved.'];
             
-        case 'createRoiHelp' % in tab CreateROI
+        case 'createRoiHelp' % in tab Create ROI
             strTitle = 'auto ROI creation help';
-            str = {['The CreateROI functionality finds a ROI based on the current background image.'...
+            str = {['The Create ROI functionality finds a ROI based on the current background image.'...
                    'If the current background image is a color image, the different color channels (Red, green, blue) '...
                    'will be averaged together.']};
             str{2} = 'Decrease the threshold to include more pixels into the new ROI.';
