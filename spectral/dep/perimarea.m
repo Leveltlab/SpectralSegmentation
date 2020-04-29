@@ -5,6 +5,7 @@ function F = perimarea(x, y)
 fac = round(length(x)/50);
 if fac > 0
     p = smoothG([x(:) y(:)], fac);
+    p = [p(end,:); p];
 else
     p = [x(:) y(:)];
 end
