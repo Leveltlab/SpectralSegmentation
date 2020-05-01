@@ -53,23 +53,22 @@ function colmap = cmapL(colors, n)
 % m = magenta
 % dutch = official reddish, white, blueish
 % italian = official reddish, white, greenish
-% safe = suitable for lines and colorblind people (blue to green to yellow to purple)
+% italian roast = from yellowwhite, red  , black, green, cyanwhite
+% blue roast = from red, black, blue(white) safer for colorblind
+% viridis = purplish to green to yellow, from matplotlib
 % pastel = pastelish reddish, to blueish
 % inferno = black to purple to yellow, standard matplotlib
-% viridis = purplish to green to yellow, from matplotlib
 % greenFancy = from black to blue to green to white
 % greenFancyDark = darker version of greenFancy
 %
 %
 % Leander de Kraker
-% 2018-10-22, edited 2020-2-3
+% 2018-10-22, edited 2020-5-1
 %
 
 % Change string request to
 if ischar(colors)
     switch colors
-        case 'pastel'
-            colors = [1 0.6 0.56; 0.56 1 1];
         case 'w'
             colors = [1 1 1; 0 0 0];
         case 'r'
@@ -87,7 +86,11 @@ if ischar(colors)
         case 'dutch' % dutch flag colors
             colors = [0.68 0.1 0.15; 1 1 1; 0.12 0.27 0.545];
         case 'italian' % italian flag color
-            colors = [0 0.57 0.27; 1 1 1; 0.8 0.16 0.17]; 
+            colors = [0 0.57 0.27; 1 1 1; 0.8 0.16 0.17];
+        case 'italian roast' % italian flag, but more extreme and black instead of white
+            colors = [0.8 1 1; 0.6 1 0.6; 0 0.8 0; 0 0 0; 0.8 0 0; 1 0.6 0.6; 1 1 0.8]; 
+        case 'blue roast' % inspired by italian roast, but safe for colorblind
+            colors = [1 1 1; 0.7 0.8 1; 0.3 0.3 1; 0 0 0; 0.8 0 0; 1 0.6 0.6; 1 1 0.8];
         case 'safe' % Colorblind proof, line suitable
             colors = [51,  34,  136;...
                       102, 153, 204;...
@@ -100,6 +103,8 @@ if ischar(colors)
                       170, 68,  153;...
                       136, 34,  85;...
                       102, 17,  0]./255;
+        case 'pastel'
+            colors = [1 0.6 0.56; 0.56 1 1];
         case 'viridis' % A slightly darkened version of viridis
             colors = [0.9961    0.9094    0.15;...
                       0.7087    0.8740    0.18;...
@@ -136,7 +141,7 @@ if ischar(colors)
 end
 
 colmap = zeros(n,3); % preallocate colormap
-if size(colors, 1) == 1 % Add the standard black color if necissary
+if size(colors, 1) == 1 % Add the standard black color if necessary
     colors(2,:) = [0 0 0];
 end
 ncolors = size(colors, 1); % The number of different RGB colors in the colormap
