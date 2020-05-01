@@ -1,4 +1,4 @@
-function [Savedrois, Mask, SC] = roisfromlocalmax(IM, Savedrois, Mask, varargin)
+function [Savedrois, Mask, SC, rejlog] = roisfromlocalmax(IM, Savedrois, Mask, varargin)
 % roisfromlocalmax(IM, threshold, distance = 10, area = 20, border = 15)
 % IM : image
 % Mask : rois as image regions with index value
@@ -8,19 +8,20 @@ function [Savedrois, Mask, SC] = roisfromlocalmax(IM, Savedrois, Mask, varargin)
 % border: edge of image to ignore
 % 
 % this function first determines the local maxima in an image, then
-% for the 1/4 higest points finds a contour around each maximum, 
+% for a certain fraction of higest points finds a contour around each maximum, 
 % if not already contained in a contour.
 % then discards overlapping contours, or separates contours in different
 % rois.
 % Chris van der Togt, 2017, Netherlands Institute for Neuroscience 
-global DISPLAY  
+
+global DISPLAY
 distance = 20;     % Distance between rois (maxima)
 area = [60 120];   % Minimum/max size of roi
 border = 15;       % Edge of image to ignore
-fractionmax = 0.25;% Higest fraction of maxima (pnt) to use
+fractionmax = 0.2; % Higest fraction of maxima (pnt) to use
 VoxelSz = 60;      % Determines area to find contours
 % All rois should be within the size of an area of VoxelSz x VoxelSz    
-threshold = 0.90;  % Contour threshold greater than percentile of pixel range
+threshold = 0.80;  % Contour threshold greater than percentile of pixel range
 Significance = 0.90; % Maximum shoud be greater than percentile of pixel range
 PAf = 0.70;        % Minimal ratio perimeter to squared area; roundedness factor (circle = 1.0)
 cutoffcorr = 0.5;  % Cutoff threshold for pixel correlations
@@ -29,18 +30,7 @@ cutoffcorr = 0.5;  % Cutoff threshold for pixel correlations
 if ~isempty(varargin)
     % Minimum distance between two correlation maxima
     p = varargin{1};
-    if isfield(p, 'pixelthreshold')
-        threshold = p.pixelthreshold;
-    end
-    if isfield(p, 'significance')
-        Significance = p.significance;
-    end
-    if isfield(p, 'fractionmax')
-        fractionmax = p.fractionmax;
-    end
-    if isfield(p, 'minimaldistance')
-        distance = p.minimaldistance;
-    end         
+        
     if isfield(p, 'areasz')
         area = p.areasz;
     end
@@ -82,15 +72,17 @@ SigTh = round(Significance*SzImg);
 [Iy, Ix] = find(ones(VoxelSz,VoxelSz));
 
 %find a particular max
-%find(pnt(:,1) == 387 & pnt(:,2) == 135)
-
+% find(pnt(:,1) == 280 & pnt(:,2) == 295)
+rejlog = nan(Nmp, 4);
 Cnt = Savedrois.Cnt;
 for i = 1:Nmp
 % 	if debug
-%           if i == 181
+%          if i == 27 || i == 30 || i == 40 || i == 42 || i == 50 || i == 125 
 %               DISPLAY = 1;
+%           else 
+%               DISPLAY = 0;
 %           end
-
+          
     % Detect if this point is on a previously selected roi
     if ~(Mask(pnt(i,1),pnt(i,2)) > 0)
 %         figure(3), imagesc(Mask), hold on
@@ -128,8 +120,9 @@ for i = 1:Nmp
         if RoiMx > Ws(SigTh) % Pixel value maximum should be significantly higher than surrounding pixels
             it = 0;
             bval = 0;
+            bad = 0;
             while ~bval && it < 10
-                [Con, A, F] = getCon(If, th, area, PAf, py, px, Iy, Ix);
+                [Con, A, F, Pin, Ro] = getCon(If, th, area, PAf*0.9, py, px, Iy, Ix);
                 if ~isempty(Con) %valid contour: contains point and has valid roundedness
                     if DISPLAY == 1
                         figure(2), imagesc(I), colormap gray, hold on
@@ -163,19 +156,20 @@ for i = 1:Nmp
                             bval = 0; 
                         end
                     end
-                    if bval % It might still be a bad roi; too many negative values below the threshold
-                        pixv = I(F>0);
-                        if length(find(pixv<th))/length(pixv) > 0.25 % More than 20% of the samples are below threshold
-                            bval = 0;
-                            th = th + thxd; % Step up contour threshold
-                        end
-                    end
+%                     if bval % It might still be a bad roi; too many negative values below the threshold
+%                         pixv = I(F>0);
+%                         bad = length(find(pixv<th))/length(pixv);
+%                         if bad > 0.4 % More than 40% of the samples are below threshold
+%                             bval = 0;
+%                             th = th + thxd; % Step up contour threshold
+%                         end
+%                     end
                     if bval
 
                         yrange = lyw:hyw;
                         xrange = lxw:hxw;                             
                         [NwCon, NwA, NwF, NwV, Ro, Rvar] = PixelCor(size(Mask), F, sbxt, py, px, Iy, Ix, yrange, xrange, freq, cutoffcorr);
-                        if ~isempty(NwCon) &&  NwA > area(1) && Ro > PAf % Exists and area greater than minimum, and roundedness > roundedness factor
+                        if ~isempty(NwCon) &&  NwA > area(1) && Ro >= PAf % Exists and area greater than minimum, and roundedness > roundedness factor
                             Con = NwCon;
                             Con.y = Con.y + lyw - 1;
                             Con.x = Con.x + lxw - 1;
@@ -195,96 +189,49 @@ for i = 1:Nmp
                              M(F>0) = Cnt;
                             Mask(lyw:hyw, lxw:hxw) = M;
                             
+                            rejlog(i,:) = [2 NwA, Ro, Rvar];
+                            if DISPLAY == 1
+                                figure(3), title('good!')
+                            end
                         elseif NwA > area(1) && Ro < PAf  %not round enough but large area, => increase threshold
                             bval = 0;
                             th = th + thxd; 
+                            
+                        elseif DISPLAY == 1
+                                figure(3), 
+                                title([ 'rejected: A ' num2str(NwA) ', Ro '  num2str(Ro) ', Rvar ' num2str(Rvar)] )
+                        else 
+                            rejlog(i,:) = [isempty(NwCon) NwA, Ro, 0];
                         end
                     end
 
-                elseif A <= area(1)    % The area was too small, no valid contours
-                    % but there were some closed contours,              
-                    th = th - thxd; % Lower the threshold                        
+                elseif A <= area(1) && Pin   % The area was too small, no valid contours
+                    % but there were some closed contours with the peak inside, 
+                        th = th - thxd; % Lower the threshold  
                 else
                     th = th + thxd; % Increase the threshold, none closed or too large
                 end
                 it = it + 1;
             end
+            if bval == 0 || it >= 10
+                rejlog(i,:) = [isempty(Con), A, Ro, 0];
+%                  if(isempty(Con))
+%                      figure(2), imagesc(I), colormap gray, hold on
+%                      plot(px, py, '+r')
+%                      disp("Area: " + A + " Roundedness: " + Ro)
+%                  end
+            end
 %             pause(0.5); %hold off
         else
-            % Ignore this maximum, below pixel significance!
-%             figure(2), imagesc(I), colormap gray, hold on
-%             px = pnt(i,1)-lxw+1;
-%             py = pnt(i,2)-lyw+1;
-%             plot(py, px, '+r')
-%             notS = notS + 1;
-%             disp(['Not significant : ' num2str(notS)])
+               rejlog(i,:) = [-1, 0, 0, 0];
         end
     else % This point was in an existing contour
 %         figure(2), plot(pnt(i,2), pnt(i,1), 'or')
-        In = Mask(pnt(i,1),pnt(i,2));
-        % Is this point distance away from earlier point, could be a
-        % separate roi (rare cases)
-        if ( sqrt( (Savedrois.P(1,In)- pnt(i,1))^2 + (Savedrois.P(2,In)- pnt(i,2))^2) > distance )
-            % hold on, plot(pnt(i,2), pnt(i,1), '+w')
-            vx = Savedrois.Con(In).x;
-            vy = Savedrois.Con(In).y;
-            wx = floor(min(vx)-1):ceil(max(vx)+1);
-            wy = floor(min(vy)-1):ceil(max(vy)+1);
-            wx = wx(wx>0 & wx < size(IM,2));
-            wy =  wy(wy>0 & wy < size(IM,1));
-
-%             I = IM(wy,wx);
-%             figure(2), imagesc(I), hold on 
-            M = Mask(wy,wx);
-            Mz = M; %copy
-            Mz(M~=In) = 0; %set pixels of other rois to zero
-
-
-            py = pnt(i,1) - wy(1)+1; %y not x
-            px = pnt(i,2) - wx(1)+1;
-            % plot(px, py, 'r+')
-            % plot(vx-wx(1)+1, vy-wy(1)+1, 'r')
-
-            [iy, ix] = find(ones(size(Mz))); % image indices
-            [NwCon, NwA, NwF, NwV, Ro, Rvar] = PixelCor(size(Mask), Mz, sbxt, py, px, iy, ix, wy, wx, freq, cutoffcorr);
-            if ~isempty(NwCon) &&  NwA > area(1) && Ro > PAf % exists and area greater than minimum
-                Mz(NwF==1) = 0;
-                % First original pnt
-                ox = Savedrois.P(1,In) - wy(1) + 1;
-                oy = Savedrois.P(2,In) - wx(1) + 1;
-                % plot(ox, oy, '+r')
-                [Con1, A1, F1] = getCon(Mz, 0, area, PAf, ox, oy, iy, ix);
-                if  ~isempty(Con1) &&  A1 > area(1)
-                    % At this point we have two valid new rois
-                    % First ROI:
-                    Con1.y = Con1.y + wy(1) - 1;
-                    Con1.x = Con1.x + wx(1) - 1;
-                    Savedrois.Con(In) = Con1;
-                    Savedrois.A(In) = A1;
-                    
-                    Mask(Mask == In) = 0; %remove original roi
-                    M(M==In) = 0;         %also from voxel mask
-                    M(F1>0) = In;         %set replaced first (M cut from global Mask)
-
-                    % Second ROI
-                    Cnt = Cnt + 1;
-                    NwCon.y = NwCon.y + wy(1) - 1;
-                    NwCon.x = NwCon.x + wx(1) - 1;
-                    Savedrois.Con(Cnt) = NwCon;
-                    Savedrois.A(Cnt) = NwA;
-                    Savedrois.Rvar(Cnt) = Rvar;
-                    Savedrois.Roundedness(Cnt) = Ro;
-                    Savedrois.P(1:3,Cnt) = pnt(i,:)';
-                    M(NwF>0) = Cnt;
-                    % figure(4), imagesc(M)
-                    Mask(wy,wx) = M;      %add to global mask
-
-                    SCM = SC(wy, wx);
-                    SCM(NwF>0) = NwV(NwF>0); %substitute
-                    SC(wy,wx) = SCM; %update correlation map
-                end
-            end
-        end
+        rejlog(i,:) = [nan, nan, pnt(i,2), pnt(i,1)];
+        
+    end
+    if(isnan(rejlog(i,1)) && isnan(rejlog(i,2)) && isnan(rejlog(i,3)))
+        disp(i)
     end
 end
 Savedrois.Cnt = Cnt;

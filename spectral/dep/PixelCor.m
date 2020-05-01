@@ -41,9 +41,9 @@ global DISPLAY
     Sigpix = sbxt.Data.y(:,Mt(:));
     R = floor(freq);
     
-    Sp = zeros(ceil(size(Sigpix,1)/R), size(Sigpix,2));      
+    Sp = zeros(ceil(size(Sigpix,1)/(R*2)), size(Sigpix,2));      
     for q = 1:size(Sigpix,2)
-        Sp(:,q) = decimate(double(Sigpix(:,q)), R); %signals for all pixels in ROI decimated by freq
+        Sp(:,q) = decimate(double(Sigpix(:,q)), R*2); %signals for all pixels in ROI decimated by freq * 4 => 0.2Hz
     end
 %some index accounting to find the traces associated with the ROI
 %max
@@ -70,11 +70,14 @@ global DISPLAY
     if thr < 0.5
      %smooth with median filter, since with lower cutoff more variable
      %correlations are included leading to noisy contours
-        m = floor((1-thr)*3)* 2 + 1; %let median filter depend on threshold height
+        m = 3;
+        if thr < 0.25
+            m = 5;
+        end
         J = medfilt2(V, [m m]);
     else
         J = V;
-    end
+   end
     
  %get contour
     c = contourc(J,[thr thr]);

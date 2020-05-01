@@ -26,6 +26,8 @@ function getSpectrois(varargin)
 %
 global DISPLAY
 DISPLAY = 0;
+spar = [];
+
 if exist('varargin', 'var') && nargin == 2
     filename = varargin{1};
 
@@ -43,8 +45,6 @@ elseif exist('varargin', 'var') && nargin == 1
 else
     [fn, pn] = uigetfile('*_SPSIG.mat');
     filename = [pn fn];
-
-    spar = Spectroiparm(); %reads roi segmentation parameters from file
 end
 
 %% Load and Process Spectral Images:  load('SPic.mat')
@@ -58,18 +58,16 @@ fprintf('\nloaded\n')
 imgStack = log(SPic(:,:,2:end));
 Sax(1) = []; %first spectral component is the average power over al components
 
-vals = sort(unique(imgStack(:))); % remove -inf values
-if vals(1)==-inf
-    imgStack(imgStack==-inf) = vals(2);
-end
 imgStackT = permute(imgStack,[2 1 3]); % transpose the SPic variable so it's same as BImg
+imgStackT = setminlevel(imgStackT); %replaces -infs and subtracts minimum
+
+if isempty(spar)
+     spar = Spectroiparm(); %reads roi segmentation parameters from file
+end
 
 cutOffHz = spar.cutOffHz;
 Slow = (Sax <= cutOffHz);
-Spect = imgStack(:,:,Slow);
-Spect = permute(Spect, [2 1 3]); %transposes the images,
-Spect = setminlevel(Spect); %set minimum level to zero
-
+Spect = imgStackT(:,:,Slow);
 
 BImg = max(Spect, [], 3);
 
@@ -92,17 +90,19 @@ for i = 1:dim(3)
     Img = Spect(:,:,i); 
     Img(Mask>0) = 0;
     figure(1), hold off, imagesc(Img), colormap gray, hold on   
-    [PP, Mask, SpatialCorr] = roisfromlocalmax(Img, PP, Mask, spar, sbxt, freq, SpatialCorr);   
+    [PP, Mask, SpatialCorr, rlog] = roisfromlocalmax(Img, PP, Mask, spar, sbxt, freq, SpatialCorr);   
 
     str = sprintf('number of ROIs found (%.2fHz): %5d. time elapsed = %.2fminutes\n', Sax(i), PP.Cnt, toc/60);
     fprintf(str)
     
+    figure(1)
     Con = PP.Con;
     for k = 1:PP.Cnt
         plot(Con(k).x, Con(k).y, 'r')
     end
     title(str)
-    pause(0.01)
+    summary(rlog, spar)
+    pause(0.1)
 end
 
 % swap x and y values, otherwise positions are not correct in Displayrois
