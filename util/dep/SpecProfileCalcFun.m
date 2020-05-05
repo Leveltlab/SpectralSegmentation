@@ -1,9 +1,10 @@
-function [specProfiles, peakFreq] = SpecProfileCalcFun(spec, mask, rois, specAx)
+function [specProfiles, peakFreq, peakVal] = SpecProfileCalcFun(spec, mask, rois, specAx)
 % specProfiles = SpecProfileCalcFun(spec, mask, specAx) calculates the 
 %   spectral profiles for all the ROIs in the mask.
 % [specProfiles, peakFreq] = SpecProfileCalcFun(spec, mask, specAx) also
 %   returns the frequency which has the highest spectral power values for
-%   each ROI in peakFreq
+%   each ROI in peakFreq, the spectral power is smoothed for that
+%   calculation.
 % 
 % This function can be executed via SpecProfileCalcRun.m
 % 
@@ -23,7 +24,7 @@ function [specProfiles, peakFreq] = SpecProfileCalcFun(spec, mask, rois, specAx)
 % 
 % 
 % Leander de Kraker
-% 2020-1-21
+% 2020-1-21, edited 2020-5-5
 % 
 
 % Does the spec need transposing (permuting)?
@@ -55,8 +56,7 @@ for i = 1:nRois
     specProfiles(:,i) = mean(specProfilei);
 end
 
-% Calculate which frequency had the highest spectral power values
-[~, peakFreqidx] = max(specProfiles);
+% Calculate which frequency had the highest spectral power values, smoothed
+[peakVal, peakFreqidx] = max(smoothG(specProfiles,2));
 peakFreq = specAx(peakFreqidx);
-
 

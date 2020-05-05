@@ -117,7 +117,7 @@ for i = 1:PP.Cnt
 end
 
 % Retrieve the average spectral profile of the ROI
-[PP.SpecProfile, PP.peakFreq] = SpecProfileCalcFun(imgStackT, Mask, 1:PP.Cnt, Sax);
+[PP.SpecProfile, PP.peakFreq, PP.peakVal] = SpecProfileCalcFun(imgStackT, Mask, 1:PP.Cnt, Sax);
 
 % Save
 save(filename, 'PP', 'Mask', 'BImg', 'spar', 'SpatialCorr', '-append')

@@ -166,8 +166,8 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     Sax = Sax(2:end);
     imgStackT = permute(SPic(:,:,2:end),[2 1 3]);
     % If the spectral profiles are not yet there, calculate them
-    if ~isfield(PP,'SpecProfile')
-        [PP.SpecProfile, PP.peakFreq] = SpecProfileCalcFun(log(imgStackT), Mask, 1:PP.Cnt, Sax);
+    if ~isfield(PP,'SpecProfile') ||  isfield(PP, 'peakVal') || isfield(PP, 'peakFreq')
+        [PP.SpecProfile, PP.peakFreq, PP.peakVal] = SpecProfileCalcFun(log(imgStackT), Mask, 1:PP.Cnt, Sax);
         fprintf('PP.SpecProfile was not present, calculated it now\n')
     end
     % If the creation method for the ROIs doesn't exist yet, initialize
@@ -251,9 +251,10 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     h.maxSizeSlider.Max = switches.maxSize;
     h.maxSizeSlider.Value = switches.maxSize;
     h.maxSizeTitle.String = {sprintf('Maximum size: %4.0f px', switches.maxSize)};
-    
-    h.thresSlider.Max = max(mean(PP.SpecProfile))+0.05;
-    h.thresSlider.Min = min(mean(PP.SpecProfile))-0.05;
+        
+    % Values for the threshold slider
+    h.thresSlider.Min = min(PP.peakVal)-0.05;
+    h.thresSlider.Max = max(PP.peakVal)+0.05;
     h.thresSlider.Value = h.thresSlider.Min;
     
     sliderNames = {'minSize', 'maxSize', 'threshold' 'innerCorr', 'roundedness'};
@@ -278,7 +279,7 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     data.xas = (1:dim(1))./freq;
     data.dim = dim;
     data.freq = freq;
-    data.imgStackT = imgStackT; % transpose spectral
+    data.imgStackT = imgStackT; % transpose spectral 
     data.Sax = Sax;
     % BImg = the main background image. get only lowest 5th of frequencies
     data.BImg = squeeze(max(log(SPic),[],3))'; % Get the max (results in neurons popping out most)
@@ -731,17 +732,17 @@ end
 
 % --- Executes on slider movement.
 function thresSlider_Callback(hObject, ~, h) %#ok<DEFNU>
-    % changes how many ROIs are rejected based on maximum spectral power
+    % changes which ROIs are rejected based on maximum smoothed spectral power
     threshold = hObject.Value;
     h.thresTitle.String = sprintf('Threshold: %.2f',threshold);
     
     switches = getappdata(h.hGUI, 'switches');
     idx = getappdata(h.hGUI, 'idx');
     data = getappdata(h.hGUI, 'data');
-    PP = data.PP;
     switches.sliderSettings.threshold = hObject.Value;
     
-    idx.Thres = (mean(PP.SpecProfile) < threshold);
+    idx.Thres = (mean(data.PP.SpecProfile) < threshold);
+%     idx.Thres = (data.PP.peakVal < threshold);
     
     setappdata(h.hGUI, 'switches', switches)
     setappdata(h.hGUI, 'idx', idx) % save new indexes
@@ -849,6 +850,7 @@ function deleteButton_Callback(~, ~, h) %#ok<DEFNU>
         PP.P(:,idxDel) = [];
         PP.SpecProfile(:,idxDel) = [];
         PP.peakFreq(idxDel) = [];
+        PP.peakVal(idxDel)  = [];
         PP.Roundedness(idxDel) = [];
         PP.Rvar(idxDel) = [];
         PP.creationMethod(idxDel) = [];
@@ -1137,9 +1139,10 @@ function applyNewRoi_Callback(~, ~, h) %#ok<DEFNU>
         data.PP.Cnt = data.PP.Cnt + 1;
         
         % Update the spectral profiles and peak frequency
-        [specProfile, peakFreq] = SpecProfileCalcFun(log(data.imgStackT), data.Mask, 1, data.Sax);
+        [specProfile, peakFreq, peakVal] = SpecProfileCalcFun(log(data.imgStackT), data.Mask, 1, data.Sax);
         data.PP.SpecProfile = [specProfile, data.PP.SpecProfile];
         data.PP.peakFreq = [peakFreq, data.PP.peakFreq];
+        data.PP.peakVal  = [peakVal,  data.PP.peakVal];
         
         switches.creationAllow = false;
         
@@ -1332,9 +1335,10 @@ function applyManRoi_Callback(~, ~, h) %#ok<DEFNU>
         data.PP.Roundedness = [roundedness, data.PP.Roundedness];
         
         % Update the spectral profiles and peak frequency
-        [specProfile, peakFreq] = SpecProfileCalcFun(log(data.imgStackT), data.Mask, 1, data.Sax);
+        [specProfile, peakFreq, peakVal] = SpecProfileCalcFun(log(data.imgStackT), data.Mask, 1, data.Sax);
         data.PP.SpecProfile = [specProfile, data.PP.SpecProfile];
         data.PP.peakFreq = [peakFreq, data.PP.peakFreq];
+        data.PP.peakVal  = [peakVal,  data.PP.peakVal];
         
         % Update the SpatialCorr and Rvar
         sbxt = getappdata(h.hGUI, 'sbxt');
@@ -1581,6 +1585,7 @@ function applyClustering_Callback(~, ~, h) %#ok
         PP.P(:,roi) = [];
         PP.SpecProfile(:,roi) = [];
         PP.peakFreq(roi) = [];
+        PP.peakVal(roi) = [];
         PP.creationMethod(roi) = [];
         PP.Rvar(roi) = [];
         PP.Roundedness(roi) = [];
@@ -1614,9 +1619,10 @@ function applyClustering_Callback(~, ~, h) %#ok
             PP.creationMethod = [{'splitted'}; PP.creationMethod];
             
             % Calculate spectral profiles
-            [specProfile, peakFreq] = SpecProfileCalcFun(log(data.imgStackT), Mask, i, data.Sax);
+            [specProfile, peakFreq, peakVal] = SpecProfileCalcFun(log(data.imgStackT), Mask, i, data.Sax);
             PP.SpecProfile = [specProfile, PP.SpecProfile];
             PP.peakFreq = [peakFreq, PP.peakFreq];
+            PP.peakVal  = [peakVal,  PP.peakVal];
         end
 
         % Update the rejection lists
