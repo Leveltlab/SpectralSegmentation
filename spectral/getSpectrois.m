@@ -27,24 +27,33 @@ function getSpectrois(varargin)
 global DISPLAY
 DISPLAY = 0;
 spar = [];
+runSparArm = false;
 
 if exist('varargin', 'var') && nargin == 2
     filename = varargin{1};
 
     spar = varargin{2};
-    flds = fieldnames(spar);
-    aflds = { 'cutOffHz', 'border', 'areasz', 'roundedness', 'voxel', 'cutoffcorr'};
-    if sum(ismember(aflds, flds)) < 6
-        disp('Error; number of input values is not valid; please run : spar = Spectroiparm()')
-        return;
+    flds = fieldnames(spar);    
+    if ismember(flds, 'cutOffHz') % Update the cutOffHz field
+        spar.cutOffHzMax = spar.cutOffHz;
+        spar.cutOffHzMin = 0;
+    end
+    
+    aflds = {'cutOffHzMax', 'cutOffHzMin', 'border', 'areasz', 'roundedness', 'voxel', 'cutoffcorr'};
+    if sum(ismember(aflds, flds)) < 7
+        disp('Error; number of input values is not valid; please run : SpectParArm(imgStackT, Sax)')
+        runSparArm = true;
+        return
     end
 
 elseif exist('varargin', 'var') && nargin == 1
     filename = varargin{1};
+    runSparArm = true;
 
 else
     [fn, pn] = uigetfile('*_SPSIG.mat');
     filename = [pn fn];
+    runSparArm = true;
 end
 
 %% Load and Process Spectral Images:  load('SPic.mat')
@@ -61,19 +70,19 @@ Sax(1) = []; %first spectral component is the average power over al components
 imgStackT = permute(imgStack,[2 1 3]); % transpose the SPic variable so it's same as BImg
 imgStackT = setminlevel(imgStackT); %replaces -infs and subtracts minimum
 
-if isempty(spar)
-     spar = Spectroiparm(); %reads roi segmentation parameters from file
+if runSparArm
+%      spar = Spectroiparm(); %reads roi segmentation parameters from file
+     SpectParArm(imgStackT, Sax); % arm the spectral parameters (spar variable)
 end
 
-cutOffHz = spar.cutOffHz;
-Slow = (Sax <= cutOffHz);
-Spect = imgStackT(:,:,Slow);
+selectedFreq = (Sax >= spar.cutOffHzMin) & (Sax <= spar.cutOffHzMax);
+Spect = imgStackT(:,:,selectedFreq);
 
 BImg = max(Spect, [], 3);
 
 figure('units','normalized','position',[0.51 0.1 0.25 0.4]);
 imagesc(BImg), caxis(prctile(BImg(:), [0.01 99.9])), hold on
-title(sprintf('spectral components max projection <%.1fHz', cutOffHz))
+title(sprintf('spectral components max projection <%.1fHz', spar.cutOffHzMax))
 
 %% ROI selection based on cross spectral density
 % find ROIs with higest local maxima in low frequency component images
@@ -120,6 +129,7 @@ end
 [PP.SpecProfile, PP.peakFreq, PP.peakVal] = SpecProfileCalcFun(imgStackT, Mask, 1:PP.Cnt, Sax);
 
 % Save
-save(filename, 'PP', 'Mask', 'BImg', 'spar', 'SpatialCorr', '-append')
+specUsed = Spect;
+save(filename, 'PP', 'Mask', 'BImg', 'spar', 'SpatialCorr', 'specUsed', '-append')
 fprintf('saved.\n')
 
