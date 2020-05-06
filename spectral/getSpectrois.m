@@ -72,7 +72,8 @@ imgStackT = setminlevel(imgStackT); %replaces -infs and subtracts minimum
 
 if runSparArm
 %      spar = Spectroiparm(); %reads roi segmentation parameters from file
-     SpectParArm(imgStackT, Sax); % arm the spectral parameters (spar variable)
+	h = SpectParArm(imgStackT, Sax); % arm the spectral parameters (spar variable)
+    waitfor(h)
 end
 
 selectedFreq = (Sax >= spar.cutOffHzMin) & (Sax <= spar.cutOffHzMax);

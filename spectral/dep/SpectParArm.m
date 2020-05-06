@@ -68,9 +68,9 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
     % handles    structure with handles and user data (see GUIDATA)
     % varargin   command line arguments to SpectParArm (see VARARGIN)
     
-    
+    % Process the input
     if nargin <= 3
-        warning('seriously give more input plz')
+        warning('Give more input plz: SpectParArm(imgStackT, Sax)')
         return
     elseif nargin > 3
         specImg = varargin{1};
@@ -105,17 +105,22 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
         if isfield(spar, 'voxel')
             h.sparVoxelBox.String = num2str(spar.voxel);
         end
-        if isfield(spar, 'cutOffHz')
+        if isfield(spar, 'cutOffHz') % if cutOffHz exists there is no cutOffHzMax- & Min
             h.sparCutOffHzMaxBox.String = num2str(spar.cutOffHz);
+            h.sparCutOffHzMaxBox.String = '0';
+        elseif isfield(spar, 'cutOffHzMax')
+            h.sparCutOffHzMaxBox.String = num2str(spar.cutOffHzMax);
+        end
+        if isfield(spar, 'cutOffHzMin')
+            h.sparCutOffHzMinBox.String = num2str(spar.cutOffHzMin);
         end
         if isfield(spar, 'cutoffcorr')
             h.sparCutOffCorrBox.String = num2str(spar.cutoffcorr);
         end
     end
     
-%     % Allow the usual toolbars
+    % Allow the usual toolbars (amount of options edited in the guide fig)
     set(h.hGUI,'toolbar','figure');
-    set(h.hGUI,'menubar','figure');
     
     % Change colorbar for 1st axes
     h.colorbarAxes1.YAxisLocation = 'right';
@@ -191,7 +196,6 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
     % Plot the circles for the minimum and maximum size examples
     guidata(h.hGUI, h)
     h.areaSzPatch = plot(nan, nan, 'Parent', h.axes1);
-%     h.areaSzMinLine = plot(nan, nan, 'Parent', h.axes1);
     h.areaSzText = text(dims(2)/20, dims(1)-dims(1)/20,...
                             'Allowed ROI size range:', 'Color', [1 1 1],...
                             'HorizontalAlignment', 'left');
@@ -270,10 +274,6 @@ function PlotAreaSzLine(spar, dims, h)
     delete(h.areaSzPatch)
 	h.areaSzPatch = patch([x x2],[y y2], 'w', 'faceAlpha', 0.6, 'Parent', h.axes1);
 %     fprintf('area of circle = %.3f\n', polyarea(x2,y2))
-
-
-%     delete(h.areaSzMinLine)
-%     h.areaSzMinLine = plot(x,y, 'w', 'linewidth', 2, 'Parent', h.axes1);
     guidata(h.hGUI, h)
 end
 
@@ -400,7 +400,7 @@ end
 function sparVoxelBox_Callback(hObject, ~, h)
     % Update the spar when the voxel value gets edited
     spar = getappdata(h.hGUI, 'spar');
-    spar.voxel = str2double(hObject.Value);
+    spar.voxel = str2double(hObject.String);
     setappdata(h.hGUI, 'spar', spar)
 end
 
