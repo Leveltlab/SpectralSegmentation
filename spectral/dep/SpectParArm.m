@@ -107,7 +107,7 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
         end
         if isfield(spar, 'cutOffHz') % if cutOffHz exists there is no cutOffHzMax- & Min
             h.sparCutOffHzMaxBox.String = num2str(spar.cutOffHz);
-            h.sparCutOffHzMaxBox.String = '0';
+            h.sparCutOffHzMinBox.String = '0';
         elseif isfield(spar, 'cutOffHzMax')
             h.sparCutOffHzMaxBox.String = num2str(spar.cutOffHzMax);
         end
@@ -157,8 +157,8 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
     % Fill in the spar struct 
     % (might have different fields then loaded spar)
     spar = struct();
-    spar.cutOffHzMin = 0;
-    spar.cutOffHzMax = 0; % will be retrieved by the callback in a moment
+    spar.cutOffHzMin = str2double(h.sparCutOffHzMinBox.String);
+    spar.cutOffHzMax = str2double(h.sparCutOffHzMaxBox.String);
     spar.border = str2double(h.sparBorderBox.String); 
     spar.areasz = [str2double(h.sparAreaMinBox.String), str2double(h.sparAreaMaxBox.String)];
     spar.roundedness = str2double(h.sparRoundednessBox.String);  
@@ -175,7 +175,11 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
     setappdata(h.hGUI, 'data', data)
     
     % Plot the spectral image with the cutoffHz selection
-    sparCutOffHzMaxBox_Callback(h.sparCutOffHzMaxBox, 0, h)
+    % Find which frequencies are now selected
+    selectedHz = (sax < spar.cutOffHzMax) & (sax > spar.cutOffHzMin);
+    selectedSax = sax(selectedHz);
+	PlotCutOffHz(data, selectedHz, selectedSax, h)
+    
     h = guidata(h.hGUI); % Update the handles, was edited by slider callback
     
     % Plot the border for the buffer area    
