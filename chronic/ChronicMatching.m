@@ -71,7 +71,6 @@ fprintf('\nloading in %d files:\n', nfiles)
 for i = 1:nfiles
     fprintf('\nloading file %d...',i)
     data(i) = load([filepaths{i} filenames{i}], 'SPic', 'Sax', 'freq', 'Mask', 'PP', 'BImg');
-%     data(i) = load([filepaths{i} filenames{i}], 'SPic', 'Sax', 'freq', 'Mask', 'PP', 'BImg', 'BImgAverage');
     fprintf('\nloaded "%s"\n', filenames{i})
     
 end
@@ -103,8 +102,7 @@ scalefac = [0.9125, 0.88];
 fprintf('\n\nRECORDINGS ARE GETTING RESIZED!\n\n')
 for i = 1:length(rec)
     outSize = round(scalefac .* [size(data(rec(i)).SPic,1), size(data(rec(i)).SPic,2)]);
-    data(rec(i)).SPic = imresize(data(rec(i)).SPic, 'OutputSize', outSize,'method','nearest');
-%     data(rec(i)).SPic(data(rec(i)).SPic<0) = 0; % interpolation causes values below zero which 
+    data(rec(i)).SPic = imresize(data(rec(i)).SPic, 'OutputSize', outSize,'method','bilinear');
     data(rec(i)).Mask = imresize(data(rec(i)).Mask, 'OutputSize', outSize([2 1]),'method','nearest');
     for j = 1:data(rec(i)).PP.Cnt
         data(rec(i)).PP.Con(j).x = data(rec(i)).PP.Con(j).x .* scalefac(1);
@@ -143,7 +141,7 @@ end
 
 clearvars mini maxi Img idx i vals channel Maskextra
 
-% Plot %
+% PLOTTING 
 % Activate much tighter subplots
 % [subplot margin top&side],[figure bottomspace,topspace],[leftspace,rightspace]
 subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0 0], [0 0]);
@@ -203,9 +201,7 @@ for i = 1:nfiles
 end
 imgs.BImg = BImg;
 imgs.Masks = Masks;
-% How to interpolate each image?
-% Options are: nearest (necessary for mask). bilinear. bicubic. 
-interpol = {'nearest', 'nearest'}; 
+interpol = {'linear', 'nearest'}; % How to interpolate each image?
 ManualRegistration(imgs, PP, filenamesShort, interpol)
 
 %% Register images automatically
@@ -248,8 +244,8 @@ for i = 1:nfiles
     % normalize images
     section = section - mean(section(:));
     
-    % Get x and y offset based on 2D cross corelation
-    correl = xcorr2(BImgRef,section);
+    % Get x and y offset based on 2D fft cross corelation
+    correl = xcorr2_fft(BImgRef,section);
     [ssr,snd] = max(correl(:));
     [ij, ji] = ind2sub(size(correl),snd);
     x(i) = -(size(BImgRef,1) - ij - buf);
@@ -294,29 +290,89 @@ end
 transformed.xoff{end+1} = xoff;
 transformed.yoff{end+1} = yoff;
 
-% Cut empty edges away automatically
+% Cut empty edges away
 BImgMat = cat(3, BImg2{:});
 BImgMat = max(BImgMat,[],3);
-% zeroCols = find(~all(BImgMat'==0));
-% zeroRows = find(~all(BImgMat==0));
-mask = BImgMat ~= 0; % remove the borders that have zeros
-[maskRow, maskCol] = ind2sub(size(mask), find(mask));
-maskRow = min(maskRow):max(maskRow);
-maskCol = min(maskCol):max(maskCol);
-
-if ~all(mask(:)) % Border can be removed
-    for rec = 1:data.nfiles
-        BImg2{rec} = BImg2{rec}(maskRow, maskCol);
-        Masks2{rec} = Masks2{rec}(maskRow, maskCol);    
-        
-        if maskRow(1)>1 % CHECK IF CORRECT ROW VS COLUMN
-            for roi = 1:PP(roi).Cnt
-                PP(rec).Con(roi).x = PP(rec).Con(roi).x - (maskRow(1) - 1);
+zeroCols = find(all(BImgMat'==0));
+zeroRows = find(all(BImgMat==0));
+if ~isempty(zeroCols)
+    % Cut at the end (bottom)
+    if ismember(size(BImgMat,1), zeroCols) % Does the end have columns with only zeros?
+        skipper = find(diff(zeroCols)>1);
+        if ~isempty(skipper)
+            % Black columns at multiple different places in the BImgMat?!
+            if length(skipper)>2
+                warning('contact Leander'); 
+                skipper = skipper(end); 
+            end
+            skipper = skipper + 1;
+        else
+            skipper = 1;
+        end
+        for i = 1:nfiles
+            BImg2{i}(zeroCols(skipper):end,:) = [];
+            Masks2{i}(zeroCols(skipper):end,:) = [];
+        end
+    end
+    % Cut at the beginning (top) (also change PP)
+    if ismember(1, zeroCols)
+        skipper = find(diff(zeroCols)>1);
+        if ~isempty(skipper)
+            % Black columns at multiple different places in the BImgMat?!
+            if length(skipper)>2
+                warning('contact Leander');
+                skipper = skipper(1); % Only delete until the first non-zero row
+            end
+        else
+            skipper = length(zeroCols); 
+        end
+        for i = 1:nfiles
+            BImg2{i}(1:zeroCols(skipper),:) = [];
+            Masks2{i}(1:zeroCols(skipper),:) = [];
+            PP(i).P(1,:) = PP(i).P(1,:) - skipper;
+            for j = 1:PP(i).Cnt
+                PP(i).Con(j).x = PP(i).Con(j).x - skipper;
             end
         end
-        if maskCol(1)>1 % CHECK IF CORRECT ROW VS COLUMN
-            for roi = 1:PP(roi).Cnt
-                PP(rec).Con(roi).y = PP(rec).Con(roi).y - (maskCol(1) - 1);
+    end
+end
+if ~isempty(zeroRows)
+    % Cut at the end (right)
+    if ismember(size(BImgMat,2), zeroRows) % Does the end have rows with only zeros?
+        skipper = find(diff(zeroRows)>1);
+        if ~isempty(skipper)
+            % Black rows at multiple different places in the BImgMat?!
+            if length(skipper)>2
+                warning('contact Leander'); 
+                skipper = skipper(end); 
+            end
+            skipper = skipper + 1;
+        else
+            skipper = 1;
+        end
+        for i = 1:nfiles
+            BImg2{i}(:,zeroRows(skipper):end) = [];
+            Masks2{i}(:,zeroRows(skipper):end) = [];
+        end
+    end
+    % Cut at the beginning (left) (also change PP)
+    if ismember(1, zeroRows)
+        skipper = find(diff(zeroRows)>1);
+        if ~isempty(skipper)
+            % Black columns at multiple different places in the BImgMat?!
+            if length(skipper)>2
+                warning('contact Leander'); 
+                skipper = skipper(1); % Only delete until the first non-zero row
+            end
+        else
+            skipper = length(zeroRows); 
+        end
+        for i = 1:nfiles
+            BImg2{i}(:,1:zeroRows(skipper)) = [];
+            Masks2{i}(:,1:zeroRows(skipper)) = [];
+            PP(i).P(2,:) = PP(i).P(2,:) - skipper;
+            for j = 1:PP(i).Cnt
+                PP(i).Con(j).y = PP(i).Con(j).y - skipper;
             end
         end
     end
@@ -325,7 +381,8 @@ end
 clearvars h w i ij skipper ji Freq correl x y ymax ymin xmin xmax ssr snd extra
 
 
-% Calculate similarity between the images
+
+% Calculate correlation between the images
 corrScore = BImgOverlapScore(BImg2);
 corrScoreMean(:,end+1) = [sum(corrScore)./(nfiles-1)]'; %#ok<NBRAK>
 
@@ -334,8 +391,7 @@ corrScoreMean(:,end+1) = [sum(corrScore)./(nfiles-1)]'; %#ok<NBRAK>
 fprintf('rotating registration...\n')
 
 rotation = -1.5:0.05:1.5; % rotations to apply: counterclockwise to clockwise degrees
-simil  = zeros(nfiles, length(rotation));
-% correl = zeros(nfiles, length(rotation));
+rotCorrel  = zeros(nfiles, length(rotation));
 buf = 10; % buffer image edges because rotation makes part fall off
 
 BImgRef = BImg2{referenceNum}(buf:end-buf,buf:end-buf);
@@ -345,28 +401,27 @@ for i = 1:nfiles
         BImgRot = imrotate(BImg2{i}, rotation(j),'bicubic','crop');
         BImgRot = BImgRot(buf:end-buf, buf:end-buf);
         
-        simil(i,j)= corr2(BImgRot, BImgRef);
+        rotCorrel(i,j)= corr2(BImgRot, BImgRef);
 %         imagesc(permute(CreateRGB({BImgRef, BImgRot},'r g'),[2 1 3]));
-%         subplot(1,1,1)        
-%         imagesc(simmap)
+%         subplot(1,1,1); imagesc(simmap)
 %         title(sprintf('session %d. rotation %d: %.1fdeg. simil=%.3f',...
 %                         i,j,rotation(j),simil(i,j)))
-%         pause(0.1)
+%         pause(0.01)
     end
 end
 toc
 
 % Best rotations
-[rotBest, rotIdx] = max(simil,[],2);
+[rotBest, rotIdx] = max(rotCorrel,[],2);
 rotAng = rotation(rotIdx);
 % difference in similarity between 0 rotation and best rotation
-rotDiff = rotBest - simil(:,rotation==0);
+rotDiff = rotBest - rotCorrel(:,rotation==0);
 
 figure
 % subplot(2,1,1)
 % plot(rotation, simil', '.-')
-for i = 1:size(simil(:,1))
-    plot(rotation, simil(i,:),'.-','color',colors(i,:))
+for i = 1:size(rotCorrel(:,1))
+    plot(rotation, rotCorrel(i,:),'.-','color',colors(i,:))
     hold on
 end
 plot(rotAng,rotBest,'xk')
@@ -621,7 +676,7 @@ end
 % imagesc(matchedMasksm)
 % title(sprintf('linked masks, links=%d, threshold = %.2f',size(linkMat2,1),thres2))
 % 
-clearvars i j r c m vals idx thisLink limits rois own compared otherMasks
+clearvars i j r c m dif vals idx thisLink limits rois own compared otherMasks
 fprintf('\ndone matching ROIs\n')
 %
 % figure
@@ -767,19 +822,16 @@ linkMat2 = linkMat2(sorted,:);
 score = score(sorted);
 nLinks = nLinks(sorted);
 
-
-% %% histograms of % overlap
-% 
+% %% histograms of percentage overlap
 % overlaps = {inRoi{1}{:,2}, inRoi{2}{:,1},inRoi{1}{:,3}, inRoi{2}{:,3}, inRoi{3}{:,1},inRoi{3}{:,2}}';
 % overlaps = cell2mat(overlaps);
 % overlaps = overlaps(:,3);
-% 
 % [b, a] = hist(overlaps, 25);
 % h1 = bar(a,b);
 % h1.FaceColor = [0 0 1];
 % h1.FaceAlpha = 0.8;
 
-clearvars keep idx i j matchedMasks h h1 RGB rois spaces
+clearvars keep idx i j n matchedMasks h h1 RGB rois spaces
 
 %% Chronic viewer checker UI
 ChronicViewer(BImg2, Masks2, filenames, nLinksMask, linkMat2, PP, score, inRoi)
@@ -804,148 +856,7 @@ fprintf('saving\n')
 cd(pathname)
 save(filename, 'nfiles', 'BImg2', 'Masks2', 'PP', 'filenames', 'filepaths', 'transformed',...
     'thres', 'linked2', 'linkMat2', 'score', 'nLinksMask', 'inRoi', 'filedate',...
-    'confusion','confusionMore','nLinks')
+    'confusion','confusionMore', 'nLinks')
 fprintf('saved %s\n', filename)
-
-
-%% Register other images in the files like the spectral BImgs
-% Other images could be present in SPSIG files. This will register
-% requested variables, using the same offsets and rotations as done with
-% the spectral BImgs
-%
-%
-
-whichone = 1;
-
-interImgs = cell(nfiles,1);
-hasImg = zeros(nfiles,1);
-for i = 1:nfiles
-    if exist([filepaths{i} filenames{i}],'file')
-        presentVars = who('-file',[filepaths{i} filenames{i}]);
-        if ismember('BImgA',presentVars) && whichone == 1
-            hasImg(i) = 1;
-            load([filepaths{i} filenames{i}], 'BImgA')
-            tempImg = BImgA;
-            tempImg = (tempImg - min(tempImg(:))) / (max(tempImg(:)-min(tempImg(:))));
-            lims = prctile(tempImg, [1 99.5]);
-            tempImg(tempImg<lims(1)) = lims(1);
-            tempImg(tempImg>lims(2)) = lims(2);
-    %         interImgs{i} = tempImg';
-            interImgs{i} = log1p(tempImg)';
-    %         if size(data(i).SPic,1)~=size(interImgs{i},1) || size(data(i).SPic,2)~=size(interImgs{i},2)
-    %             fprintf('\nSize of BImgA not the same as expected from SPic for rec %d', i)
-    %             size(data(i).SPic)
-    %             size(interImgs{i})
-    %         end
-            clearvars BImgA
-            
-        elseif ismember('BImgMax',presentVars) && whichone == 2
-                hasImg(i) = 1;
-                load([filepaths{i} filenames{i}], 'BImgMax')
-                tempImg = BImgMax;
-                tempImg = (tempImg - min(tempImg(:))) / (max(tempImg(:)-min(tempImg(:))));
-                lims = prctile(tempImg, [1 99.5]);
-                tempImg(tempImg<lims(1)) = lims(1);
-                tempImg(tempImg>lims(2)) = lims(2);
-        %         interImgs{i} = tempImg';
-                interImgs{i} = log1p(tempImg)';
-        %         if size(data(i).SPic,1)~=size(interImgs{i},1) || size(data(i).SPic,2)~=size(interImgs{i},2)
-        %             fprintf('\nSize of BImgA not the same as expected from SPic for rec %d', i)
-        %             size(data(i).SPic)
-        %             size(interImgs{i})
-        %         end
-                clearvars BImgA
-
-        elseif ismember('BImgAverage',presentVars) && whichone == 3
-            hasImg(i) = 1;
-            load([filepaths{i} filenames{i}], 'BImgAverage')
-            tempImg = BImgAverage;
-            tempImg = (tempImg - min(tempImg(:))) / (max(tempImg(:)-min(tempImg(:))));
-            lims = prctile(tempImg, [1 99.5]);
-            tempImg(tempImg<lims(1)) = lims(1);
-            tempImg(tempImg>lims(2)) = lims(2);
-            interImgs{i} = tempImg';
-    %         interImgs{i} = log1p(tempImg)';
-    %         if size(data(i).SPic,1)~=size(interImgs{i},1) || size(data(i).SPic,2)~=size(interImgs{i},2)
-    %             fprintf('\nSize of BImgA not the same as expected from SPic for rec %d', i)
-    %             size(data(i).SPic)
-    %             size(interImgs{i})
-    %         end
-            clearvars BImgAverage
-        else
-            fprintf('No Img found for recording %d\n', i)
-        end
-    else
-        fprintf('file %d not found\n', i)
-    end
-end
-
-for i = 1:nfiles
-    if hasImg(i)>0
-        for j = 1:length(transformed.xoff)
-            interImgsTemp = interImgs;
-            xoff = transformed.xoff{j};
-            yoff = transformed.yoff{j};
-            rotation = transformed.rotation{j};
-            
-            % Apply the translation and rotation
-            interImgs{i} = zeros(max(xoff(:,2)), max(yoff(:,2)));
-            interImgs{i}(xoff(i,1):xoff(i,2), yoff(i,1):yoff(i,2)) = interImgsTemp{i};
-            if rotation(i)>0.03
-                interImgs{i} = imrotate(interImgs{i}, rotation(i),'bilinear','crop');
-            end
-        end
-    end
-end
-
-% Show the registered images
-toplot = find(hasImg>0);
-colors = flipud(cmapL([0 0 1; 0 1 1; 0 1 0; 1 0.7 0; 1 0 0; 0.7 0 1], length(toplot)));
-
-% toplot(1:2:end) = [];
-RGB = CreateRGB2(interImgs(toplot), colors(toplot,:));
-
-resizing = 2;
-RGB = imresize(RGB, 2);
-
-RGB = permute(RGB, [2,1,3]);
-figure; subplot(1,1,1)
-imagesc(RGB);
-title('registered background rotation corrected')
-for i = toplot'
-    text(20, (20+i*17)*resizing, datestr(filedate(i)),'color',colors(i,:),...
-        'fontweight','bold','fontsize',12)
-end
-
-
-%% Match red cells
-% The Res file should have a field 'red' in 'info.rois'
-%
-%
-
-interROIs = cell(1,nfiles); % Interesting ROIs/ stained interneuron ROIs
-hasID = false(1,nfiles);
-for i = 1:nfiles
-    load([filepaths{i} filenames{i}(1:end-4), '_Res.mat'],'info')
-    if isfield(info.rois, 'red')
-        hasID(i) = true;
-        interROIs{i} = find([info.rois(:).red]);
-    else
-        fprintf('No interest ROIs for recording %d\n', i)
-    end
-end
-hasID = find(hasID); % So which recordings had redROIs identified
-
-linkMatinterROI = false(size(linkMat2));
-for i = 1:length(hasID)
-    reci = hasID(i);
-    linkMatinterROI(:,reci) = ismember(linkMat2(:,reci),interROIs{reci});
-end
-confidence = sum(linkMatinterROI,2)./nLinks;
-idx = find(confidence);
-values = confidence(idx);
-
-
-ChronicViewer(BImg2, Masks2, filenames, nLinksMask, linkMat2, PP, [score confidence], inRoi)
 
 
