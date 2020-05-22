@@ -6,9 +6,9 @@ function [BImgMax, BImgAverage] = BackgroundImgSbx(varargin)
 % Optional input: 1. sbx file name (string) (with foldername if necissary)
 %                 2. spsig file name to save the images to
 %
+% In case no input is given the file names will be requested.
 % In case only one input is given (the sbx filename), the spectral file is
 % assumed to be present in the same folder with the usual naming scheme.
-% In case no input is given the file names will be requested.
 % 
 % The background images are created by taking a requested amount of chunks
 % from the data, each chunk evenly spaced in time from the next chunk. 
@@ -196,24 +196,24 @@ fprintf('done calculating :)\n')
 
 %% check how the spectral looks
 
-load(spsigName, 'Sax', 'SPic')
+load(spsigName, 'Sax', 'SPic', 'PP')
 
-if exist('SPic','var') && exist('Sax', 'var')
+if exist('SPic','var') && exist('Sax', 'var') 
 
-    imgStack = log(SPic(:,:,2:end));
-    Sax(1) = []; %first spectral component is the average power over al components
+    imgStack = SPic(:,:,2:18);
+    Sax = Sax(2:18); %first spectral component is the average power over al components
 
     vals = sort(unique(imgStack(:))); % remove -inf values
     if vals(1)==-inf
         imgStack(imgStack==-inf) = vals(2);
     end
-    imgStack = permute(imgStack,[2 1 3]); % transpose the SPic variable so it's same as BImg
+    imgStack = log1p(permute(imgStack,[2 1 3])); % transpose the SPic variable so it's same as BImg
 
     nSpec = size(imgStack,3);
 
     % A spectral image for all the different frequencies
     colors = flip(jet(nSpec));
-    norma = false; % normalize each frequency?
+    norma = true; % normalize each frequency?
     figure('units','normalized','position',[0.52 0.5 0.25 0.4]);
     subplot(1,1,1)
     SPicTCell = squeeze(num2cell(imgStack, [1 2]));
@@ -223,6 +223,14 @@ if exist('SPic','var') && exist('Sax', 'var')
     title('The intensity of the spectral density at all different frequencies')
     % Set the correct colorbar for this image
     colormap(colors)
+    
+    if exist('PP', 'var')
+        hold on
+        for i = 1:PP.Cnt
+            plot(PP.Con(i).x, PP.Con(i).y, 'r')
+        end
+    end
+    
     h = colorbar;
     hTicks = linspace(Sax(1),Sax(end),length(h.Ticks));
     h.Ticks = h.Ticks; % prevent ticks from changing

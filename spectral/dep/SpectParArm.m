@@ -37,7 +37,7 @@ function varargout = SpectParArm(varargin)
 
 % Edit the above text to modify the response to help SpectParArm
 
-% Last Modified by GUIDE v2.5 04-May-2020 22:05:33
+% Last Modified by GUIDE v2.5 09-May-2020 13:30:29
 
 % Begin initialization code - DO NOT EDIT
     gui_Singleton = 1;
@@ -215,7 +215,7 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
     guidata(hObject, h);
 
     % UIWAIT makes SpectParArm wait for user response (see UIRESUME)
-    % uiwait(handles.hGUI);
+    uiwait(h.hGUI);
 end
 
 
@@ -225,9 +225,13 @@ function varargout = SpectParArm_OutputFcn(hObject, eventdata, h)
     % hObject    handle to figure
     % eventdata  reserved - to be defined in a future version of MATLAB
     % h    structure with handles and user data (see GUIDATA)
-
+    
     % Get default command line output from handles structure
-    varargout{1} = h.output;
+    varargout{1} = getappdata(h.hGUI, 'spar');
+%     uiresume(hObject)
+    % figure gets deleted after the output function, which comes after the
+    % close function because of uiwait
+    delete(h.hGUI)
 end
 
 
@@ -242,6 +246,16 @@ function box_CreateFcn(hObject, eventdata, h) %#ok<*DEFNU>
     %       See ISPC and COMPUTER.
     if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
         set(hObject,'BackgroundColor','white');
+    end
+end
+
+% ---- Executes when pressing close
+function hGUI_CloseRequestFcn(hObject, ~, h)
+    if isequal(get(hObject, 'waitstatus'), 'waiting')
+        % The GUI is still in UIWAIT, use UIRESUME
+        uiresume(h.hGUI)
+%     else
+%         delete(h.hGUI)
     end
 end
 
@@ -492,13 +506,14 @@ end
 function acceptButton_Callback(hObject, ~, h)
     % Saves the spar and exits the UI
     
-    spar = getappdata(h.hGUI, 'spar');
-    assignin('base', 'spar', spar);
+%     assignin('base', 'spar', spar);
     
     % Saving the spar into the current folder
+    spar = getappdata(h.hGUI, 'spar');
     save('spar.mat', 'spar')
     fprintf('saved the spar into current folder and workspace\n')
     
     % exit
+    uiresume(h.hGUI)
     closereq();
 end

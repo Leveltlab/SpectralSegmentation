@@ -3,8 +3,7 @@ function [specProfiles, peakFreq, peakVal] = SpecProfileCalcFun(spec, mask, rois
 %   spectral profiles for all the ROIs in the mask.
 % [specProfiles, peakFreq] = SpecProfileCalcFun(spec, mask, specAx) also
 %   returns the frequency which has the highest spectral power values for
-%   each ROI in peakFreq, the spectral power is smoothed for that
-%   calculation.
+%   each ROI in peakFreq
 % 
 % This function can be executed via SpecProfileCalcRun.m
 % 
@@ -24,8 +23,10 @@ function [specProfiles, peakFreq, peakVal] = SpecProfileCalcFun(spec, mask, rois
 % 
 % 
 % Leander de Kraker
-% 2020-1-21, edited 2020-5-5
-% 
+% 2020-1-21
+% Adapted , added smoothing
+% Chris van der togt
+% 2020-4-30
 
 % Does the spec need transposing (permuting)?
 if size(spec, 1) ~= size(mask, 1)
@@ -45,18 +46,25 @@ if length(specAx) ~= nSpec
     warning('difference between spectral frequency axis and spec 3rd dimension!')
 end
 
-mask3D = repmat(mask, [1 1 nSpec]);
+% mask3D = repmat(mask, [1 1 nSpec]);
 
+SP = reshape(spec, [], nSpec);
 % Retrieve the spectral profiles
 specProfiles = zeros(nSpec, nRois);
 for i = 1:nRois
-    roii = mask == rois(i); 
-    npixels = sum(roii(:));
-    specProfilei = reshape(spec(mask3D==rois(i)), [npixels, nSpec]);
-    specProfiles(:,i) = mean(specProfilei);
+%     roii = mask == rois(i); 
+%     npixels = sum(roii(:));
+%     specProfilei = reshape(spec(mask3D==rois(i)), [npixels, nSpec]);
+%     specProfiles(:,i) = mean(specProfilei);
+    
+    roii = mask == rois(i);
+    roii = roii(:);
+    spfl = SP(roii, :);
+    specProfiles(:,i) = mean(spfl);  
 end
 
-% Calculate which frequency had the highest spectral power values, smoothed
+% Calculate which frequency had the highest spectral power values
 [peakVal, peakFreqidx] = max(smoothG(specProfiles,2));
 peakFreq = specAx(peakFreqidx);
+
 

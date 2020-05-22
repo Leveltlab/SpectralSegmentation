@@ -1,6 +1,6 @@
 function [RGB] = CreateRGB2(data, colors, varargin)
 % Create RGB 2
-%
+% RGB = CreateRGB2(data, colors, normalization, whitebalance)
 % input:
 %   - data: 1D cell array with 2D matrixes
 %   - colors: In which color values that correspond to the data matrixes.

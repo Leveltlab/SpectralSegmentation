@@ -1,10 +1,11 @@
 % This script runs SpecProfileCalcFun.m to calculate the PP.SpecProfile 
-% and PP.peakFreq variable
+% and PP.peakFreq and PP.peakVal variable
 % 
 % PP.SpecProfile: 2D double [ROIs x frequency]: average spectral power
 %               values of each ROI for each spectral frequency/ component
-% PP.peakFreq: 1D vecor [ROIs]: which frequency has the highest power 
-% 
+% PP.peakFreq: 1D vector [ROIs]: which frequency has the highest power 
+% PP.peakVal : 1D vector [ROIs]: what's the highest spectral value after
+%                                smoothing 
 %
 % Leander de Kraker
 % 2020-1-21
@@ -40,7 +41,7 @@ end
 
 % Get the Specprofile & peak frequency
 tic
-[PP.SpecProfile, PP.peakFreq] = SpecProfileCalcFun(spec, Mask, 1, Sax);
+[PP.SpecProfile, PP.peakFreq, PP.peakVal] = SpecProfileCalcFun(spec, Mask, Sax);
 fprintf('done (%.1f seconds)\n',  toc)
 
 
