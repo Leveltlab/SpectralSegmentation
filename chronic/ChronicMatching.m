@@ -4,7 +4,7 @@
 % Leander de Kraker
 % 
 % 2018-2-2
-% Last edit: 2019-9-12
+% Last edit: 2020-2-24
 
 
 %% Load SPSIG data
@@ -77,7 +77,7 @@ for i = 1:nfiles
 end
 toc
 
-clearvars selecting str pos i questionStr answerStr datestr
+clearvars selecting str pos i questionStr answerStr strdate
 
 %% Backing up data variable
 data2 = data;
@@ -94,9 +94,7 @@ rec = [2,3,4];
 % x1 = 58; % x position of neuron that is shifted in recording that will be resized 
 % x2 = 81;%  x position same cell as other in other recording
 % scalefac(1) = 1 + (x1-x2)/(xc-x2);
-% yc = 151;
-% y1 = 470;
-% y2 = 442;
+% yc = 151; y1 = 470; y2 = 442;
 % scalefac(2) = 1 + (y1-y2)/(yc-y2);
 scalefac = [0.9125, 0.88];
 % scalefac = [1.0075,1.0075];
@@ -130,7 +128,6 @@ for i = 1:nfiles
     %obtain highest contrasted spectral density
     Img = max(real(log(data(i).SPic)),[],3);
 %     Img = data(i).BImgA;
-%     Img = real(log(data(i).SPic(:,:,1))); % Average fluoresence picture
 
     % Normalize and remove -infs
     vals = unique(Img);
@@ -147,7 +144,6 @@ end
 clearvars mini maxi Img idx i vals channel Maskextra
 
 % Plot %
-
 % Activate much tighter subplots
 % [subplot margin top&side],[figure bottomspace,topspace],[leftspace,rightspace]
 subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0 0], [0 0]);
@@ -178,7 +174,7 @@ BImg2 = BImg;
 Masks2 = Masks;
 try
     PP = [data.PP];
-catch 
+catch
     % probably crashing because of dissimilar structs because specprofile field
     % So let's leave those out
     PP = struct('P', [],  'A', [], 'Cnt', [], 'Con', []);
@@ -200,9 +196,20 @@ corrScoreMean = [];
 corrScore = BImgOverlapScore(BImg);
 corrScoreMean(:,end+1) = [sum(corrScore)./(nfiles-1)]'; %#ok<NBRAK>
 
+%% Register images with GUI
+filenamesShort = filenames;
+for i = 1:nfiles
+    filenamesShort{i} = filenamesShort{i}([1:5 10:19]);
+end
+imgs.BImg = BImg;
+imgs.Masks = Masks;
+% How to interpolate each image?
+% Options are: nearest (necessary for mask). bilinear. bicubic. 
+interpol = {'nearest', 'nearest'}; 
+ManualRegistration(imgs, PP, filenamesShort, interpol)
 
-%% Register images
-referenceNum = 3; % which background image to take as reference
+%% Register images automatically
+referenceNum = 5; % which background image to take as reference
 
 if referenceNum>nfiles
     error('Select a lower reference recording number! referenceNum exceeds number of files')
@@ -231,8 +238,8 @@ x = zeros(1, nfiles); % x offset for images
 y = zeros(1, nfiles);
 
 % The base session to register others with
-base = BImg2{referenceNum};
-base = base - mean(base(:));
+BImgRef = BImg2{referenceNum};
+BImgRef = BImgRef - mean(BImgRef(:));
 
 % Do cross correlations with the base image
 for i = 1:nfiles
@@ -242,11 +249,11 @@ for i = 1:nfiles
     section = section - mean(section(:));
     
     % Get x and y offset based on 2D cross corelation
-    correl = xcorr2(base,section);
+    correl = xcorr2(BImgRef,section);
     [ssr,snd] = max(correl(:));
     [ij, ji] = ind2sub(size(correl),snd);
-    x(i) = -(size(base,1) - ij - buf);
-    y(i) = -(size(base,2) - ji - buf);
+    x(i) = -(size(BImgRef,1) - ij - buf);
+    y(i) = -(size(BImgRef,2) - ji - buf);
 end
 
 % Calculate how much bigger the corrected image needs to be
@@ -259,10 +266,6 @@ if ymin>0, ymin=1; end
 % Calculate the offset of each image (final offset)
 xoff = zeros(nfiles, 2);
 yoff = zeros(nfiles, 2);
-% xoff(1, 1) = abs(xmin)+1;
-% xoff(1, 2) = dims(1, 1)+xoff(1,1)-1;
-% yoff(1, 1) = abs(ymin)+1;
-% yoff(1, 2) = dims(1, 2)+yoff(1,1)-1;
 for i = 1:nfiles
     xoff(i, 1) = x(i) + abs(xmin)+1;
     xoff(i, 2) = xoff(i, 1) + dims(i, 1)-1;
@@ -285,13 +288,42 @@ for i = 1:nfiles
     PP(i).P(2,:) = PP(i).P(2,:) + yoff(i,1)-1;
     
     fprintf('rec %d shift:%3d px horizontal,%3d px vertical\n',...
-        i, xoff(i,1)-1, yoff(i,1)-1)
+            i, xoff(i,1)-1, yoff(i,1)-1)
 end
 
 transformed.xoff{end+1} = xoff;
 transformed.yoff{end+1} = yoff;
 
-clearvars h w i ij ji Freq correl x y ymax ymin xmin xmax ssr snd extra
+% Cut empty edges away automatically
+BImgMat = cat(3, BImg2{:});
+BImgMat = max(BImgMat,[],3);
+% zeroCols = find(~all(BImgMat'==0));
+% zeroRows = find(~all(BImgMat==0));
+mask = BImgMat ~= 0; % remove the borders that have zeros
+[maskRow, maskCol] = ind2sub(size(mask), find(mask));
+maskRow = min(maskRow):max(maskRow);
+maskCol = min(maskCol):max(maskCol);
+
+if ~all(mask(:)) % Border can be removed
+    for rec = 1:data.nfiles
+        BImg2{rec} = BImg2{rec}(maskRow, maskCol);
+        Masks2{rec} = Masks2{rec}(maskRow, maskCol);    
+        
+        if maskRow(1)>1 % CHECK IF CORRECT ROW VS COLUMN
+            for roi = 1:PP(roi).Cnt
+                PP(rec).Con(roi).x = PP(rec).Con(roi).x - (maskRow(1) - 1);
+            end
+        end
+        if maskCol(1)>1 % CHECK IF CORRECT ROW VS COLUMN
+            for roi = 1:PP(roi).Cnt
+                PP(rec).Con(roi).y = PP(rec).Con(roi).y - (maskCol(1) - 1);
+            end
+        end
+    end
+end
+
+clearvars h w i ij skipper ji Freq correl x y ymax ymin xmin xmax ssr snd extra
+
 
 % Calculate similarity between the images
 corrScore = BImgOverlapScore(BImg2);
@@ -301,7 +333,7 @@ corrScoreMean(:,end+1) = [sum(corrScore)./(nfiles-1)]'; %#ok<NBRAK>
 % Automatic Rotation registration %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 fprintf('rotating registration...\n')
 
-rotation = -1.75:0.05:1.75; % rotations to apply: counterclockwise to clockwise degrees
+rotation = -1.5:0.05:1.5; % rotations to apply: counterclockwise to clockwise degrees
 simil  = zeros(nfiles, length(rotation));
 % correl = zeros(nfiles, length(rotation));
 buf = 10; % buffer image edges because rotation makes part fall off
@@ -349,8 +381,6 @@ legend(datestr(filedate,'yyyy-mm-dd'))
 thres = 0.0005;
 rotAng(rotDiff<thres) = 0;
 rotAng(abs(rotAng)<0.03) = 0;
-dims = size(BImg2{1});
-shift = dims./2; % Amount to shift contour coordinates
 
 for i = find(abs(rotAng)>0.03) % If rotation angle < 0.03, don't rotate
     
@@ -361,25 +391,7 @@ for i = find(abs(rotAng)>0.03) % If rotation angle < 0.03, don't rotate
     Masks2{i} = imrotate(Masks2{i},rotAng(i),'nearest','crop');
     
     % Rotate contours coordinates
-    rotRad = deg2rad(rotAng(i));
-    for j = 1:PP(i).Cnt
-        % shift the coordinate points so the centre coordinate is 0
-        x = PP(i).Con(j).x - shift(1); % Adjust the contour coordinates
-        y = PP(i).Con(j).y - shift(2);
-        % Rotate the shifted coordinates (around the new centre [0, 0])
-        x =  x  * cos(rotRad) - y  * sin(rotRad);
-        y =  x  * sin(rotRad) + y  * cos(rotRad);
-        % Shift them back where they should be
-        PP(i).Con(j).x = x + shift(1);
-        PP(i).Con(j).y = y + shift(2);
-    end
-    % Also adjust the contour 'centres'
-    xp = PP(i).P(1,:) - shift(1);
-    yp = PP(i).P(2,:) - shift(2);
-    xp = xp * cos(rotRad) - yp * sin(rotRad);
-    yp = xp * sin(rotRad) + yp * cos(rotRad);
-    PP(i).P(1,:) = xp + shift(1);
-    PP(i).P(2,:) = yp + shift(2);
+    PP(i) = RotatePPCoordinates(PP(i), rotAng(i), size(BImg2{1}));
 end
 
 % Show the rotated images
@@ -439,67 +451,6 @@ h.YTickLabel = datestr(filedate, 'yyyy-mm-dd');
 h.XTickLabelRotation = 45;
 title('correlation coefficients')
 
-%% Cut empty edges away from the BImgs and Mask % % % % % % % % % % % % % % 
-%% backup the background images before removing the empty edges
-BImgBackup = BImg2;
-MasksBackup = Masks2;
-PPBackup = PP;
-
-%% Use the backup to revert the background imagesjj
-BImg2 = BImgBackup;
-Masks2 = MasksBackup;
-PP = PPBackup;
-% Determine which minimum size image since recordings are different sizes
-maxdim = [0 0];
-dims = (cellfun(@size, BImg2,'UniformOutput',false));
-dims = cat(1,dims{:});
-maxdim(1) = max(dims(:,1));
-maxdim(2) = max(dims(:,2));
-
-%% Cut empty edges away from the BImgs and Mask % EXPERIMENTAL
-% This code needs to detect the edges in order to not crash.
-BImgMat = cat(3, BImg2{:});
-BImgMat = max(BImgMat,[],3);
-MaskMat = cat(3, Masks2{:});
-MaskMat = mean(MaskMat>0,3);
-
-edges1 = find(diff(all(BImgMat==0))~=0);
-edges2 = find(diff(all(BImgMat'==0))~=0);
-
-figure
-imagesc(CreateRGB({BImgMat,MaskMat},'g br'));
-title('do not "cut the edges" if the lines do not denote the edges of the image')
-hold on
-plot([edges1(1) edges1(1)],[1 dims(1)],'y')
-plot([edges1(2) edges1(2)],[1 dims(1)],'y')
-plot([1 dims(2)], [edges2(1) edges2(1)],'w')
-plot([1 dims(2)], [edges2(2) edges2(2)],'w')
-
-%% cut the edges
-% This code needs to detect the edges in order to not crash.
-for i = 1:nfiles
-    BImg2{i}(edges2(2):end,:) = [];
-    Masks2{i}(edges2(2):end,:) = [];
-    BImg2{i}(:,edges1(2):end) = [];
-    Masks2{i}(:,edges1(2):end) = [];
-    BImg2{i}(1:edges2(1)-1,:) = []; % remove the top and left side
-    Masks2{i}(1:edges2(1)-1,:) = [];
-    BImg2{i}(:,1:edges1(1)-1) = []; % remove the bottom and right side
-    Masks2{i}(:,1:edges1(1)-1) = [];
-    for j = 1:PP(i).Cnt
-        PP(i).Con(j).y = PP(i).Con(j).y - edges1(1);
-        PP(i).Con(j).x = PP(i).Con(j).x - edges2(1);
-    end
-    PP(i).P(2,:) = PP(i).P(2,:) - edges1(1);
-    PP(i).P(2,:) = PP(i).P(3,:) - edges2(1);
-end
-
-% Determine which minimum size image since recordings are different sizes
-maxdim = [0 0];
-dims = (cellfun(@size, BImg2,'UniformOutput',false));
-dims = cat(1,dims{:});
-maxdim(1) = max(dims(:,1));
-maxdim(2) = max(dims(:,2));
 
 %% Checking how ROIs overlap. % % % % % % % %  MATCHING ROIS
 
@@ -670,7 +621,7 @@ end
 % imagesc(matchedMasksm)
 % title(sprintf('linked masks, links=%d, threshold = %.2f',size(linkMat2,1),thres2))
 % 
-clearvars i j r c m idx limits rois own compared otherMasks
+clearvars i j r c m vals idx thisLink limits rois own compared otherMasks
 fprintf('\ndone matching ROIs\n')
 %
 % figure
@@ -816,7 +767,6 @@ linkMat2 = linkMat2(sorted,:);
 score = score(sorted);
 nLinks = nLinks(sorted);
 
-clearvars keep idx i matchedMasks
 
 % %% histograms of % overlap
 % 
@@ -829,6 +779,7 @@ clearvars keep idx i matchedMasks
 % h1.FaceColor = [0 0 1];
 % h1.FaceAlpha = 0.8;
 
+clearvars keep idx i j matchedMasks h h1 RGB rois spaces
 
 %% Chronic viewer checker UI
 ChronicViewer(BImg2, Masks2, filenames, nLinksMask, linkMat2, PP, score, inRoi)
@@ -840,10 +791,7 @@ spaces = regexp(filenames{1}, '_');
 filename = [filenames{1}(1:spaces(1)), filenames{1}(spaces(3)+1:spaces(4)), 'chronic.mat'];
 [filename, pathname, ~] = uiputfile('', 'save the chronic information file', filename);
 
-filenames = filenames;
-filepaths = filepaths;
-
-if exist('scalefac')
+if exist('scalefac', 'var')
     transformed.scaleFac = scalefac;
     transformed.scaleRecs = rec;
 end
@@ -856,28 +804,8 @@ fprintf('saving\n')
 cd(pathname)
 save(filename, 'nfiles', 'BImg2', 'Masks2', 'PP', 'filenames', 'filepaths', 'transformed',...
     'thres', 'linked2', 'linkMat2', 'score', 'nLinksMask', 'inRoi', 'filedate',...
-    'confusion','confusionMore')
+    'confusion','confusionMore','nLinks')
 fprintf('saved %s\n', filename)
-
-
-%% Load chronic info
-
-[filename] = uigetfile('');
-load(filename)
-
-if exist('filedate', 'var')
-    % Convert filedate variable to proper datetime array
-    if iscell(filedate)
-        filedate = [filedate{:}];
-        fprintf('converted filedates from cell array to datetime array\n')
-    end
-else
-    fprintf('o dear no file dates were extracted from the titles\n')
-end
-
-nLinks = sum(linkMat2~=0, 2); % number of roi links in each row
-
-clearvars keep idx i j roij idx rois RGB matchedMasks
 
 
 %% Register other images in the files like the spectral BImgs

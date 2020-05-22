@@ -1,15 +1,15 @@
 function ChronicViewer(BImg2, Masks2, names, nLinksMask, linkMat, contours, score, inRoi)
 % UI for going through chronically analyzed recordings
-%
+% 
 % The masks view only shows masks that are chronically linked to another
 % ROI in at least 1 other recording.
-%
+% 
 % Todo:
 %  http://undocumentedmatlab.com/blog/customizing-listbox-editbox-scrollbars
 %  
 %  recalculate the scores after the cells are edited. 
 %  import the variable inRoi
-% 
+%  
 
 
 nfiles = length(Masks2);
@@ -306,8 +306,9 @@ function UpdateView
                 for x = sShow2(:)' % ROI selection
                     idx = linkMat(rShow, x+1);
                     MasksShow{x}(~ismember(MasksShow{x},idx)) = 0;
+                    MasksShow{x}(MasksShow{x}>0) = 1;
                 end
-                hImg.CData = CreateRGB(MasksShow(sShow2), colors2, 'binary');
+                hImg.CData = CreateRGB2(MasksShow(sShow2), colors2);
             end
             
             % legend Text
@@ -321,7 +322,7 @@ function UpdateView
             
         elseif viewToggle == 3 
             % Number of links image. color based on ROI number of links
-            hImg.CData = CreateRGB(nLinksMask, sShow2, colors2);
+            hImg.CData = CreateRGB2(nLinksMask(sShow2), colors2);
             
             % legend Text
             for x = 1:nfiles
