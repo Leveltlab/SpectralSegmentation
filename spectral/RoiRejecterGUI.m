@@ -130,16 +130,13 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
         
         % Little checks for variable correctness
         if ~isstruct(PP) 
-            warning('\n\nWrong variables are given probably! PP should be struct\n\n')
-            return
+            warning('\n\nWrong variables are given probably! PP should be struct\n\n'); return
         end
         if ~isnumeric(Mask)
-            warning('\n\nWrong variables are given probably! Mask should be numeric\n\n')
-            return
+            warning('\n\nWrong variables are given probably! Mask should be numeric\n\n'); return
         end
         if ~isnumeric(SPic)
-            warning('\n\nWrong variables are given probably! SPic should be numeric\n\n')
-            return
+            warning('\n\nWrong variables are given probably! SPic should be numeric\n\n'); return
         end
     else
         % load data otherwise
@@ -226,8 +223,8 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     switches.maxSize = round(max(PP.A),-1)+10; % set maximum ROI size value above biggest ROI
     switches.originalROIs = PP.A; % The current list of ROI sizes (to check changes before save)
     switches.selSize = h.selSize.Value; % size of data selection
-    switches.selNumMax = h.numSelectSlider.Value; % Number of max data tracers
-    switches.selNumCur = 1; % Current datatrace to draw
+    switches.selNumMax = h.numSelectSlider.Value; % Number of max data traces
+    switches.selNumCur = 1; % Current data trace to draw
     switches.ylims = zeros(2); % the extreme values of selected signal
     switches.splitStarted = false; % Is an ROI being split at the moment?
     switches.splitRoi = 0; % Which ROI is being split at the moment
@@ -235,7 +232,7 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     switches.creationAllow = false; % allow creation of new ROI with current data
     switches.creationPos = [100, 100]; % position where the user wants a new ROI
     switches.creationThres = 80; % threshold for percentile pixelvalue new ROI inclusion
-    switches.chronic = false;
+    switches.chronic = false; % Has a chronic image been calculated already?
     switches.backgrdCLim = [0 1]; % color axis limits of the background image in mainAx
     switches.activeSignalAx = 2;
     
@@ -257,7 +254,7 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     h.thresSlider.Max = max(mean(PP.SpecProfile));
     h.thresSlider.Value = h.thresSlider.Min;
     
-    sliderNames = {'minSize', 'maxSize', 'threshold' 'innerCorr', 'roundedness'};
+    sliderNames = {'minSize', 'maxSize', 'thresholdSpectral' 'thresholdCorr', 'roundedness'};
     sliderDefaults = nan([1, length(sliderNames)]);
     switches.sliderSettings = array2table(sliderDefaults, 'variableNames',sliderNames);
     
@@ -1848,7 +1845,6 @@ function backGrdView(selected, h)
         data = getappdata(h.hGUI, 'data');
         h.mainAx.NextPlot = 'add';
     
-        
         switch selected
             case 1 % Spectral image
                 h.im.CData = data.BImg;

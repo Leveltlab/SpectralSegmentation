@@ -12,7 +12,8 @@ function [cor, roiidx, rvar] = SpatialCorrCalcFun(sbxt, freq, mask, roiNr, origi
 %   roiNr: which ROI to calculate the spatialcorr etc from
 %   originPos: 1D vector [2 x 1] or 2D double [2 x nROIs] which x & y 
 %           coordinates are the 'origin position'
-%   calcRvar (optional): boolean: 0=return rvar, 1=don't calculate rvar
+%   calcRvar (optional): boolean: true = return rvar
+%                                 false = don't calculate rvar (default)
 % 
 % outputs:
 %   cor: 2D double, contains the correlation values, same size as mask
