@@ -2,6 +2,10 @@ function getSpectrois(varargin)
 % 
 % get rois from cross spectral components
 %
+% GUI for setting spar (Spectral search PARameters) will be started except
+% if getSpectrois is called with a spar variable that has all the correct
+%   fields
+%
 % input : SPSIG file : series of spectral images 
 %         spar : parameter structure (optional)
 % output: Mask: an image with the same size as BImg, with numbers that
@@ -25,7 +29,8 @@ function getSpectrois(varargin)
 %
 %
 global DISPLAY
-DISPLAY = 0;
+global spar
+DISPLAY = false;
 spar = [];
 runSparArm = false;
 
@@ -83,7 +88,8 @@ BImg = max(Spect, [], 3);
 
 figure('units','normalized','position',[0.51 0.1 0.25 0.4]);
 imagesc(BImg), caxis(prctile(BImg(:), [0.01 99.9])), hold on
-title(sprintf('spectral components max projection <%.1fHz', spar.cutOffHzMax))
+title(sprintf('spectral components max projection >%.2fHz & <%.2fHz',...
+                spar.cutOffHzMin, spar.cutOffHzMax))
 
 %% ROI selection based on cross spectral density
 % find ROIs with higest local maxima in low frequency component images
@@ -133,4 +139,7 @@ end
 specUsed = Spect;
 save(filename, 'PP', 'Mask', 'BImg', 'spar', 'SpatialCorr', 'specUsed', '-append')
 fprintf('saved.\n')
+
+clearvars -global
+
 

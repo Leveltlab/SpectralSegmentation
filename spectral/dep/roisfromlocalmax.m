@@ -24,7 +24,7 @@ VoxelSz = 60;      % Determines area to find contours
 threshold = 0.80;  % Contour threshold greater than percentile of pixel range
 Significance = 0.90; % Maximum shoud be greater than percentile of pixel range
 PAf = 0.70;        % Minimal ratio perimeter to squared area; roundedness factor (circle = 1.0)
-cutoffcorr = 0.5;  % Cutoff threshold for pixel correlations
+cutOffCorr = 0.5;  % Cutoff threshold for pixel correlations
 
 
 if ~isempty(varargin)
@@ -43,8 +43,8 @@ if ~isempty(varargin)
     if isfield(p, 'voxel')
         VoxelSz = p.voxel;
     end
-    if isfield(p, 'cutoffcorr')
-        cutoffcorr = p.cutoffcorr;
+    if isfield(p, 'cutOffCorr')
+        cutOffCorr = p.cutOffCorr;
     end
 end
 
@@ -128,6 +128,7 @@ for i = 1:Nmp
                         figure(2), imagesc(I), colormap gray, hold on
                         plot(px, py, '+r')
                         plot(Con.x, Con.y, 'r')
+                        title(sprintf('seedpoint x: %d, y: %d', pnt(i,1), pnt(i,2)))
                     end
                     Con.y = Con.y + lyw - 1;
                     Con.x = Con.x + lxw - 1;
@@ -168,7 +169,7 @@ for i = 1:Nmp
 
                         yrange = lyw:hyw;
                         xrange = lxw:hxw;                             
-                        [NwCon, NwA, NwF, NwV, Ro, Rvar] = PixelCor(size(Mask), F, sbxt, py, px, Iy, Ix, yrange, xrange, freq, cutoffcorr);
+                        [NwCon, NwA, NwF, NwV, Ro, Rvar] = PixelCor(size(Mask), F, sbxt, py, px, Iy, Ix, yrange, xrange, freq, cutOffCorr);
                         if ~isempty(NwCon) &&  NwA > area(1) && Ro >= PAf % Exists and area greater than minimum, and roundedness > roundedness factor
                             Con = NwCon;
                             Con.y = Con.y + lyw - 1;
@@ -191,7 +192,7 @@ for i = 1:Nmp
                             
                             rejlog(i,:) = [2 NwA, Ro, Rvar];
                             if DISPLAY == 1
-                                figure(3), title('good!')
+                                figure(3), title(sprintf('good!: rounded %.2f, rvar %.2f,', Ro, Rvar))
                             end
                         elseif NwA > area(1) && Ro < PAf  %not round enough but large area, => increase threshold
                             bval = 0;

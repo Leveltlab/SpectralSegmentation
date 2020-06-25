@@ -84,6 +84,8 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
     end 
     
     global DISPLAY % to activate plotting in roisfromlocalmax.m
+    global spar
+    setappdata(h.hGUI, 'sparBackup', spar) % in case close-cross is pressed, undo changes to spar
     DISPLAY = false; % global variable, which lowercase name is also a function..
 
     
@@ -114,8 +116,8 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
         if isfield(spar, 'cutOffHzMin')
             h.sparCutOffHzMinBox.String = num2str(spar.cutOffHzMin);
         end
-        if isfield(spar, 'cutoffcorr')
-            h.sparCutOffCorrBox.String = num2str(spar.cutoffcorr);
+        if isfield(spar, 'cutOffCorr')
+            h.sparCutOffCorrBox.String = num2str(spar.cutOffCorr);
         end
     end
     
@@ -155,7 +157,7 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
     colormap(colors);
     
     % Fill in the spar struct 
-    % (might have different fields then loaded spar)
+    % (might have different fields then loaded spar, so reconstructing it)
     spar = struct();
     spar.cutOffHzMin = str2double(h.sparCutOffHzMinBox.String);
     spar.cutOffHzMax = str2double(h.sparCutOffHzMaxBox.String);
@@ -163,9 +165,7 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
     spar.areasz = [str2double(h.sparAreaMinBox.String), str2double(h.sparAreaMaxBox.String)];
     spar.roundedness = str2double(h.sparRoundednessBox.String);  
     spar.voxel = str2double(h.sparVoxelBox.String);
-    spar.cutoffcorr = str2double(h.sparCutOffCorrBox.String);
-    % Save the spar for future use in the GUI
-    setappdata(h.hGUI, 'spar', spar)
+    spar.cutOffCorr = str2double(h.sparCutOffCorrBox.String);
     
     % Save the sax and specImg for future use in the GUI
     data.sax = sax;
@@ -214,31 +214,27 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
     % Update handles structure
     guidata(hObject, h);
 
-    % UIWAIT makes SpectParArm wait for user response (see UIRESUME)
-    uiwait(h.hGUI);
+%     % UIWAIT makes SpectParArm wait for user response (see UIRESUME)
+%     uiwait(h.hGUI);
 end
 
 
 % --- Outputs from this function are returned to the command line.
-function varargout = SpectParArm_OutputFcn(hObject, eventdata, h) 
+function varargout = SpectParArm_OutputFcn(hObject, ~, h) 
     % varargout  cell array for returning output args (see VARARGOUT);
     % hObject    handle to figure
     % eventdata  reserved - to be defined in a future version of MATLAB
     % h    structure with handles and user data (see GUIDATA)
-    
+
     % Get default command line output from handles structure
-    varargout{1} = getappdata(h.hGUI, 'spar');
-%     uiresume(hObject)
-    % figure gets deleted after the output function, which comes after the
-    % close function because of uiwait
-    delete(h.hGUI)
+    varargout{1} = h.output;
 end
 
 
 %% graphical object Creation functions
 
 % --- Executes during object creation, after setting all properties.
-function box_CreateFcn(hObject, eventdata, h) %#ok<*DEFNU>
+function box_CreateFcn(hObject, ~, h) %#ok<*DEFNU>
     % hObject    handle to sparBorderBox (see GCBO)
     % eventdata  reserved - to be defined in a future version of MATLAB
     % h    empty - handles not created until after all CreateFcns called
@@ -251,12 +247,11 @@ end
 
 % ---- Executes when pressing close
 function hGUI_CloseRequestFcn(hObject, ~, h)
-    if isequal(get(hObject, 'waitstatus'), 'waiting')
-        % The GUI is still in UIWAIT, use UIRESUME
-        uiresume(h.hGUI)
-%     else
-%         delete(h.hGUI)
-    end
+    
+    % Close is pressed, undo changes to spar
+    global spar
+    spar = getappdata(h.hGUI, 'sparBackup');
+	delete(h.hGUI)
 end
 
 
@@ -344,7 +339,7 @@ function sparBorderBox_Callback(hObject, eventdata, h)
     % hObject    handle to sparBorderBox (see GCBO)
     % eventdata  reserved - to be defined in a future version of MATLAB
     % h    structure with handles and user data (see GUIDATA)
-    spar = getappdata(h.hGUI, 'spar');
+    global spar
     data = getappdata(h.hGUI, 'data');
     
     border = str2double(hObject.String);
@@ -357,7 +352,6 @@ function sparBorderBox_Callback(hObject, eventdata, h)
             
             % Save the border
             spar.border = border;
-            setappdata(h.hGUI, 'spar', spar)
         else
             % Reset the users input
             hObject.String = spar.border;
@@ -369,11 +363,11 @@ end
 
 function sparAreaMinBox_Callback(hObject, ~, h)
     % Set the minimum ROI area value
-    spar = getappdata(h.hGUI, 'spar');
+    global spar
     data = getappdata(h.hGUI, 'data');
     spar.areasz(1) = str2double(hObject.String);
-    setappdata(h.hGUI, 'spar', spar)
     
+    % Plot the new minimum area
     PlotAreaSzLine(spar, data.dims, h)
 	h = guidata(h.hGUI); % Update the handles
 end
@@ -381,10 +375,9 @@ end
 
 function sparAreaMaxBox_Callback(hObject, ~, h)
     % Set the maximum ROI area value
-    spar = getappdata(h.hGUI, 'spar');
+    global spar
     data = getappdata(h.hGUI, 'data');
     spar.areasz(2) = str2double(hObject.String);
-    setappdata(h.hGUI, 'spar', spar)
     
     PlotAreaSzLine(spar, data.dims, h)
 	h = guidata(h.hGUI); % Update the handles
@@ -395,7 +388,7 @@ function sparRoundednessBox_Callback(hObject, ~, h)
     % hObject    handle to sparRoundednessBox (see GCBO)
     % eventdata  reserved - to be defined in a future version of MATLAB
     % h    structure with handles and user data (see GUIDATA)
-    spar = getappdata(h.hGUI, 'spar');
+    global spar
     
     roundedness = str2double(hObject.String);
     
@@ -410,23 +403,20 @@ function sparRoundednessBox_Callback(hObject, ~, h)
         spar.roundedness = roundedness;
         PlotRoundednessLine(spar, h)
         h = guidata(h.hGUI); % Update the handles
-        setappdata(h.hGUI, 'spar', spar)
     end
 end
 
 
 function sparVoxelBox_Callback(hObject, ~, h)
     % Update the spar when the voxel value gets edited
-    spar = getappdata(h.hGUI, 'spar');
+    global spar
     spar.voxel = str2double(hObject.String);
-    setappdata(h.hGUI, 'spar', spar)
 end
-
 
 
 function sparCutOffHzMinBox_Callback(hObject, ~, h)    
     % Sets the minimum spectral frequency to use in ROI search
-    spar = getappdata(h.hGUI, 'spar');
+    global spar
     data = getappdata(h.hGUI, 'data');
     sax = data.sax;
     cutOffHzMin = str2double(hObject.String);
@@ -446,7 +436,6 @@ function sparCutOffHzMinBox_Callback(hObject, ~, h)
             
             % Save the updated spar and handle
             spar.cutOffHzMin = cutOffHzMin;
-            setappdata(h.hGUI, 'spar', spar)
         else
             fprintf('no spectral components selected with this input, aborting change\n')
             hObject.String = num2str(spar.cutOffHzMin);
@@ -457,7 +446,7 @@ end
 
 function sparCutOffHzMaxBox_Callback(hObject, ~, h)
     % Sets the maximum spectral frequency to use in ROI search
-    spar = getappdata(h.hGUI, 'spar');
+    global spar
     data = getappdata(h.hGUI, 'data');
     sax = data.sax;
     cutOffHzMin = spar.cutOffHzMin;
@@ -477,7 +466,6 @@ function sparCutOffHzMaxBox_Callback(hObject, ~, h)
             
             % Save the updated spar and handle
             spar.cutOffHzMax = cutOffHzMax;
-            setappdata(h.hGUI, 'spar', spar)
         else
             fprintf('no spectral components selected with this input, aborting change\n')
             hObject.String = num2str(spar.cutOffHzMax);
@@ -496,24 +484,29 @@ end
 
 function sparCutOffCorrBox_Callback(hObject, ~, h)
     % edits spar when cutoffcorr gets edited
-    spar = getappdata(h.hGUI, 'spar');
-    spar.cutOffCorr = str2double(hObject.Value);
-    setappdata(h.hGUI, 'spar', spar)
+    global spar
+    cutOffCorr = str2double(hObject.String);
+    
+    if cutOffCorr < 0 || cutOffCorr > 1 || isnan(cutOffCorr)
+        hObject.String = num2str(spar.cutOffCorr);
+        fprintf('cutOffCorr value should be be in range of [0 1], aborting change\n')
+        return
+    end
+    
+    spar.cutOffCorr = cutOffCorr;
 end
 
 
 % --- Executes on button press in acceptButton.
 function acceptButton_Callback(hObject, ~, h)
     % Saves the spar and exits the UI
-    
-%     assignin('base', 'spar', spar);
-    
+
     % Saving the spar into the current folder
-    spar = getappdata(h.hGUI, 'spar');
+    global spar
     save('spar.mat', 'spar')
-    fprintf('saved the spar into current folder and workspace\n')
+    fprintf('saved the spar into current folder\n')
     
-    % exit
-    uiresume(h.hGUI)
-    closereq();
+    % and close the GUI
+    closereq()
 end
+
