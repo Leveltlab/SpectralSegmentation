@@ -166,7 +166,7 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     Sax = Sax(2:end);
     imgStackT = permute(SPic(:,:,2:end),[2 1 3]);
     % If the spectral profiles are not yet there, calculate them
-    if ~isfield(PP,'SpecProfile') ||  isfield(PP, 'peakVal') || isfield(PP, 'peakFreq')
+    if ~isfield(PP,'SpecProfile') ||  ~isfield(PP, 'peakVal') || ~isfield(PP, 'peakFreq')
         [PP.SpecProfile, PP.peakFreq, PP.peakVal] = SpecProfileCalcFun(log(imgStackT), Mask, 1:PP.Cnt, Sax);
         fprintf('PP.SpecProfile was not present, calculated it now\n')
     end
@@ -253,8 +253,8 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     h.maxSizeTitle.String = {sprintf('Maximum size: %4.0f px', switches.maxSize)};
         
     % Values for the threshold slider
-    h.thresSlider.Min = min(PP.peakVal)-0.05;
-    h.thresSlider.Max = max(PP.peakVal)+0.05;
+    h.thresSlider.Min = min(mean(PP.SpecProfile))-0.05;
+    h.thresSlider.Max = max(mean(PP.SpecProfile));
     h.thresSlider.Value = h.thresSlider.Min;
     
     sliderNames = {'minSize', 'maxSize', 'threshold' 'innerCorr', 'roundedness'};
@@ -297,18 +297,21 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     data.manRoi = struct('Con',struct('x',[],'y',[]),'mask',[],'A',0); % data of manually created ROI
     
     % legend for Roi Creation axes
-    x = [0.8 0.2]; y = [0 1];
+    x = [nan nan]; y = [nan nan];
     lines = gobjects(1,4);
-    h.createRoiLegend.NextPlot = 'add';
-    h.createRoiLegend.Visible = 'off';
-    lines(1) = plot(x,y,'xk','Parent',h.createRoiLegend);
-    lines(2) = plot(x,y,'g','Parent',h.createRoiLegend);
-    lines(3) = plot(x,y,'r','Parent',h.createRoiLegend);
-    lines(4) = plot(x,y,'xr','Parent',h.createRoiLegend);
-    legend(h.createRoiLegend,...
+    h.createRoiAx2.NextPlot = 'add';
+%     h.createRoiAx2.Visible = 'off';
+    lines(1) = plot(x,y,'xk','Parent',h.createRoiAx2);
+    lines(2) = plot(x,y,'g','Parent',h.createRoiAx2);
+    lines(3) = plot(x,y,'r','Parent',h.createRoiAx2);
+    lines(4) = plot(x,y,'xr','Parent',h.createRoiAx2);
+    legend(h.createRoiAx2,...
         {'clicked point', 'contour above threshold','chosen ROI',...
-        'maximum of new ROI'},'Location','North');
+        'maximum of new ROI'},'Location', 'Northoutside','AutoUpdate','off');
+    h.createRoiAx2.NextPlot = 'replaceChildren';
+    h.createRoiAx2.YTick = [];
     h.createRoiAx2.YDir = 'reverse';
+    set([h.createRoiAx1 h.createRoiAx2], 'XTick', [])
     
     % Start with the ROI rejection turned on.
     h.majorToggle1 = TurnOn(h.majorToggle1);
@@ -611,7 +614,7 @@ end
 
 
 % --- Executes on button press in thresCorToggle.
-function thresToggle_Callback(~, ~, h)
+function thresToggle_Callback(~, ~, h) %#ok<DEFNU>
     % Which of the two threshold rejection criteria to use?
     % MATLAB already turns the value of the clicked button automatically.
     % So this function makes sure one of the two is activated
@@ -626,7 +629,7 @@ end
 
 
 % --- Executes on button press in thresCorToggle.
-function thresCorToggle_Callback(~, ~, h)
+function thresCorToggle_Callback(~, ~, h) %#ok<DEFNU>
     % Which of the two threshold rejection criteria to use?
     if h.thresToggle.Value && h.thresCorToggle.Value
         h.thresToggle.Value = false;
@@ -660,7 +663,7 @@ function SelectROI(pos, h, do)
             ylims = [round(min(signal),-2)-100, round(max(signal),-2)+100];
             xlims = h.signalAx2.XLim;
             h.signalAx2.YLim = ylims;
-            % Say which ROI is being plotted, at 90% height of the signalAx 
+            % Say which ROI is being plotted, at 80% height of the signalAx 
             str = sprintf('ROI %d', id);
             text(xlims(1)+diff(xlims)/100, ylims(2)-diff(ylims)/20, str,...
                 'Parent',h.signalAx2, 'Clipping', 'on')
@@ -732,16 +735,16 @@ end
 
 % --- Executes on slider movement.
 function thresSlider_Callback(hObject, ~, h) %#ok<DEFNU>
-    % changes which ROIs are rejected based on maximum smoothed spectral power
+    % changes which ROIs are rejected based on mean smoothed spectral power
     threshold = hObject.Value;
-    h.thresTitle.String = sprintf('Threshold: %.2f',threshold);
+    h.thresTitle.String = sprintf('Threshold mean spec power: %.2f',threshold);
     
     switches = getappdata(h.hGUI, 'switches');
     idx = getappdata(h.hGUI, 'idx');
     data = getappdata(h.hGUI, 'data');
     switches.sliderSettings.threshold = hObject.Value;
     
-    idx.Thres = (mean(data.PP.SpecProfile) < threshold);
+    idx.Thres = mean(data.PP.SpecProfile) < threshold;
 %     idx.Thres = (data.PP.peakVal < threshold);
     
     setappdata(h.hGUI, 'switches', switches)
@@ -808,10 +811,10 @@ function RejectInfoFunc(h)
     
     t = cell(7,1);
     if h.thresToggle.Value % The creation threshold should be used
-        selectedPoints = sum((idx.Black|idx.Size|idx.Thres) & ~idx.White);
+        selectedPoints = sum((idx.Black | idx.Size | idx.Round | idx.Thres) & ~idx.White);
         t{2} = sprintf('%3d ROIs rejected because threshold',sum(idx.Thres));
     else % The correlation threshold should be used
-        selectedPoints = sum((idx.Black|idx.Size|idx.ThresCor) & ~idx.White);
+        selectedPoints = sum((idx.Black | idx.Size | idx.Round | idx.ThresCor) & ~idx.White);
         t{2} = sprintf('%3d ROIs rejected because correlation threshold',sum(idx.ThresCor));
     end
     
