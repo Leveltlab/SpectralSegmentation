@@ -1,8 +1,13 @@
-function summary(rejlog, spar)
+function SummaryGetRois(rejlog, spar)
+% Report a summary of the automatic ROI creation from getSpectrois
+% 
+% Chris v.d. Togt 
+% 2020
+% 
 
 total = size(rejlog,1);
 
- %valid rois
+% valid rois
 
 vidx = (rejlog(:,1)== 2);
 valnm = sum(vidx);
@@ -14,24 +19,24 @@ if valnm > 10
     v5 = ceil(valnm*0.05);
     v95 = floor(valnm*0.95);
 
-    vSort = sort(valid(:,2)); %Areas
+    vSort = sort(valid(:,2)); % Areas
     vAm = vSort(vMd);
     Arange = [vSort(v5) vSort(v95)];
 
-    vSort = sort(valid(:,3)); %Roundedness
+    vSort = sort(valid(:,3)); % Roundedness
     vRm = vSort(vMd);
     Rrange = [vSort(v5) vSort(v95)];
 
-    vSort = sort(valid(:,4)); %Rvariance
+    vSort = sort(valid(:,4)); % Rvariance
     vRvarm = vSort(vMd);
     Rvarange = [vSort(v5) vSort(v95)];
 end
 
-%invalid maxima
-rejected = sum(rejlog(:,1) ~= 2);  %All
-notsignificant = sum(rejlog(:,1)== -1); %Not significant height
+% invalid maxima
+rejected = sum(rejlog(:,1) ~= 2);  % All
+notsignificant = sum(rejlog(:,1)== -1); % Not significant height
 
-remidx = ( rejlog(:,1)== 0 | rejlog(:,1)== 1 );             %rejected
+remidx = ( rejlog(:,1)== 0 | rejlog(:,1)== 1 ); % rejected
 remaining = sum(remidx);
 notvalid = rejlog(remidx,:);
 
@@ -39,7 +44,7 @@ tosmall = sum(notvalid(:,2) <= spar.areasz(1));
 tolarge = sum(notvalid(:,2) > spar.areasz(2));
 
 belowround = sum(notvalid(:,3) < spar.roundedness);
-%bad = sum(notvalid(:,4) > 0.3);
+% bad = sum(notvalid(:,4) > 0.3);
 
 someidx = isnan(rejlog(:,1));
 Inother = sum(someidx);
@@ -58,5 +63,5 @@ disp(notsignificant + " were not significant")
 disp(Inother + " were within previously made rois" )
 disp("Of the remaining " + remaining + " peaks the contours were not valid because;")
 disp(tosmall + " were too small, " + tolarge + " too large, " + belowround + " not round enough,")
-%disp("and " + bad + " had more than 40% below threshold pixel values") 
+% disp("and " + bad + " had more than 40% below threshold pixel values") 
 disp(" ")

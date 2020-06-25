@@ -117,7 +117,7 @@ for i = 1:dim(3)
         plot(Con(k).x, Con(k).y, 'r')
     end
     title(str)
-    summary(rlog, spar)
+    SummaryGetRois(rlog, spar)
     pause(0.1)
 end
 
@@ -140,6 +140,5 @@ specUsed = Spect;
 save(filename, 'PP', 'Mask', 'BImg', 'spar', 'SpatialCorr', 'specUsed', '-append')
 fprintf('saved.\n')
 
-clearvars -global
 
 
