@@ -1,5 +1,5 @@
-function [PP] = RotatePPCoordinates(PP,rotation, dims)
-% PP = RotatePPCoordinates(PP, rotation)
+function PP = RotatePPCoordinates(PP, rotation, dims)
+% PP = RotatePPCoordinates(PP, rotation, dims)
 % Rotate ROI contour coordinates from PP struct
 % 
 % Input: 

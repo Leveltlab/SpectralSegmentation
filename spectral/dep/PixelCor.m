@@ -110,9 +110,9 @@ end
 if A > 0 && DISPLAY
     Vimg = V;
     Vimg(Vimg==0) = nan;
-    figure(3), imagesc(Vimg), hold on
+    figure(3), hold off, imagesc(Vimg), hold on
     plot(Con.x, Con.y, 'w')
-    colormap([0 0 0 ; parula(256)]); colorbar; caxis([min(Vimg(:)), max(Vimg(:))])
+    colormap([0 0 0 ; parula(256)]); colorbar;
     drawnow
 end
     

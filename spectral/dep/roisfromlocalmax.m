@@ -125,7 +125,7 @@ for i = 1:Nmp
                 [Con, A, F, Pin, Ro] = getCon(If, th, area, PAf*0.9, py, px, Iy, Ix);
                 if ~isempty(Con) %valid contour: contains point and has valid roundedness
                     if DISPLAY == 1
-                        figure(2), imagesc(I), colormap gray, hold on
+                        figure(2), hold off, imagesc(I), colormap gray, hold on
                         plot(px, py, '+r')
                         plot(Con.x, Con.y, 'r')
                         title(sprintf('seedpoint x: %d, y: %d', pnt(i,1), pnt(i,2)))
