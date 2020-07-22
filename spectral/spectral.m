@@ -60,7 +60,7 @@ if rem(Lines, W) > 0
     disp(['Error ' num2str(dim(3)) 'not divisible by ' num2str(W)])
 end
 
-%since we decimate the signal to approximately 2Hx, 
+%since we decimate the signal to approximately 1Hx, 
 Df = floor(frequency); %decimation factor 
 freq = frequency/Df;     %downsampled frequency
 
