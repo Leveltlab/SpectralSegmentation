@@ -1,13 +1,13 @@
-function varargout = RoiRejecterGUI(varargin)
+function varargout = RoiManagerGUI(varargin)
 %
-% RoiRejecterGUI enables the visualisation of two-photon data, and it
+% RoiManagerGUI enables the visualisation of two-photon data, and it
 % can show the signal of any place in the two-photon microscopy image over
 % time.
 % 
 % when no input is given the RoiRejecter will ask for the spectral file,
 %   and the transposed data file
 % In case that input is given, the input should be:
-% RoiRejecterGUI(Mask, PP, SPic, Transfile, Sax)
+% RoiManagerGUI(Mask, PP, SPic, Transfile, Sax)
 %   input 1: Mask, the 2D matrix which says which pixels are occupied by
 %               which ROI
 %   input 2: PP, struct with contour information, created by getspectrois.m
@@ -59,16 +59,16 @@ function varargout = RoiRejecterGUI(varargin)
 %
 %
 %
-%      H = ROIREJECTERGUI returns the handle to a new ROIREJECTERGUI or the handle to
+%      H = ROIMANAGERGUI returns the handle to a new ROIMANAGERGUI or the handle to
 %      the existing singleton*.
 %
-%      ROIREJECTERGUI('Property','Value',...) creates a new ROIREJECTERGUI using the
+%      ROIMANAGERGUI('Property','Value',...) creates a new ROIMANAGERGUI using the
 %      given property value pairs. Unrecognized properties are passed via
-%      varargin to RoiRejecterGUI_OpeningFcn.  This calling syntax produces a
+%      varargin to RoiManagerGUI_OpeningFcn.  This calling syntax produces a
 %      warning when there is an existing singleton*.
 %
-%      ROIREJECTERGUI('CALLBACK') and ROIREJECTERGUI('CALLBACK',hObject,...) call the
-%      local function named CALLBACK in ROIREJECTERGUI.M with the given input
+%      ROIMANAGERGUI('CALLBACK') and ROIMANAGERGUI('CALLBACK',hObject,...) call the
+%      local function named CALLBACK in ROIMANAGERGUI.M with the given input
 %      arguments.
 %
 %      *See GUI Options on GUIDE's Tools menu.  Choose "GUI allows only one
@@ -79,14 +79,14 @@ function varargout = RoiRejecterGUI(varargin)
 % Made by: Leander de Kraker
 % 2018
 
-% Last Modified by GUIDE v2.5 07-Feb-2020 15:27:37
+% Last Modified by GUIDE v2.5 21-Aug-2020 17:55:32
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
 gui_State = struct('gui_Name',       mfilename, ...
                    'gui_Singleton',  gui_Singleton, ...
-                   'gui_OpeningFcn', @RoiRejecterGUI_OpeningFcn, ...
-                   'gui_OutputFcn',  @RoiRejecterGUI_OutputFcn, ...
+                   'gui_OpeningFcn', @RoiManagerGUI_OpeningFcn, ...
+                   'gui_OutputFcn',  @RoiManagerGUI_OutputFcn, ...
                    'gui_LayoutFcn',  [], ...
                    'gui_Callback',   []);
 if nargin && ischar(varargin{1})
@@ -102,8 +102,8 @@ end
 end
 
 %% Opening and creation functions %%
-% --- Executes just before RoiRejecterGUI is made visible.
-function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
+% --- Executes just before RoiManagerGUI is made visible.
+function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     % This function has no output args, see OutputFcn.
     % hObject    handle to figure
     
@@ -147,14 +147,17 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
         fprintf('Done loading\n')
         
         % Try to find the 2P transposed datafile based on given SPSIG file
-        datafile = [pn fn(1:end-9) 'Trans.dat'];
-        if exist(datafile,'file') ~= 2 % if not found, request it
-            [fn, pn] = uigetfile('*Trans*.dat', 'Select the file with 2P data');
-            if any(fn ~= 0)
-                datafile = [pn fn];
-            else
-                fprintf('cannot run RoiRejecterGUI without transposed data file\n')
-                return
+        datafile = [pn fn(1:end-9) 'DecTrans.dat'];
+        if exist(datafile, 'file') ~= 2
+            datafile =  [pn fn(1:end-9) 'Trans.dat'];
+            if exist(datafile,'file') ~= 2 % if not found, request it
+                [fn, pn] = uigetfile('*Trans*.dat', 'Select the file with 2P data');
+                if any(fn ~= 0)
+                    datafile = [pn fn];
+                else
+                    fprintf('cannot run RoiRejecterGUI without transposed data file\n')
+                    return
+                end
             end
         end
     end
@@ -331,7 +334,7 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     h.clusterPlot1.XTick = [];  h.clusterPlot1.YTick = [];
     h.clusterPlot2.XTick = [];  h.clusterPlot2.YTick = [];
     
-    % Choose default command line output for RoiRejecterGUI
+    % Choose default command line output for RoiManagerGUI
     h.output = hObject;
     
     % Save the input data for access in later functions
@@ -391,12 +394,12 @@ function RoiRejecterGUI_OpeningFcn(hObject, ~, h, varargin)
     % Update handles structure
     guidata(hObject, h);
 end
-% UIWAIT makes RoiRejecterGUI wait for user response (see UIRESUME)
+% UIWAIT makes RoiManagerGUI wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 
 
 % --- Outputs from this function are returned to the command line.
-function varargout = RoiRejecterGUI_OutputFcn(hObject, eventdata, handles)
+function varargout = RoiManagerGUI_OutputFcn(hObject, eventdata, handles)
     % varargout  cell array for returning output args (see VARARGOUT);
     % hObject    handle to figure
     % handles    structure with handles and user data (see GUIDATA)

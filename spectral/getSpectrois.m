@@ -67,7 +67,7 @@ filenameTrans = [filenameSPSIG(1:end-9) 'DecTrans.dat'];
 if ~isfile(filenameTrans) %Using decimated data
     filenameTrans = [filenameSPSIG(1:end-9) 'Trans.dat'];
 end
-[sbxt, freq, ~] = transmemap(filenameTrans);
+[sbxt, ~, freq] = transmemap(filenameTrans);
 fprintf('Memory mapped %s\n', filenameTrans)
 
 % obtain average spectral density for each image: decays exponentially

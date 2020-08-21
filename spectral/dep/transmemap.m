@@ -1,4 +1,4 @@
-function [sbxt, freq, dim] = transmemap(varargin) 
+function [sbxt, dim, freq] = transmemap(varargin) 
 % [sbxt, dim, freq] = transmemap(filename)  returns transposed stack as 
 % a memory mapped file
 %

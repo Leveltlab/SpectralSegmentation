@@ -49,11 +49,15 @@ maskT = mask';
 roiidx = find(maskT==roiNr); % The 2D indexes of the ROI, from transposed mask
 sigs = sbxt.Data.y(:,roiidx); % signal of all the pixels in the ROI
 
-% subsample the signal to ~1 sample / sec
+% subsample the signal to ~1 sample / sec if the frequency is higher
 freq = floor(freq);
-sigSubsampled = zeros(ceil(size(sigs,1)/freq), size(sigs,2));      
-for q = 1:size(sigs,2)
-    sigSubsampled(:,q) = decimate(double(sigs(:,q)), freq);
+if freq > 1.5
+    sigSubsampled = zeros(ceil(size(sigs,1)/freq), size(sigs,2));      
+    for q = 1:size(sigs,2)
+        sigSubsampled(:,q) = decimate(double(sigs(:,q)), freq);
+    end
+    sigs = sigSubsampled;
+    clearvars sigSubsampled
 end
 
 % Get the origin point of the ROI with 8 surrounding pixels: seedpixels
@@ -67,11 +71,11 @@ seedidx = find(seed);
 [~, seedidx] = intersect(roiidx, seedidx); % exlude pixels outside ROI
 
 % take median of signal seedpixels to reduce noise
-seedSig = median(sigSubsampled(:,seedidx), 2); 
+seedSig = median(sigs(:,seedidx), 2); 
 
 % Fill the spatial correlation image with the correlation values
 cor = zeros(size(maskT));
-cor(roiidx) = corr(seedSig, sigSubsampled, 'rows', 'pairwise');
+cor(roiidx) = corr(seedSig, sigs, 'rows', 'pairwise');
 
 
 % Calculate the mean variance of correlation
