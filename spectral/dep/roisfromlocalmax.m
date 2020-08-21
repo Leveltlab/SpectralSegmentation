@@ -1,6 +1,7 @@
 function [Savedrois, Mask, SC, rejlog] = roisfromlocalmax(IM, Savedrois, Mask, varargin)
-% roisfromlocalmax(IM, threshold, distance = 10, area = 20, border = 15)
+% roisfromlocalmax(IM, threshold, distance = 10, area = 20, border = 15, )
 % IM : image
+% Savedrois : array of saved Roi parameters
 % Mask : rois as image regions with index value
 % threshold : 0 - 1  minimum amount of correlation 
 % distance: minimal distance between rois
@@ -15,14 +16,16 @@ function [Savedrois, Mask, SC, rejlog] = roisfromlocalmax(IM, Savedrois, Mask, v
 % Chris van der Togt, 2017, Netherlands Institute for Neuroscience 
 
 global DISPLAY
+% Parameters for ROI search
 distance = 20;     % Distance between rois (maxima)
-area = [60 120];   % Minimum/max size of roi
-border = 15;       % Edge of image to ignore
 fractionmax = 0.2; % Higest fraction of maxima (pnt) to use
-VoxelSz = 60;      % Determines area to find contours
-% All rois should be within the size of an area of VoxelSz x VoxelSz    
 threshold = 0.80;  % Contour threshold greater than percentile of pixel range
 Significance = 0.90; % Maximum shoud be greater than percentile of pixel range
+% Parameters which can be chosen by spar
+area = [60 120];   % Minimum/max size of roi
+border = 15;       % Edge of image to ignore
+VoxelSz = 60;      % Determines area to find contours
+                   % All rois should be within the size of an area of VoxelSz x VoxelSz
 PAf = 0.70;        % Minimal ratio perimeter to squared area; roundedness factor (circle = 1.0)
 cutOffCorr = 0.5;  % Cutoff threshold for pixel correlations
 
@@ -37,11 +40,11 @@ if ~isempty(varargin)
     if isfield(p, 'border')
         border = p.border;
     end
-    if isfield(p, 'roundedness')
-        PAf = p.roundedness;
-    end
     if isfield(p, 'voxel')
         VoxelSz = p.voxel;
+    end
+    if isfield(p, 'roundedness')
+        PAf = p.roundedness;
     end
     if isfield(p, 'cutOffCorr')
         cutOffCorr = p.cutOffCorr;
@@ -49,8 +52,8 @@ if ~isempty(varargin)
 end
 
 if length(varargin) > 1
-    sbxt = varargin{2};
-    freq = varargin{3};
+    sbxt = varargin{2}; %memory mapped file to transposed image data
+    freq = varargin{3}; %frequency of transposed images
     SC = varargin{4}; % SpatialCorr
 end
 % lowest value to zero
@@ -71,24 +74,17 @@ SigTh = round(Significance*SzImg);
 
 [Iy, Ix] = find(ones(VoxelSz,VoxelSz));
 
-%find a particular max
-% find(pnt(:,1) == 280 & pnt(:,2) == 295)
 rejlog = nan(Nmp, 4);
 Cnt = Savedrois.Cnt;
 for i = 1:Nmp
-% 	if debug
+%     if debug
 %          if i == 27 || i == 30 || i == 40 || i == 42 || i == 50 || i == 125 
 %               DISPLAY = 1;
-%           else 
-%               DISPLAY = 0;
-%           end
+%          else; DISPLAY = 0; end
+%     end
           
     % Detect if this point is on a previously selected roi
     if ~(Mask(pnt(i,1),pnt(i,2)) > 0)
-%         figure(3), imagesc(Mask), hold on
-%         plot(pnt(i,1), pnt(i,2), '+r')
-%         pause
-%         else  % not already in a contour
         pVal = pnt(i,3); %pixelvalue of maximum
         lyw = pnt(i,1)-VoxelSz/2;
         hyw = lyw + VoxelSz-1;
@@ -119,8 +115,7 @@ for i = 1:Nmp
 
         if RoiMx > Ws(SigTh) % Pixel value maximum should be significantly higher than surrounding pixels
             it = 0;
-            bval = 0;
-            bad = 0;
+            bval = false;
             while ~bval && it < 10
                 [Con, A, F, Pin, Ro] = getCon(If, th, area, PAf*0.9, py, px, Iy, Ix);
                 if ~isempty(Con) %valid contour: contains point and has valid roundedness
@@ -132,7 +127,7 @@ for i = 1:Nmp
                     end
                     Con.y = Con.y + lyw - 1;
                     Con.x = Con.x + lxw - 1;
-                    bval = 1; %valid maximum not in previously selected contour
+                    bval = true; %valid maximum not in previously selected contour
                     if Cnt > 0
                         %if other points of previous rois are in this contour
                         %determine if it is simply overlapping or much
@@ -154,19 +149,11 @@ for i = 1:Nmp
                             else
                                 it = 10; %skip this point 
                             end
-                            bval = 0; 
+                            bval = false; 
                         end
                     end
-%                     if bval % It might still be a bad roi; too many negative values below the threshold
-%                         pixv = I(F>0);
-%                         bad = length(find(pixv<th))/length(pixv);
-%                         if bad > 0.4 % More than 40% of the samples are below threshold
-%                             bval = 0;
-%                             th = th + thxd; % Step up contour threshold
-%                         end
-%                     end
-                    if bval
 
+                    if bval
                         yrange = lyw:hyw;
                         xrange = lxw:hxw;                             
                         [NwCon, NwA, NwF, NwV, Ro, Rvar] = PixelCor(size(Mask), F, sbxt, py, px, Iy, Ix, yrange, xrange, freq, cutOffCorr);
@@ -192,10 +179,11 @@ for i = 1:Nmp
                             
                             rejlog(i,:) = [2 NwA, Ro, Rvar];
                             if DISPLAY == 1
-                                figure(3), title(sprintf('good!: rounded %.2f, rvar %.2f,', Ro, Rvar))
+                                figure(3), 
+                                title(sprintf('good!: rounded %.2f, rvar %.2f,', Ro, Rvar))
                             end
                         elseif NwA > area(1) && Ro < PAf  %not round enough but large area, => increase threshold
-                            bval = 0;
+                            bval = false;
                             th = th + thxd; 
                             
                         elseif DISPLAY == 1
@@ -214,7 +202,7 @@ for i = 1:Nmp
                 end
                 it = it + 1;
             end
-            if bval == 0 || it >= 10
+            if bval == false || it >= 10
                 rejlog(i,:) = [isempty(Con), A, Ro, 0];
 %                  if(isempty(Con))
 %                      figure(2), imagesc(I), colormap gray, hold on
@@ -227,7 +215,6 @@ for i = 1:Nmp
                rejlog(i,:) = [-1, 0, 0, 0];
         end
     else % This point was in an existing contour
-%         figure(2), plot(pnt(i,2), pnt(i,1), 'or')
         rejlog(i,:) = [nan, nan, pnt(i,2), pnt(i,1)];
         
     end

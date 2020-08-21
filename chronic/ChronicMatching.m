@@ -12,7 +12,7 @@
 
 filenames = {};
 filepaths = {};
-filedate = NaT(1);
+filedates = NaT(1);
 
 selecting = true; % true as long as files are being selected
 i = 0;
@@ -22,7 +22,7 @@ while selecting
         str = sprintf('load spectrally analyzed file %d', i);
     else
         str = sprintf('load spectrally analyzed file %d. previous: %s. Press cancel when done'...
-            , i, datestr(filedate(i-1)));
+            , i, datestr(filedates(i-1)));
     end
     [filenames{i}, filepaths{i}] = uigetfile('*SPSIG.mat', str);
     
@@ -35,9 +35,11 @@ while selecting
         pos = regexp(filepaths{i}, '\');
         
         % Try to extract the date from after the first _ in the filename
-        try
-            strdate = strrep(strrep(filepaths{i}(pos(end-1)+1:pos(end)-1), '-', ''), '_', '');
-            filedate(i) = datetime(strdate, 'inputformat','yyyyMMdd');
+        try 
+            % folder with the data should have recording date as name
+            strdate = filepaths{i}(pos(end-1)+1:pos(end)-1);
+            strdate = strrep(strrep(strdate, '-', ''), '_', '');
+            filedates(i) = datetime(strdate, 'inputformat','yyyyMMdd');
             
         catch ME % Extraction failed
             if strcmp(ME.identifier, 'MATLAB:datetime:ParseErr') % Ask user for input
@@ -48,8 +50,8 @@ while selecting
                 answerStr = inputdlg(questionStr);
                 
                 try % try to decipher user input as a datetime
-                    filedate(i) = datetime(answerStr, 'inputformat','yyyyMMdd');
-                    filedate(i)
+                    filedates(i) = datetime(answerStr, 'inputformat','yyyyMMdd');
+                    filedates(i)
                 catch METOO % another error: No date for this recording.
                     warning('User input not recognized as date')
                     throw(METOO)
@@ -62,7 +64,7 @@ while selecting
 end
 filenames = filenames';
 filepaths = filepaths';
-filedate = filedate';
+filedates = filedates';
 nfiles = length(filenames); % The number of files that have been selected
 
 tic
@@ -110,7 +112,7 @@ for i = 1:length(rec)
     end
     data(rec(i)).PP.P(1,:) = data(rec(i)).PP.P(1,:) .* scalefac(1);
     data(rec(i)).PP.P(2,:) = data(rec(i)).PP.P(2,:) .* scalefac(2);
-    fprintf('recording %d: %s resized!\n', rec(i), datestr(filedate{rec(i)}))
+    fprintf('recording %d: %s resized!\n', rec(i), datestr(filedates{rec(i)}))
 end
 
 
@@ -160,7 +162,7 @@ RGB = CreateRGB2(BImg(toplot), colors);
 figure; subplot(1,1,1)
 imagesc(RGB)
 for i = toplot
-    text(20, 20+i*17, datestr(filedate(i)),'color',colors(i,:),...
+    text(20, 20+i*17, datestr(filedates(i)),'color',colors(i,:),...
         'fontweight','bold','fontsize',12)
 end
 title('non-registered masks')
@@ -205,7 +207,7 @@ interpol = {'linear', 'nearest'}; % How to interpolate each image?
 ManualRegistration(imgs, PP, filenamesShort, interpol)
 
 %% Register images automatically
-referenceNum = 5; % which background image to take as reference
+referenceNum = 4; % which background image to take as reference
 
 if referenceNum>nfiles
     error('Select a lower reference recording number! referenceNum exceeds number of files')
@@ -428,7 +430,7 @@ plot(rotAng,rotBest,'xk')
 title(sprintf('image similarity with recording 1 after different rotations buffer %d',buf))
 ylabel('correlation coefficient r')
 xlabel('rotation (degrees)'), xlim([min(rotation),max(rotation)])
-legend(datestr(filedate,'yyyy-mm-dd'))
+legend(datestr(filedates,'yyyy-mm-dd'))
 
 % Apply rotations__________________________________________________________
 % If difference between best and 0 is smaller than 0.01, don't bother
@@ -455,7 +457,7 @@ figure; subplot(1,1,1)
 imagesc(permute(RGB, [2,1,3]));
 title('registered background rotation corrected')
 for i = 1:nfiles
-    text(20, 20+i*17, datestr(filedate(i), 'yyyy-mm-dd'),'color',colors(i,:),...
+    text(20, 20+i*17, datestr(filedates(i), 'yyyy-mm-dd'),'color',colors(i,:),...
         'fontweight','bold','fontsize',12)
 end
 
@@ -481,7 +483,7 @@ for i = 1:nfiles
 end
 xlabel('transformation i')
 ylabel('correlation coefficient')
-legend(datestr(filedate, 'yyyy-mm-dd'),'location', 'southeastoutside')
+legend(datestr(filedates, 'yyyy-mm-dd'),'location', 'southeastoutside')
 h.XTick = 1:size(corrScoreMean,2);
 xLabels = cell(size(corrScoreMean,2),1);
 for j = 1:size(corrScoreMean,2)
@@ -501,8 +503,8 @@ imagesc(corrScore);
 caxis([0 1]); colorbar
 h.XTick = 1:nfiles;
 h.YTick = 1:nfiles;
-h.XTickLabel = datestr(filedate, 'yyyy-mm-dd');
-h.YTickLabel = datestr(filedate, 'yyyy-mm-dd');
+h.XTickLabel = datestr(filedates, 'yyyy-mm-dd');
+h.YTickLabel = datestr(filedates, 'yyyy-mm-dd');
 h.XTickLabelRotation = 45;
 title('correlation coefficients')
 
@@ -511,7 +513,16 @@ title('correlation coefficients')
 
 % Linking ROIs with each other, by just checking if there is a certain % 
 % overlap between them
-thres = 0.6; % overlap needed
+thres = 0.6; % OVERLAP THRESHOLD range [0.5, 1] = 50% overlap - 100%
+
+if thres > 1
+    warning('thres should be equal or smaller then 1')
+end
+if thres <= 0
+    warning('trheshold has to be above 0, and lower then 1 (100 %)')
+elseif thres < 0.1
+    warning('low threshold may introduce errors in the linked ROIs')
+end
 
 % Checking overlap between the ROIs
 % inRoi:  column1: linked ROI of other mask
@@ -743,13 +754,13 @@ xlabel('found back')
 % ________________________________________________________________________
 % TABLE
 % Find the number- and % of neurons in each recording that were found back
-confusion = zeros(nfiles+1);
+nFoundBackMat = zeros(nfiles+1);
 nameCol = cell(1,nfiles+1);
 nameRow = cell(1,nfiles+1);
 for i = 1:nfiles
     present = nLinks(linkMat3(:,i)>0);
     % Count how many neurons with 1:nfiles matches recording i has
-    confusion(i,1:nfiles) = histc(present, 1:nfiles);
+    nFoundBackMat(i,1:nfiles) = histc(present, 1:nfiles);
     spaces = regexp(filenames{i}, '_');
     nameRow{i} = [filenames{i}(1:spaces(1)-1), ' ', filenames{i}(spaces(1)+1:spaces(2)-1)];
     nameCol{i} = sprintf('%d links',i);
@@ -757,21 +768,21 @@ end
 nameCol{1} = 'single';
 nameCol{end} = 'summed ROIs';
 nameRow{end} = 'summed ROIs';
-confusion(nfiles+1,:) = sum(confusion, 1);
-confusion(:,nfiles+1) = sum(confusion, 2);
+nFoundBackMat(nfiles+1,:) = sum(nFoundBackMat, 1);
+nFoundBackMat(:,nfiles+1) = sum(nFoundBackMat, 2);
 
 % Percentage wise confusion matrix
 n = repmat([PP.Cnt]', [1, nfiles]);
 n = [n; sum(n, 1)];
 n = [n, repmat(n(nfiles+1,1),[nfiles+1,1])];
-confusionPerc = round(confusion ./ n .* 100);
+nFoundBackPercMat = round(nFoundBackMat ./ n .* 100);
 
 figure('name','number of ROIs matched per recording')
-h = uitable('Data',confusion,'Units', 'Normalized', 'Position',[0, 0.5, 1, 0.5]);
+h = uitable('Data',nFoundBackMat,'Units', 'Normalized', 'Position',[0, 0.5, 1, 0.5]);
 h.ColumnName = nameCol;
 h.RowName = nameRow;
 
-h = uitable('Data',round(confusionPerc,1), 'Units','Normalized', 'Position',[0, 0, 1, 0.5]);
+h = uitable('Data',round(nFoundBackPercMat,1), 'Units','Normalized', 'Position',[0, 0, 1, 0.5]);
 h.ColumnName = nameCol;
 h.RowName = nameRow;
 
@@ -780,14 +791,14 @@ h.RowName = nameRow;
 %__________________________________________________________________________
 % TABLE 2
 % Find how much ROIs recording i linked with recording j
-confusionMore = zeros(nfiles+1);
+confusionFoundMat = zeros(nfiles+1);
 for i = 1:nfiles
     for j = 1:nfiles
-        confusionMore(i,j) = sum(linkMat3(:,i)>0 & linkMat3(:,j)>0);
+        confusionFoundMat(i,j) = sum(linkMat3(:,i)>0 & linkMat3(:,j)>0);
     end
 end
-confusionMore(nfiles+1,1:end-1) = round(mean(confusionMore(1:end-1,1:end-1),1));
-confusionMore(1:end-1,nfiles+1) = round(mean(confusionMore(1:end-1,1:end-1),2));
+confusionFoundMat(nfiles+1,1:end-1) = round(mean(confusionFoundMat(1:end-1,1:end-1),1));
+confusionFoundMat(1:end-1,nfiles+1) = round(mean(confusionFoundMat(1:end-1,1:end-1),2));
 
 % 
 %__________________________________________________________________________
@@ -854,9 +865,9 @@ end
 
 fprintf('saving\n')
 cd(pathname)
-save(filename, 'nfiles', 'BImg2', 'Masks2', 'PP', 'filenames', 'filepaths', 'transformed',...
-    'thres', 'linked2', 'linkMat2', 'score', 'nLinksMask', 'inRoi', 'filedate',...
-    'confusion','confusionMore', 'nLinks')
+save(filename, 'nfiles', 'BImg2', 'Masks2', 'PP', 'filenames', 'filepaths', 'filedates',...
+    'transformed', 'thres', 'linked2', 'linkMat2', 'score', 'nLinks', 'nLinksMask', 'inRoi',...
+    'nFoundBackMat','nFoundBackPercMat', 'confusionFoundMat')
 fprintf('saved %s\n', filename)
-
+inRoi
 

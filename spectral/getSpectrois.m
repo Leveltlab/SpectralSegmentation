@@ -1,4 +1,4 @@
-function getSpectrois(varargin)
+function getSpectroisnw(varargin)
 % 
 % get rois from cross spectral components
 %
@@ -31,42 +31,44 @@ function getSpectrois(varargin)
 global DISPLAY
 global spar
 DISPLAY = false;
-spar = [];
 runSparArm = false;
 
 if exist('varargin', 'var') && nargin == 2
-    filename = varargin{1};
-
+    filenameSPSIG = varargin{1};
+    
     spar = varargin{2};
-    flds = fieldnames(spar);    
+    flds = fieldnames(spar);
     if ismember(flds, 'cutOffHz') % Update the cutOffHz field
         spar.cutOffHzMax = spar.cutOffHz;
         spar.cutOffHzMin = 0;
     end
     
-    aflds = {'cutOffHzMax', 'cutOffHzMin', 'border', 'areasz', 'roundedness', 'voxel', 'cutoffcorr'};
+    aflds = {'cutOffHzMax', 'cutOffHzMin', 'border', 'areasz', 'roundedness', 'voxel', 'cutOffCorr'};
     if sum(ismember(aflds, flds)) < 7
         disp('Error; number of input values is not valid; please run : SpectParArm(imgStackT, Sax)')
         runSparArm = true;
-        return
     end
-
+    
 elseif exist('varargin', 'var') && nargin == 1
-    filename = varargin{1};
+    filenameSPSIG = varargin{1};
     runSparArm = true;
 
 else
     [fn, pn] = uigetfile('*_SPSIG.mat');
-    filename = [pn fn];
+    filenameSPSIG = [pn fn];
     runSparArm = true;
 end
 
 %% Load and Process Spectral Images:  load('SPic.mat')
 fprintf('\nloading...')
-load(filename, 'SPic', 'Sax')
-Transfile = [filename(1:end-9) 'Trans.dat'];
-[sbxt, ~, freq] = transmemap(Transfile);
-fprintf('\nloaded\n')
+load(filenameSPSIG, 'SPic', 'Sax')
+
+filenameTrans = [filenameSPSIG(1:end-9) 'DecTrans.dat'];
+if ~isfile(filenameTrans) %Using decimated data
+    filenameTrans = [filenameSPSIG(1:end-9) 'Trans.dat'];
+end
+[sbxt, freq, ~] = transmemap(filenameTrans);
+fprintf('Memory mapped %s\n', filenameTrans)
 
 % obtain average spectral density for each image: decays exponentially
 imgStack = log(SPic(:,:,2:end));
@@ -111,14 +113,15 @@ for i = 1:dim(3)
     str = sprintf('number of ROIs found (%.2fHz): %5d. time elapsed = %.2fminutes\n', Sax(i), PP.Cnt, toc/60);
     fprintf(str)
     
+    SummaryGetRois(rlog, spar)
+    
     figure(1)
     Con = PP.Con;
     for k = 1:PP.Cnt
         plot(Con(k).x, Con(k).y, 'r')
     end
     title(str)
-    SummaryGetRois(rlog, spar)
-    pause(0.1)
+    pause(0.05)
 end
 
 % swap x and y values, otherwise positions are not correct in Displayrois
@@ -137,7 +140,7 @@ end
 
 % Save
 specUsed = Spect;
-save(filename, 'PP', 'Mask', 'BImg', 'spar', 'SpatialCorr', 'specUsed', '-append')
+save(filenameSPSIG, 'PP', 'Mask', 'BImg', 'spar', 'SpatialCorr', 'specUsed', '-append')
 fprintf('saved.\n')
 
 

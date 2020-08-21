@@ -335,7 +335,7 @@ end
 
 %% Callback functions
 
-function sparBorderBox_Callback(hObject, eventdata, h)
+function sparBorderBox_Callback(hObject, ~, h)
     % hObject    handle to sparBorderBox (see GCBO)
     % eventdata  reserved - to be defined in a future version of MATLAB
     % h    structure with handles and user data (see GUIDATA)
@@ -407,7 +407,7 @@ function sparRoundednessBox_Callback(hObject, ~, h)
 end
 
 
-function sparVoxelBox_Callback(hObject, ~, h)
+function sparVoxelBox_Callback(hObject, ~, ~)
     % Update the spar when the voxel value gets edited
     global spar
     spar.voxel = str2double(hObject.String);
@@ -475,14 +475,14 @@ end
 
 
 % --- Executes on button press in DisplayCheckBox.
-function DisplayCheckBox_Callback(hObject, ~, h)
+function DisplayCheckBox_Callback(hObject, ~, ~)
     % Sets the global DISPLAY boolean
     global DISPLAY
     DISPLAY = hObject.Value;
 end
 
 
-function sparCutOffCorrBox_Callback(hObject, ~, h)
+function sparCutOffCorrBox_Callback(hObject, ~, ~)
     % edits spar when cutoffcorr gets edited
     global spar
     cutOffCorr = str2double(hObject.String);
@@ -498,7 +498,7 @@ end
 
 
 % --- Executes on button press in acceptButton.
-function acceptButton_Callback(hObject, ~, h)
+function acceptButton_Callback(~, ~, ~)
     % Saves the spar and exits the UI
 
     % Saving the spar into the current folder

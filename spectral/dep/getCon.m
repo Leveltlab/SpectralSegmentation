@@ -3,7 +3,6 @@ function [Con, A, F, Pin, roundedness] = getCon(Imgin, th, area, Rof, py, px, Iy
 dim = size(Imgin);
 F = zeros(dim);
 %    M = -Inf;
-%    P = 0;
 
 c = contourc(Imgin,[th th]);
 s = getcontourlines(c);
@@ -19,7 +18,6 @@ end
 for j = 1:length(iv)
     vx = s(iv(j)).x;
     vy = s(iv(j)).y;
-  % plot(vx, vy, 'r')
     In = find(inpolygon(px,py,vx,vy),1);
 
     if ~isempty(In) 
@@ -37,7 +35,6 @@ for j = 1:length(iv)
                 Con.x = vx;
                 Con.y = vy;            
                 F(inpolygon(Ix,Iy,vx,vy)) = 1;
-                %pixv = Imgin(F>0);                                     
             end
         end
         return;

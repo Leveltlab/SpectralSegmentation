@@ -137,23 +137,28 @@ BImgAverage = BImgAverage/nchunks;
 % BImgAvLines = BImgAverage;
 % BImgAvLines(1:2:end, 1:end-1) = BImgAvLines(1:2:end, 2:end);
 
-figure('units','normalized','position',[0.01 0.1 0.25 0.8]);
-h = gobjects(4,1);
-h(1) = subplot(2,1,1);
-imagesc(log1p(imgAv1))
-title(sprintf('mean projection of first %d frames', nf))
-h(2) = subplot(2,1,2);
-imagesc(log1p(imgAv2));
-title(sprintf('mean projection of last %d frames', nf))
-colormap(colors)
-figtitle(sbxName)
+if plotter
+    % Plot example average fluorescence portions of the dataset
+    figure('units','normalized','position',[0.01 0.1 0.25 0.8]);
+    h = gobjects(4,1);
+    h(1) = subplot(2,1,1);
+    imagesc(log1p(imgAv1))
+    title(sprintf('mean projection of first %d frames', nf))
+    h(2) = subplot(2,1,2);
+    imagesc(log1p(imgAv2));
+    title(sprintf('mean projection of last %d frames', nf))
+    colormap(colors)
+    figtitle(sbxName)
+end
 
+% Plot Average projection
 figure('units','normalized','position',[0.26 0.1 0.25 0.4]);
 h(3) = subplot(1,1,1);
 imagesc(log1p(BImgAverage))
 colormap(colors)
 title(sprintf('average %d chunks of %d frames = %d frames',nchunks, nframes, nchunks*nframes))
 
+% Plot Maximum projection
 figure('units','normalized','position',[0.26 0.5 0.25 0.4]);
 h(4) = subplot(1,1,1);
 imagesc(log1p(BImgMax))
@@ -165,7 +170,7 @@ title(sprintf('max projections of %d chunks of %d averaged frames = %d frames',.
 linkaxes(h, 'xy')
 
 
-
+% Plot the second color channel
 if nchannels >= 2
     figure('units','normalized','position',[0.53 0.1 0.3 0.8]);
     h = gobjects(2,1);
@@ -196,49 +201,50 @@ fprintf('done calculating :)\n')
 
 %% check how the spectral looks
 
-load(spsigName, 'Sax', 'SPic', 'PP')
+if plotter
+    load(spsigName, 'Sax', 'SPic', 'PP')
 
-if exist('SPic','var') && exist('Sax', 'var') 
+    if exist('SPic','var') && exist('Sax', 'var') 
 
-    imgStack = SPic(:,:,2:18);
-    Sax = Sax(2:18); %first spectral component is the average power over al components
+        imgStack = SPic(:,:,2:end);
+        Sax = Sax(2:end); %first spectral component is the average power over al components
 
-    vals = sort(unique(imgStack(:))); % remove -inf values
-    if vals(1)==-inf
-        imgStack(imgStack==-inf) = vals(2);
-    end
-    imgStack = log1p(permute(imgStack,[2 1 3])); % transpose the SPic variable so it's same as BImg
-
-    nSpec = size(imgStack,3);
-
-    % A spectral image for all the different frequencies
-    colors = flip(jet(nSpec));
-    norma = true; % normalize each frequency?
-    figure('units','normalized','position',[0.52 0.5 0.25 0.4]);
-    subplot(1,1,1)
-    SPicTCell = squeeze(num2cell(imgStack, [1 2]));
-    RGBspectral = CreateRGB2(SPicTCell, colors, norma);
-    
-    imagesc(RGBspectral)
-    title('The intensity of the spectral density at all different frequencies')
-    % Set the correct colorbar for this image
-    colormap(colors)
-    
-    if exist('PP', 'var')
-        hold on
-        for i = 1:PP.Cnt
-            plot(PP.Con(i).x, PP.Con(i).y, 'r')
+        vals = sort(unique(imgStack(:))); % remove -inf values
+        if vals(1)==-inf
+            imgStack(imgStack==-inf) = vals(2);
         end
+        imgStack = log1p(permute(imgStack,[2 1 3])); % transpose the SPic variable so it's same as BImg
+
+        nSpec = size(imgStack,3);
+
+        % A spectral image for all the different frequencies
+        colors = flip(jet(nSpec));
+        norma = true; % normalize each frequency?
+        figure('units','normalized','position',[0.52 0.5 0.25 0.4]);
+        subplot(1,1,1)
+        SPicTCell = squeeze(num2cell(imgStack, [1 2]));
+        RGBspectral = CreateRGB2(SPicTCell, colors, norma);
+        imagesc(RGBspectral)
+        title('The intensity of the spectral density at all different frequencies')
+        % Set the correct colorbar for this image
+        colormap(colors)
+
+        if exist('PP', 'var')
+            hold on
+            for i = 1:PP.Cnt
+                plot(PP.Con(i).x, PP.Con(i).y, 'r')
+            end
+        end
+
+        h = colorbar;
+        hTicks = linspace(Sax(1),Sax(end),length(h.Ticks));
+        h.Ticks = h.Ticks; % prevent ticks from changing
+        h.TickLabels = num2str(hTicks', '%2.2f');
+        ylabel(h, 'spectral frequency', 'FontSize',12)
+    else
+        fprintf('Unable to load SPic and Sax (Spectral Axis) from spsigName\n')
+        fprintf('Not creating colored spectral image\n')
     end
-    
-    h = colorbar;
-    hTicks = linspace(Sax(1),Sax(end),length(h.Ticks));
-    h.Ticks = h.Ticks; % prevent ticks from changing
-    h.TickLabels = num2str(hTicks', '%2.2f');
-    ylabel(h, 'spectral frequency', 'FontSize',12)
-else
-    fprintf('Unable to load SPic and Sax (Spectral Axis) from spsigName\n')
-    fprintf('Not creating colored spectral image\n')
 end
 
 %% The end: save it

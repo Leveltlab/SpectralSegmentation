@@ -28,7 +28,6 @@ function [Con, A, F, V, roundedness, Rvar] = PixelCor(...
 %Chris van der Togt, 2018
 %added correlation cutoff and median filtering of correlations
 %Chris van der Togt, 2019
-% Leander de Kraker 2020-7-3 changed decimate to movmean filtering,
 
 global DISPLAY
 Con = []; %found contour
@@ -39,11 +38,17 @@ Mt =  zeros(Dim);
 Mt(yrange, xrange) = F;
 
 Mt = logical(Mt');%transposed
-sig = sbxt.Data.y(:,Mt(:));
-R = floor(freq)*2; % mean filter and subsample to 0.5Hz
-sig = movmean(sig, R, 1);
-sig = sig(1:R:end, :);
+Sigpix = sbxt.Data.y(:,Mt(:));
+R = floor(freq);
 
+if R > 1.5 % decimate signal if sampling rate is above 1.5Hz
+    Sp = zeros(ceil(size(Sigpix,1)/(R*2)), size(Sigpix,2));      
+    for q = 1:size(Sigpix,2)
+        Sp(:,q) = decimate(double(Sigpix(:,q)), R*2); %signals for all pixels in ROI decimated by freq * 2 => 0.5Hz
+    end
+    Sigpix = Sp;
+    clear Sp
+end
 %some index accounting to find the traces associated with the ROI
 %max
 Ft = F'; %transpose indices
@@ -52,11 +57,9 @@ Seed = zeros(size(Ft));
 Seed(px-1:px+1, py-1:py+1) = 1;
 Seedx = find(Seed);
 [~, Inix] = intersect(linix, Seedx);
-Msig = median(sig(:,Inix), 2); %take median of signal of max and surrounding 8 pixels,
+Msig = median(Sigpix(:,Inix), 2); %take median of signal of max and surrounding 8 pixels,
 
-Cor = corr(Msig, sig, 'rows', 'pairwise');
-
-%  figure(4), plot(Cor) 
+Cor = corr(Msig, Sigpix, 'rows', 'pairwise');
 
 % In voxel
 V = zeros(size(Ft));
@@ -67,8 +70,8 @@ thr = ThC * max(abs(Cor));
 
 V = V'; %transpose back
 if thr < 0.5
- %smooth with median filter, since with lower cutoff more variable
- %correlations are included leading to noisy contours
+    % smooth with median filter, since with lower cutoff more variable
+    % correlations are included leading to noisy contours
     m = 3;
     if thr < 0.25
         m = 5;

@@ -58,4 +58,3 @@ Inf.Dimensions = [info.Shape(1) info.Shape(2) info.Shape(3) max_idx];
 Zorder(Inf); %mex function to transpose the sbx file
 
 
-clear all
