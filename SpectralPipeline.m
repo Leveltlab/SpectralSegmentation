@@ -5,23 +5,32 @@
 % Note: image sequences should be in sbx format (if not run tif2sbx)
 
 %% First you need to transpose the sbx file with this utility
+% Creates _Trans.dat file
 StackTranspose
 
+%% Decimate the sbx file to ~1 Hz, and convert data to double
+% Creates _DecTrans.dat file
+DecimateTrans
+
 %% Then you need to calculate the cross spectral power for each pixel with 8
-%surrounding pixels
+%surrounding pixels. Requires DecTrans.dat file to function
+% Creates _SPSIG.mat file
 spectral
 
-%% Create representative images using usual calcium fluorescence (maximum
-% and average projection). Gets saved into SPSIG file
-BackgroundImgSbx;
+%% Create calcium fluorescence images (maximum and average projection)
+% Projections get saved into SPSIG file
+BackgroundImgSbx
 
 %% Then do segmentation (neurons, or boutons)
+% ROIs, ROI properties and used spectral images get saved into SPSIG file
 getSpectrois
 
 %% Remove or add ROIS manually, display and compare roi sets
-RoiRejecterGUI()
+% If save button is pressed, edits are made in the SPSIG file
+RoiManagerGUI
 
 %% Retrieve the signals associated with these rois from the aligned data
+% 
 retrievesignals
 
 %% deconvolve signals

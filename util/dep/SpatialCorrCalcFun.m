@@ -6,7 +6,7 @@ function [cor, roiidx, rvar] = SpatialCorrCalcFun(sbxt, freq, mask, roiNr, origi
 % Can also calculate the variance of the correlation!
 % 
 % inputs: 
-%   sbxt: transposed memorymapped sbxt from transemap(transfile), 
+%   sbxt: transposed memorymapped sbxt from transmemap(transfile), 
 %   freq: 1x1 double, acuisition frequency of 2P data
 %   mask: 2D double [height x width], the positions/ id's of ROIs
 %   roiNr: which ROI to calculate the spatialcorr etc from
