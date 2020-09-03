@@ -58,7 +58,7 @@ filepaths = filepaths';
 nfiles = length(filenames);
 clearvars selecting
 
-
+i = 1;
 %% process the files
 for i = 1:nfiles
     fn = filenames{i};
@@ -87,35 +87,37 @@ for i = 1:nfiles
     
     %number of splits
     if ~isfield(info, 'Slices')
-        try
-            Splitnm = info.otparam(3);
-        catch
+        if isfield(info, 'otparam') && length(info.otparam)>=3
+             info.Slices = info.otparam(3);
+        else
 %             % Maybe the info file is super bad, ask how many slices there are
 %             if ~isfield(info, 'Slices')
 %                 answ = inputdlg('How many Slices?', 'Slice info!!...', [1 40],  {'1'});
-%                 Splitnm = str2double(answ{1});
+%                  info.Slices = str2double(answ{1});
 %             end
 
             % The info file could have no slices because only 1 depth is imaged
-            Splitnm = 1;
+             info.Slices = 1;
         end
-        info.Slices = Splitnm;
     end
     if size(Img,1) < 3
-        bVers = 1;
-        Img = permute(Img, [2 3 1]);
-
-        if ~isfield(info, 'bVers')
-            info.bVers = bVers;
-        end
+        info.bVers = true; % bvers means data is permuted because of GPU recording..
+    else
+        info.bVers = false;
     end
 
     nSlices = info.Slices;
-    info.bsplit = 1; % MULTIPLE SPLITS OR NOT? true = yes multiple splits
-
-
+    if ~isfield(info, 'bsplit')
+        if nSlices > 1 % bsplit true means there are more than 1 split
+            info.bsplit = true;
+        else
+            info.bsplit = false;
+        end
+    end
     
-    %% Normcorr
+    %% Normcorr    
+    % Download normcorre code from flatironinstitute from github.
+    % Place normcorre folder in Matlab path BELOW SpectralSegmentation
     
     info.crop.x = x; 
     info.crop.y = y;
@@ -129,15 +131,19 @@ for i = 1:nfiles
     % Show the data before committing the analysis
     Img = sbxread(pnfn, 0,100*nSlices);
     %determine pixel value range
-    cLimits = prctile(Img(:), [0.05 94]);
+    cLimits = prctile(Img(:), [0.02 94]);
     % Activate much tighter subplots
     % [subplot margin top&side],[figure bottomspace,topspace],[leftspace,rightspace]
     subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.01], [0 0.04], [0.1 0]);
-    figure('units','normalized','position',[0.1 0.05 0.25 0.85]);
+    figure('units','normalized','position',[0.1 0.15 0.25 0.7]);
     handles = gobjects(1,nSlices);
     for j = 1:nSlices
         handles(j) = subplot(nSlices, 1, j);
-        imagesc(mean(squeeze(Img(1,:,:,j:nSlices:end)),3))
+        if info.bVers
+            imagesc(mean(squeeze(Img(1,:,:,j:nSlices:end)),3))
+        else
+            imagesc(mean(squeeze(Img(:,:,1,j:nSlices:end)),3))
+        end
         caxis(cLimits)
         hold on
         rectangle('position',[x(1), y(1), x(end)-x(1), y(end)-y(1)],'edgecolor',[1 1 0.75],'linewidth',2.5)

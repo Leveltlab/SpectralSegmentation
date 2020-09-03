@@ -4,7 +4,7 @@ function varargout = RoiManagerGUI(varargin)
 % can show the signal of any place in the two-photon microscopy image over
 % time.
 % 
-% when no input is given the RoiRejecter will ask for the spectral file,
+% when no input is given the RoiManager will ask for the spectral file,
 %   and the transposed data file
 % In case that input is given, the input should be:
 % RoiManagerGUI(Mask, PP, SPic, Transfile, Sax)
@@ -17,7 +17,7 @@ function varargout = RoiManagerGUI(varargin)
 %            correspond to the SPic variable
 % 
 % 
-% The functionality of the RoiRejecter can be accessed with the 5 different
+% The functionality of the RoiManager can be accessed with the 5 different
 % tabs on the right.
 % 
 % ROIs can be refined by:
@@ -32,6 +32,11 @@ function varargout = RoiManagerGUI(varargin)
 %             to create a grayscale image. TAB 'Create ROI'
 %	manual creation: manually draw a ROI by clicking on the main
 %                    background image.     TAB 'Manual ROI'
+% 
+% 
+% There is manual for the RoiManagerGUI in SpectralSegmenation\docs
+% 
+% 
 % 
 % Data can be visualised in the following ways:
 % FLUORESCENCE TIME TRACE (signal in bottom main axis)
@@ -58,7 +63,7 @@ function varargout = RoiManagerGUI(varargin)
 %       can take a while.
 %
 %
-%
+%   Matlabs own info on RoiMangerGUI:
 %      H = ROIMANAGERGUI returns the handle to a new ROIMANAGERGUI or the handle to
 %      the existing singleton*.
 %
@@ -77,7 +82,7 @@ function varargout = RoiManagerGUI(varargin)
 % See also: GUIDE, GUIDATA, GUIHANDLES
 %
 % Made by: Leander de Kraker
-% 2018
+% 2018-2020
 
 % Last Modified by GUIDE v2.5 21-Aug-2020 17:55:32
 
@@ -2491,8 +2496,8 @@ function saveButton_Callback(~, ~, h) %#ok
             pause(0.01)
             save(data.SPSIGfile, 'PP', 'Mask', 'BImg', 'SpatialCorr', '-append')
             if saveSliders
-                rrSliderSettings = switches.sliderSettings;
-                save(data.SPSIGfile, 'rrSliderSettings', '-append')
+                rmSliderSettings = switches.sliderSettings;
+                save(data.SPSIGfile, 'rmSliderSettings', '-append')
             end
             % TODO: update the SpatialCorr!!!
             disp('Changes saved to SPSIG file & workspace')
@@ -2505,8 +2510,8 @@ function saveButton_Callback(~, ~, h) %#ok
         assignin('base', 'BImg', BImg);
         assignin('base', 'SpatialCorr', SpatialCorr);
         if saveSliders
-            rrSliderSettings = switches.sliderSettings;
-            assignin('base', 'rrSliderSettings', rrSliderSettings);
+            rmSliderSettings = switches.sliderSettings;
+            assignin('base', 'rmSliderSettings', rmSliderSettings);
         end
         
         switches.originalROIs = data.PP.A;

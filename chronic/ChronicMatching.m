@@ -1,5 +1,7 @@
 % Register spectral images of many days, and link their ROIs.
-% Registration uses 2D cross-correlation with a chosen reference dataset
+% Registration uses 2D cross-correlation via fft, with a chosen reference
+% 
+% Run the script step by step
 % 
 % Leander de Kraker
 % 
@@ -72,7 +74,7 @@ clearvars data
 fprintf('\nloading in %d files:\n', nfiles)
 for i = 1:nfiles
     fprintf('\nloading file %d...',i)
-    data(i) = load([filepaths{i} filenames{i}], 'SPic', 'Sax', 'freq', 'Mask', 'PP', 'BImg');
+    data(i) = load([filepaths{i} filenames{i}], 'SPic', 'Mask', 'PP');
     fprintf('\nloaded "%s"\n', filenames{i})
     
 end
@@ -80,11 +82,10 @@ toc
 
 clearvars selecting str pos i questionStr answerStr strdate
 
-%% Backing up data variable
+%% Backing up data variable WHEN GOING TO RESIZE SOME RECORDINGS
 data2 = data;
-%% Resize some recordings?
+%% Resize some recordings? ONLY IF RESIZE IS NECESSARY! Manual parameters!
 % This step is only necessary when recordings are made with different zoom
-% levels.
 
 data = data2;
 
@@ -128,6 +129,7 @@ for i = 1:nfiles
     %obtain highest contrasted spectral density
     Img = max(real(log(data(i).SPic)),[],3);
 %     Img = data(i).BImgA;
+%     Img = data(i).BImg;
 
     % Normalize and remove -infs
     vals = unique(Img);
@@ -208,6 +210,7 @@ ManualRegistration(imgs, PP, filenamesShort, interpol)
 
 %% Register images automatically
 referenceNum = 4; % which background image to take as reference
+buf = 16; % Buffer to remove around the to-register image
 
 if referenceNum>nfiles
     error('Select a lower reference recording number! referenceNum exceeds number of files')
@@ -225,9 +228,6 @@ dims = cat(1,dims{:});
 maxdim(1) = max(dims(:,1));
 maxdim(2) = max(dims(:,2));
 
-
-% buffersize = 100;
-buf = 16;
 
 w = min(dims(:,1))-buf;
 h = min(dims(:,2))-buf;
@@ -380,7 +380,7 @@ if ~isempty(zeroRows)
     end
 end
 
-clearvars h w i ij skipper ji Freq correl x y ymax ymin xmin xmax ssr snd extra
+clearvars h w i ij skipper ji correl x y ymax ymin xmin xmax ssr snd extra
 
 
 

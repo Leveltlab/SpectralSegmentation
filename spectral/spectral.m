@@ -111,4 +111,5 @@ SPic = padarray(SPic, [1 1 0]); %make original size by padding borders
 
 save([fp mfn{1} '_SPSIG.mat'], 'SPic', 'Sax', 'freq')
 toc
+fprintf('Done with spectral calculation\n')
 

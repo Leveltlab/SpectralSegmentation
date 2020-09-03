@@ -4,7 +4,8 @@ Spectral Segmentation
 This Github contains open source calcium imaging processing tools to detect regions of interest (ROIs) in Calcium imaging data and extract their fluorescence traces.  
 It is designed to be able to detect active neural elements (soma/ dendrites/ axons) in both one- or two-photon calcium imaging data.
 This pipeline includes code adapted from [normcorre](https://github.com/flatironinstitute/NoRMCorre) (reference to Normcorre),
- to apply motion correction to sbx files ().<br />
+ to apply motion correction to sbx files. To be able to execute the motion correction, download the code from 
+ [normcorre](https://github.com/flatironinstitute/NoRMCorre) and add the code into the matlab path below SpectralSegmentation.<br /> 
 Spike estimation can be done on the fluorescence traces, with code from [*MLspike*](https://github.com/MLspike/spikes)
 that is inside this pipeline.<br />
 This is the pipeline that is used by the Leveltlab in the Netherlands Institute of Neuroscience (NIN).
@@ -26,17 +27,17 @@ Visualize and explore the fluorescence data in many ways.
 
 <img src="https://github.com/Leveltlab/SpectralSegmentation/blob/master/docs/Figure_spectral-Delier_20190916_002-1-Declutter.png">
 This image shows results of the spectral analysis on two-photon microscopy in a mouse V1.
-The average- and maximum fluorescence fluorescence can show fluorescence that is not related to activity of neurons. For example,
+The average- and maximum fluorescence can show fluorescence that is not related to activity of neurons. For example,
  higher baseline fluorescence of a neuron that does not show activity (cyan box, with its signal shown on the right), or lower baseline 
  fluorescence in blood vessels (green box). However, the cross-spectral power shows different active neurons, depending on the frequency.
  The red box shows a neuron that was not visible in the average- and maximum fluorescence projection, but it is clearly visible in some of the cross-spectral power images.
- Therefore, these cross-spectral power images are very usefull for ROI selection.
+ Therefore, these cross-spectral power images are very useful for ROI selection.
 
 Readme's
 ======
-Pipeline manual
+[Pipeline manual](https://github.com/Leveltlab/SpectralSegmentation/blob/master/docs/Spectral-Segmentation_Manual.pdf)
 
-Roi editor GUI [RoiRejecterGUI manual](https://github.com/Leveltlab/SpectralSegmentation/blob/master/docs/RoiRejecterGUI_Manual_V3.pdf)
+[RoiManagerGUI manual](https://github.com/Leveltlab/SpectralSegmentation/blob/master/docs/RoiManagerGUI_Manual_V3.pdf)
 
 Paper
 ======
@@ -46,8 +47,8 @@ We're publishing a paper for this pipeline jippie (WIP)
 
 Matlab dependencies
 ======
-The following matlab toolboxes are used in the Spectral Segmentation pipeline.
-They are required for some of the functions and script in the toolbox.
+The following Matlab toolboxes are used in the Spectral Segmentation pipeline.
+They are required for some of the functions and scripts in the toolbox.
 
 - Image Processing Toolbox.
 - Signal Processing Toolbox.
@@ -61,15 +62,17 @@ They are required for some of the functions and script in the toolbox.
 
 3rd party functions & toolboxes
 ======
-- Motion correction code [*normcorre*](https://github.com/flatironinstitute/NoRMCorre) is adapted to process .sbx files. (not in github yet).
-- ROI calcium signal signal spike estimation with [*MLspike*](https://github.com/MLspike/spikes). (not in github yet).
+Download the code from these toolboxes to be able to use them in the Spectral Segmentation toolbox.
+- Motion correction code [*NoRMCorre*](https://github.com/flatironinstitute/NoRMCorre) is adapted to process .sbx files. Place the NoRMCorre path below the SpectralSegmentation path in Matlab.
+- ROI calcium signal signal spike estimation with [*MLspike*](https://github.com/MLspike/spikes).
 
-The following functions are used in the spectral segmentation toolbox, they are inside the dependency folders.
+The following 3rd party functions are used in the spectral segmentation toolbox, they are inside the dependency folders.
 - [*subtightplot*](https://www.mathworks.com/matlabcentral/fileexchange/39664-subtightplot): 
-	Felipe G. Nievinski (2020)
+	Felipe G. Nievinski (2020).
 - [*xcorr2\_fft*](https://www.mathworks.com/matlabcentral/fileexchange/53570-xcorr2\_fft-a-b):
 	Alessandro Masullo (2020).
-	
+- [*figtitle*](https://www.mathworks.com/matlabcentral/fileexchange/42667-figtitle):
+	Chad Greene (2020).
 	
 Developers
 ======
@@ -79,11 +82,7 @@ Developers
 
 Troubleshooting/ questions
 ======
-Github issues tracker?
-Chris email?
-	
-Licence
-======
+Slack channel?
 
 	
 	

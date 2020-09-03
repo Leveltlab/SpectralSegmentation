@@ -70,6 +70,7 @@ end
 fwrite(fileDecimated, D1,'double');
 close(hw)
 fclose(fileDecimated);
+fprintf('done with decimating data\n')
 
 %% Reading the Dec file  %%
 % strfp = [fp mfn{1} '_D1.dat']

@@ -50,7 +50,7 @@ if ~asfunction
 end
 
 % Load the data
-load(filename, 'Mask', 'PP', 'BImgMax');
+load(filename, 'Mask', 'PP', 'BImg');
 
 % memorymap transposed data file
 [sbxt, dim, freq] = transmemap([filename(1:end-9) 'Trans.dat']); 
@@ -62,9 +62,9 @@ fprintf('\nloaded file %s\n',filename(1:end-4))
 [backCon, zones, backMask] = BufferMask(buf+Mask, surround); 
 
 % Plotting the contours
-figure('Units','normalized', 'Position', [0 0.2 0.475 0.5]);
+figure('Units','normalized', 'Position', [0 0.2 0.475 0.5], 'Name', 'signal retrieval');
 subplot(1,2,1); 
-imagesc(BImgMax)
+imagesc(BImg)
 colormap gray, hold on
 cmap = winter(length(backCon));
 for i = 1:PP.Cnt
@@ -77,17 +77,17 @@ title(sprintf('%s',filename(1:end-4)))
 drawnow
 
 Mt = Mask'; %the mask needs to be transposed
-indices = find(Mt(:)> 0); %get the image indices for all rois
+idx = find(Mt(:)> 0); %get the image indices for all rois
 
 % Extracting soma signals: enough memory for all ROIs
 fprintf('extracting neuron ROI signals...\n')
-Sigrois = sbxt.Data.y(:,indices);   
+Sigrois = sbxt.Data.y(:,idx);   
 Sigrois = double(Sigrois);
 sigraw = zeros(dim(1),PP.Cnt);
 tic
 for i = 1:PP.Cnt
     ichan = find(Mt(:)== i);
-    [~, ia] = intersect(indices, ichan); %get indices corresponding to this roi
+    [~, ia] = intersect(idx, ichan); %get indices corresponding to this roi
     sigraw(:,i) = mean(Sigrois(:,ia),2); %and average this selection 
 end
 fprintf('done: %.0f sec\n', toc)
@@ -101,9 +101,9 @@ for i = 1:PP.Cnt
     % The memory is probably not large enough to get all the ROIs in one go
     % thats why the memorymapped data is being extracted in the for loop
     Mt(zones(i).y, zones(i).x) = zones(i).mask'; % add transposed background mask i
-    indices = find(Mt(:)==i); % get the image indices for this roi
-    % indices = indices + double(dim(2)); % add a line?
-    sigrawBack(:,i) = mean(double(sbxt.Data.y(:,indices)),2);
+    idx = find(Mt(:)==i); % get the image indices for this roi
+    % indices = indices + double(dim(2)); %add a line?! OR NO LINE ?!?!!
+    sigrawBack(:,i) = mean(double(sbxt.Data.y(:,idx)),2);
     
     if mod(i, 50)==1
         fprintf('ROI %d/ %d done\n', i, PP.Cnt)
@@ -129,15 +129,17 @@ sig = basecorrect(sigraw, window);
 sigBack = basecorrect(sigrawBack,window);
 sigCorrected = basecorrect(sigrawCorrected, window);
 
-% Plot retrieved df/f
-subplot(1,2,2);
-RGB = CreateRGB({real(log(sig))', sigrawBack'}, 'g b');
-imagesc(xas./60, 1:size(sig,2), RGB); 
-title('df/f signal (yellow=soma, blue=background'); xlabel('time (minutes)')
-xlim([0 xas(end)/60]); ylabel('df/f')
 
-
+% Save the retrieved signal
 save(filename, 'sig', 'sigraw', 'sigBack', 'sigCorrected', ...
                'freq', 'infoSigPar', '-append')
 fprintf('saved fluorescence and dF\\F0\n')
+
+
+% Plot retrieved df/f
+subplot(1,2,2);
+RGB = CreateRGB({log1p(sig)', sigrawBack'}, 'rg b');
+imagesc(xas./60, 1:size(sig,2), RGB); 
+title('df/f signal (yellow=soma, blue=background'); xlabel('time (minutes)')
+xlim([0 xas(end)/60]); ylabel('df/f')
 

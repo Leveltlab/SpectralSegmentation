@@ -77,17 +77,17 @@ title(sprintf('%s',filename(1:end-4)))
 drawnow
 
 Mt = Mask'; %the mask needs to be transposed
-indices = find(Mt(:)> 0); %get the image indices for all rois
+idx = find(Mt(:)> 0); %get the image indices for all rois
 
 % Extracting soma signals: enough memory for all ROIs
 fprintf('extracting neuron ROI signals...\n')
-Sigrois = sbxt.Data.y(:,indices);   
+Sigrois = sbxt.Data.y(:,idx);   
 Sigrois = double(Sigrois);
 sigraw = zeros(dim(1),PP.Cnt);
 tic
 for i = 1:PP.Cnt
     ichan = find(Mt(:)== i);
-    [~, ia] = intersect(indices, ichan); %get indices corresponding to this roi
+    [~, ia] = intersect(idx, ichan); %get indices corresponding to this roi
     sigraw(:,i) = mean(Sigrois(:,ia),2); %and average this selection 
 end
 fprintf('done: %.0f sec\n', toc)
@@ -101,9 +101,9 @@ for i = 1:PP.Cnt
     % The memory is probably not large enough to get all the ROIs in one go
     % thats why the memorymapped data is being extracted in the for loop
     Mt(zones(i).y, zones(i).x) = zones(i).mask'; % add transposed background mask i
-    indices = find(Mt(:)==i); % get the image indices for this roi
+    idx = find(Mt(:)==i); % get the image indices for this roi
     % indices = indices + double(dim(2)); %add a line?! OR NO LINE ?!?!!
-    sigrawBack(:,i) = mean(double(sbxt.Data.y(:,indices)),2);
+    sigrawBack(:,i) = mean(double(sbxt.Data.y(:,idx)),2);
     
     if mod(i, 50)==1
         fprintf('ROI %d/ %d done\n', i, PP.Cnt)
@@ -141,5 +141,5 @@ subplot(1,2,2);
 RGB = CreateRGB({log1p(sig)', sigrawBack'}, 'rg b');
 imagesc(xas./60, 1:size(sig,2), RGB); 
 title('df/f signal (yellow=soma, blue=background'); xlabel('time (minutes)')
-xlim([0 xas(end)/60]); ylabel('df/f')
+xlim([0 xas(end)/60]); ylabel('ROI (n)')
 
