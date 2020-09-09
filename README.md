@@ -79,6 +79,9 @@ Developers
 - Chris v.d. Togt.  **Netherlands Insititue of Neuroscience (NIN)**
 - Leander de Kraker.  **Netherlands Insititue of Neuroscience (NIN)**
 
+License
+=======
+This software is published under a creative common license **CC-By-NC 4.0**
 
 Troubleshooting/ questions
 ======
