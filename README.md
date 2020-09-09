@@ -81,7 +81,7 @@ Developers
 
 License
 =======
-This software is published under a creative common license **CC-By-NC 4.0**
+This software is published under creative common license **CC-BY-NC 4.0**
 
 Troubleshooting/ questions
 ======
