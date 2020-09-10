@@ -165,8 +165,12 @@ for i = 1:nfiles
     
     
     filenameNormcorr = cell(nSlices,1);
-    for j = 1:nSlices
-        filenameNormcorr{j} = [pnfn sprintf('_Split%d_normcorr', j)];
+    if info.bsplit
+        for j = 1:nSlices
+            filenameNormcorr{j} = [pnfn sprintf('_Split%d_normcorr', j)];
+        end
+    else
+        filenameNormcorr{j}= [pnfn sprintf('_normcorr', j)];
     end
 
     

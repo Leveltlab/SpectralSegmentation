@@ -9,7 +9,7 @@ tif2sbx
 %% Motion correct sbx data
 Showsbx 
 % Rightclick on main image to adjust color scale
-% Press the A button in the Alignment/motion correction
+% Press the A button for the Alignment/motion correction
 
 
 %% Transpose the motion corrected sbx file to improve reading speed
