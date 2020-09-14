@@ -94,12 +94,23 @@ else
     fprintf('Going to calculate Rvar and spatialcorr\n')
 end
 
-if calcRvar
+if true
     % Load transposed sbx data
     pnSbx = pn;
-    fnSbx = [fn(1:end-9), 'Trans.dat'];
-    if ~exist([pnSbx fnSbx], 'file')
-        [fnSbx, pnSbx] = uigetfile('*TRANS.dat', 'load raw data (Trans.dat file)');
+    fnSbx = [fn(1:end-10), '_DecTrans.dat']; % Search for decimated trans file first
+    if ~exist([pnSbx fnSbx], 'file') % decimated not found -> Search for regular transposed file
+        fnSbx = [fn(1:end-10), '_Trans.dat'];
+        if ~exist([pnSbx fnSbx], 'file')   % regular transposed not found -> ask user
+            [fnSbx, pnSbx] = uigetfile('*TRANS.dat', 'load raw data (Trans.dat file)');
+            if isempty(fnSbx)
+                warning('cannot calculate ROI signal correlations without transposed data, quiting')
+                return
+            end
+        else
+            fprintf('using transposed data (non decimated) to calculate signal ROI correlations\n')
+        end
+    else
+        fprintf('using decimated transposed data to calculate signal ROI correlations\n')
     end
     [sbxt, dim, freq] = transmemap([pnSbx, fnSbx]);
     
