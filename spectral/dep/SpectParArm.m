@@ -137,7 +137,7 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
     h.colorbarAxes2.XTickLabel = '';
     h.colorbarAxes2.NextPlot = 'add';
     h.colorbarAxes2Img = gobjects(1);
-    h.colorbarAxes1.YLim = sax([1 end]);
+    h.colorbarAxes2.YLim = sax([1 end]);
     h.colorbarAxes2.YLabel.String = 'frequency (Hz)';
     
     
@@ -147,12 +147,16 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
     norma = true;
     specImCell = squeeze(num2cell(specImg, [1 2]));
     specImRGB = CreateRGB2(specImCell, colors, norma);
-    h.axes1.NextPlot = 'add';
+    h.axes1.NextPlot = 'add';    
     h.axes1Img = imagesc(specImRGB, 'Parent', h.axes1);
+    h.axes1.XLim = [1 dims(2)];
+    h.axes1.YLim = [1 dims(1)];
     
     % Also add the imagesc to axes2 to add the img graphics object handle
     h.axes2.NextPlot = 'add';
     h.axes2Img = imagesc(specImRGB, 'Parent', h.axes2);
+    h.axes2.XLim = [1 dims(2)];
+    h.axes2.YLim = [1 dims(1)];
     
     colormap(colors);
     
@@ -322,6 +326,8 @@ function PlotCutOffHz(data, selectedHz, selectedSax, h)
     specImgRGB = CreateRGB2(specImgCell, colors, data.norma);
     delete(h.axes2Img) % Delete previous image
     h.axes2Img = imagesc(specImgRGB, 'Parent', h.axes2);
+    h.axes2.XLim = [1 data.dims(2)];
+    h.axes2.YLim = [1 data.dims(1)];
 
     % Adjust colorbar
     delete(h.colorbarAxes2Img)
