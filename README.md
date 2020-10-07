@@ -9,8 +9,8 @@ This pipeline includes code adapted from [normcorre](https://github.com/flatiron
  to apply motion correction to sbx files. To be able to execute the motion correction, download the code from 
  [normcorre](https://github.com/flatironinstitute/NoRMCorre) and add the code into the matlab path below SpectralSegmentation.<br /> 
 Spike estimation can be done on the fluorescence traces, with code that uses [*MLspike*](https://github.com/MLspike/spikes) ([Deneux et al. 2016](https://doi.org/10.1038/ncomms12190)).<br />
-This is the pipeline that is used by the Leveltlab in the Netherlands Institute of Neuroscience (NIN).<br />
-The pipeline is easily executable manually per step with the script [SpectralPipeline](https://github.com/Leveltlab/SpectralSegmentation/blob/master/SpectralPipeline.m).
+This is the pipeline that is used by the Leveltlab in the Netherlands Institute of Neuroscience (NIN).<br /><br />
+The pipeline is easily executable manually per step with the script [SpectralPipeline](https://github.com/Leveltlab/SpectralSegmentation/blob/master/SpectralPipeline.m).<br />
 Or via the script that runs the pipeline automatically for as many files as requested [AutomatedPipeline](https://github.com/Leveltlab/SpectralSegmentation/blob/master/AutomatedAnalysis.m), until RoiManagerGUI which requires manual input.<br />
 
 
