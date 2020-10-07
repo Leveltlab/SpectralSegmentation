@@ -1,7 +1,9 @@
 function sigb = basecorrect(sig, window)
+% Convert fluorescence signal to Df/f
+% Chris vd Togt
 
-
-bsl = prctfilt(sig',10,window,window,0)';  % 10% = baseline percentile correction
+% 10% = baseline percentile correction
+bsl = prctfilt(sig',10,window,window,0)';  
 x = (1:size(bsl,1))';
 
 %scale roi traces to DF/F
