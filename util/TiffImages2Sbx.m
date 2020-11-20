@@ -1,5 +1,7 @@
-%function tif2sbx()
-%takes a tifstack and converts to sbx
+% Converts one folder full of tif files which each consist of one frame
+% and converts those to one sbx file
+%
+% Chris v.d. Togt
 
 fp = uigetdir();
 files = dir([fp '/*.tif*']);
@@ -15,8 +17,8 @@ for i = 1:length(files)
     waitbar(i/length(files), hwb, 'writing sbx file')
 end       
 fclose(fileID);
-   
- 
+
+
 info.sz = size(im); %image dimension
 info.channels =  2; %one channel
 info.nchan = 1;

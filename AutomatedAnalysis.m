@@ -1,20 +1,22 @@
 % Doing the normcorr motion correction, transposing, spectral analysis and
 % automated ROI creation for all splits, for multiple files in one script
-% 
+% Optional steps are motion correction, background subtraction, ROI getting
+%
 
-% CROPPING SETTINGS % % % % %  % % %% % 
+% CROPPING SETTINGS % % % % % (when running motion correction)
 % Most important part of cropping is removing the lines (on the left
 % and right side) which have value 653357 and will thus overpower all 
 % relevant data during motion correction.
-x = 102:774; % HORIZONTAL CROP
-y = 25:512;  % VERTICAL CROP
-% x = 50:720;
-% y = 10:512;
-% for GPU recording
-% x = 9:792;
-% y = 9:507;
+% x = 102:774; % HORIZONTAL CROP
+% y = 25:512;  % VERTICAL CROP
 
-% Also run getspectrois to retrive the ROIs?
+% Run motion normcorre correction? (if false, cropping settings aren't used)
+doNoRMCorre = false;
+
+% Do background subtraction (mainly for 1P data, with extreme vignetting) %
+doBackgroundSubtract = true;
+
+% Also run getSpectrois to retrieve the ROIs? % % % % % % %
 getROIs = true;
 if getROIs
     % Arm the spar
@@ -22,23 +24,24 @@ if getROIs
     spar = Spectroiparm();
 end
 
-% Save timing info?
+% Save timing info? % % % % % % % % % % % % % % % % % % % % 
 timed = true;
 if timed
     % File in which timing info is
-    timedFile = '\\mvp2nin\Projects\PLInterneurons\spectralTimed2.mat';
+    timedFile = 'D:\spectralTimed.mat';
     if ~isfile(timedFile)
-        warning('%s does not exist!! please say which file to add the timing data to!')
+        warning('%s does not exist!! please say which file to add the timing data to!', timedFile)
         return
 % %         or run following code to create a new timedFile there: 
-        timedData = struct('n',0,'computerName',{},'fileSize',[],'fileName',{},...
+        timedData = struct('computerName',{},'fileSize',[],'filePath', [], 'fileName',{},...
                      'nSplits', [], 'normcorrT',[],'transposeT',[],'decimatT',[],...
-                     'spectralT',[],'backgrndT',[], 'getRoisT', [], 'nRois', []);
-        timedData(1).n = 0;
+                     'spectralT',[],'fluorescenceT',[], 'backSubT', [], 'getRoisT', [],...
+                     'nRois', [], 'date', {});
         save(timedFile, 'timedData')
     end
 end
 
+% Load as many files as user wants
 filenames = {};
 filepaths = {};
 selecting = true; % true as long as files are being selected
@@ -64,7 +67,7 @@ for i = 1:nfiles
     fn = filenames{i};
     pn = filepaths{i};
     
-    pnfn = [pn fn(1:end-4)]; % pathname with filename    
+    pnfn = [pn fn(1:end-4)]; % pathname with filename  
     % prepare to load a different sbx file: thoroughly delete info variable
     clearvars info 
     clearvars -global info
@@ -73,7 +76,7 @@ for i = 1:nfiles
     Img = sbxread(pnfn, 0,1);
     
     global info
-
+    
     % set the name of the recording
     if ~isfield(info, 'strfp')
         info.strfp = pnfn;
@@ -105,7 +108,7 @@ for i = 1:nfiles
     else
         info.bVers = false;
     end
-
+    
     nSlices = info.Slices;
     if ~isfield(info, 'bsplit')
         if nSlices > 1 % bsplit true means there are more than 1 split
@@ -119,22 +122,13 @@ for i = 1:nfiles
     % Download normcorre code from flatironinstitute from github.
     % Place normcorre folder in Matlab path BELOW SpectralSegmentation
     
-    info.crop.x = x; 
-    info.crop.y = y;
-    info.d1 = length(info.crop.x);
-    info.d2 = length(info.crop.y);
-    % info.skipFrame = 65537; % Skip frame 65537 (for old recordings which
-    % have a bug that repeats a frame after 65537 (2^16) frames)
-    info.Skipframe = -1; % Don't skip any frames
-    
-    
     % Show the data before committing the analysis
     Img = sbxread(pnfn, 0,100*nSlices);
     %determine pixel value range
-    cLimits = prctile(Img(:), [0.02 94]);
+    cLimits = prctile(Img(:), [0.02 96]);
     % Activate much tighter subplots
     % [subplot margin top&side],[figure bottomspace,topspace],[leftspace,rightspace]
-    subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.01], [0 0.04], [0.1 0]);
+    subplot = @(m,n,p) subtightplot (m, n, p, [0.04 0.01], [0.01 0.04], [0.1 0.01]);
     figure('units','normalized','position',[0.1 0.15 0.25 0.7]);
     handles = gobjects(1,nSlices);
     for j = 1:nSlices
@@ -145,8 +139,11 @@ for i = 1:nfiles
             imagesc(mean(squeeze(Img(:,:,1,j:nSlices:end)),3))
         end
         caxis(cLimits)
-        hold on
-        rectangle('position',[x(1), y(1), x(end)-x(1), y(end)-y(1)],'edgecolor',[1 1 0.75],'linewidth',2.5)
+        if doNoRMCorre
+            hold on
+            rectangle('position',[x(1), y(1), x(end)-x(1), y(end)-y(1)],...
+                      'edgecolor',[1 1 0.75],'linewidth',2.5)
+        end
         title(sprintf('slice %d',j))
     end
     linkaxes(handles, 'xy')
@@ -157,22 +154,59 @@ for i = 1:nfiles
                     0     0.25 0.5;...
                     0     0    0], 256))
     drawnow
-
-    % START NORMCORR REGISTRATION % % % % %
-    normcorrTic = tic;
-    simonalign3;
-    normcorrtoc = toc(normcorrTic);
     
-    
-    filenameNormcorr = cell(nSlices,1);
-    if info.bsplit
-        for j = 1:nSlices
-            filenameNormcorr{j} = [pnfn sprintf('_Split%d_normcorr', j)];
+    if doNoRMCorre
+        % critical info for NoRMCorre
+        info.crop.x = x; 
+        info.crop.y = y;
+        info.d1 = length(info.crop.x);
+        info.d2 = length(info.crop.y);
+        % info.skipFrame = 65537; % Skip frame 65537 (for old recordings which
+        % have a bug that repeats a frame after 65537 (2^16) frames)
+        info.Skipframe = -1; % Don't skip any frames
+        
+        % START NORMCORR REGISTRATION % % % % %
+        normcorrTic = tic;
+        simonalign3;
+        normcorrtoc = toc(normcorrTic);
+        
+        filenameNormcorr = cell(nSlices,1);
+        if info.bsplit
+            for j = 1:nSlices
+                filenameNormcorr{j} = [pnfn sprintf('_Split%d_normcorr', j)];
+            end
+        else
+            filenameNormcorr{j}= [pnfn sprintf('_normcorr', j)];
         end
-    else
-        filenameNormcorr{j}= [pnfn sprintf('_normcorr', j)];
+        
+    else % No NoRMCorre
+        nSlices = 1;
+        filenameNormcorr = {pnfn};
+        normcorrtoc = NaN;
     end
 
+    %% BACKGROUND SUBTRACTION % % % %
+    % Basically only necessary for 1P & miniscope data, to remove extreme
+    % vignetting, out of focus fluorescence, blur
+    if doBackgroundSubtract
+        filenameBackgroundSub = cell(nSlices, 1);
+        fprintf('Doing background subtraction...\n')
+        backSubtic = tic;
+        filterRadius = 50;
+        shifter = 9000;
+        for j = 1:nSlices
+            filenameBackgroundSub{j} = [filenameNormcorr{j} '_Sub'];
+            BackgroundSubtractSbx(filenameNormcorr{j},...
+                                  filenameBackgroundSub{j}, filterRadius,...
+                                  'Gaussian Average', shifter, true)
+        end
+        backSubtoc = toc;
+        % Replacing the normcorr names! So next analysis takes correct file
+        filenameNormcorr = filenameBackgroundSub;
+    else % No background subtraction
+        backSubtoc = NaN;
+    end
+    
     
     %% TRANSPOSE DATASETS % % % % %
     filenameTrans = cell(nSlices,1);
@@ -184,7 +218,7 @@ for i = 1:nfiles
         filenameTrans{j} = [filenameNormcorr{j} '_Trans.dat'];
     end
     transposetoc = toc(transposeTic);
-
+    
     
     %% DECIMATE DATASETS % % % % % %  
     fprintf('Decimating the %d datasets to 1Hz!\n', nSlices)
@@ -207,14 +241,17 @@ for i = 1:nfiles
         filenameSpectral{j} = [filenameNormcorr{j} '_SPSIG.mat'];
     end
     spectraltoc = toc(spectralTic);
-
     
-    %% BACKGROUND IMAGES % % % % % 
-    backgrndTic = tic;
+    
+    %% FLUORESCENCE PROJECTION IMAGES % % % % % 
+    clearvars info
+    clearvars -global info
+    
+    fluorescenceTic = tic;
     for j = 1:nSlices
-        BackgroundImgSbx(filenameNormcorr{j});
+        FluorescenceImgSbx(filenameNormcorr{j});
     end
-    backgrndtoc = toc(backgrndTic);
+    fluorescencetoc = toc(fluorescenceTic);
     
     
     %% Automatic ROI creation
@@ -228,25 +265,27 @@ for i = 1:nfiles
         load(filenameSpectral{j},'PP')
         nRois = nRois + PP.Cnt;
     else
-        getRoistoc = nan;
+        getRoistoc = NaN;
     end
     
     %% fill in the timedData tracker investigation file
     if timed
         load(timedFile)
         fileInfo = dir([pn fn]);
-        timedData.fileSize  (end+1) = fileInfo.bytes * 10^-9;
-        timedData.normcorrT (end+1) = normcorrtoc;
-        timedData.transposeT(end+1) = transposetoc;
-        timedData.decimatT  (end+1) = dectoc;
-        timedData.spectralT (end+1) = spectraltoc;
-        timedData.backgrndT (end+1) = backgrndtoc;
-        timedData.getRoisT  (end+1) = getRoistoc;
-        timedData.nRois     (end+1) = nRois;
-        timedData.nSplits   (end+1) = nSlices;
-        timedData.computerName{end+1} = getenv('COMPUTERNAME');
-        timedData.fileName  {end+1} = fn;
-        timedData.n = timedData.n + 1;
+        timedData(end+1).fileSize = fileInfo.bytes * 10^-9;
+        timedData(end).normcorrT  = normcorrtoc;
+        timedData(end).backSubT   = backSubtoc;
+        timedData(end).transposeT = transposetoc;
+        timedData(end).decimatT   = dectoc;
+        timedData(end).spectralT  = spectraltoc;
+        timedData(end).fluorescenceT  = fluorescencetoc;
+        timedData(end).getRoisT   = getRoistoc;
+        timedData(end).nRois      = nRois;
+        timedData(end).nSplits    = nSlices;
+        timedData(end).computerName = getenv('COMPUTERNAME');
+        timedData(end).fileName   = fn;
+        timedData(end).filePath   = pn;
+        timedData(end).date       = datetime;
         save(timedFile, 'timedData')
         fprintf('saved timeddata for file %d\n', i)
     end
