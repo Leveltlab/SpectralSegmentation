@@ -1,5 +1,5 @@
-% About to analyse a sbx file z stack
-%
+% Visualize an sbx z stack recording
+% Run only one of the two reading options: OPTOTUNE or KNOBBY
 %
 % Leander de Kraker
 % 2018-10-15

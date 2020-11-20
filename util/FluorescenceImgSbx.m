@@ -1,7 +1,7 @@
-function [BImgMax, BImgAverage] = BackgroundImgSbx(varargin)
+function [BImgMax, BImgAverage] = FluorescenceImgSbx(varargin)
 % Create GFP channel images from long recording
 % 
-% [BImgMax, BImgAverage] = BackgroundImgSbx(sbxName, spigfileName);
+% [BImgMax, BImgAverage] = FluorescenceImgSbx(sbxName, spigfileName);
 % 
 % Optional input: 1. sbx file name (string) (with foldername if necissary)
 %                 2. spsig file name to save the images to
@@ -22,8 +22,8 @@ function [BImgMax, BImgAverage] = BackgroundImgSbx(varargin)
 
 %% You can also execute this as a script
 
-nchunks = 300; % How many pieces of the data to take
-nframes = 25; % How many frames are those pieces long
+nchunks = 1000; % How many pieces of the data to take
+nframes = 10; % How many frames are those pieces long
 
 if exist('varargin', 'var') && nargin == 2 % In case both sbx and spsig file name are given
     % When called as a function, make sure the normcorr sbx file is being used

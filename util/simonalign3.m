@@ -19,8 +19,8 @@ function simonalign3
      disp(['Crop x :' num2str(min(info.crop.x)) ':' num2str(max(info.crop.x)) ] ) 
      disp(['Crop y :' num2str(min(info.crop.y)) ':' num2str(max(info.crop.y)) ] ) 
  else
-     info.crop.x = (1:info.sz(2));
-     info.crop.y = (1:info.sz(1));
+     info.crop.x = (1:info.sz(1));
+     info.crop.y = (1:info.sz(2));
      disp(['Crop x :' num2str(min(info.crop.x)) ':' num2str(max(info.crop.x)) ] ) 
      disp(['Crop y :' num2str(min(info.crop.y)) ':' num2str(max(info.crop.y)) ] ) 
  end
@@ -109,7 +109,7 @@ strfp = [info.strfp '.sbx']; %copied file
             info = infocopy;
             
             disp(['Aligning (Rigid) ' basefilepath '_Split' num2str(i+1) '_normcorr.sbx'])
-            tic; [M1,shifts, template, options] = normcorre(strfp, options_rigid); toc
+            tic; [M1,shifts, template, options] = normcorreSpecSeg(strfp, options_rigid); toc
             
             save([basefilepath '_Split' num2str(i+1) '_Metadata.mat'], 'shifts', 'template', 'options')
         end
@@ -120,7 +120,7 @@ strfp = [info.strfp '.sbx']; %copied file
             save([basefilepath '_normcorr.mat'], 'info')
             info = infocopy;
             
-        tic; [M1,shifts, template, options] = normcorre(strfp, options_rigid); toc
+        tic; [M1,shifts, template, options] = normcorreSpecSeg(strfp, options_rigid); toc
         save([basefilepath '_Metadata.mat'], 'shifts', 'template', 'options')
     end
 
@@ -147,7 +147,7 @@ strfp = [info.strfp '.sbx']; %copied file
             info = infocopy;
             
             disp(['Aligning (Nonrigid) ' basefilepath '_Split' num2str(i+1) '_normcorr.sbx'])
-            tic; [M1,shifts, template, options] = normcorre(strfp ,options); toc
+            tic; [M1,shifts, template, options] = normcorreSpecSeg(strfp ,options); toc
             
             save([basefilepath '_Split' num2str(i+1) '_Metadata.mat'], 'shifts', 'template', 'options')
         end
@@ -158,7 +158,7 @@ strfp = [info.strfp '.sbx']; %copied file
         save([basefilepath '_normcorr.mat'], 'info')
         info = infocopy;
             
-        tic; [M1,shifts,template, options] = normcorre(strfp ,options); toc
+        tic; [M1,shifts,template, options] = normcorreSpecSeg(strfp ,options); toc
         save([basefilepath '_Metadata.mat'], 'shifts', 'template', 'options')
     end
  end

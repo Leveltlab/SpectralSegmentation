@@ -2,30 +2,39 @@
 % automated ROI creation for all splits, for multiple files in one script
 % Optional steps are motion correction, background subtraction, ROI getting
 %
+% Leander de Kraker
 
-% CROPPING SETTINGS % % % % % (when running motion correction)
+% CROPPING SETTINGS % % % % % (for motion correction!)
 % Most important part of cropping is removing the lines (on the left
 % and right side) which have value 653357 and will thus overpower all 
 % relevant data during motion correction.
 % x = 102:774; % HORIZONTAL CROP
 % y = 25:512;  % VERTICAL CROP
 
-% Run motion normcorre correction? (if false, cropping settings aren't used)
-doNoRMCorre = false;
+% Run motion normcorre correction? % % % % % % % % % % % % %
+doNoRMCorre = false; % (if false, cropping settings aren't used)
 
-% Do background subtraction (mainly for 1P data, with extreme vignetting) %
+% BACKGROUND SUBTRACTION parameters % % % % % Necessary for 1 photon data
 doBackgroundSubtract = true;
+filterRadius = 55; % The radius of the filter for background subtraction
+filterMethod = 'Circular Average'; % Options Gaussian Average | Circular Average
+shifter = 9000; % The data values has to be increased to prevent underexposure/ over correction
+% 1D gaussian smoothing to slightly decrease vertical or horizontal banding noise. 
+smoothDim = 0; % options: 0 (no smoothing), 1 (horizontal smoothing), 2 (vertical smoothing)
+smoothSe  = []; % size for the smoothing
+plotter = true; % plot last frame
 
-% Also run getSpectrois to retrieve the ROIs? % % % % % % %
+
+% Also run getSpectrois to detect the ROIs? % % % % % % % %
 getROIs = true;
 if getROIs
-    % Arm the spar
+    % Arm the spar: Spectral roi finder PARameters
     global spar
     spar = Spectroiparm();
 end
 
 % Save timing info? % % % % % % % % % % % % % % % % % % % % 
-timed = true;
+timed = false;
 if timed
     % File in which timing info is
     timedFile = 'D:\spectralTimed.mat';
@@ -44,7 +53,7 @@ end
 % Load as many files as user wants
 filenames = {};
 filepaths = {};
-selecting = true; % true as long as files are being selected
+selecting = true;
 i = 0;
 while selecting
     i = i + 1;
@@ -184,7 +193,7 @@ for i = 1:nfiles
         filenameNormcorr = {pnfn};
         normcorrtoc = NaN;
     end
-
+    
     %% BACKGROUND SUBTRACTION % % % %
     % Basically only necessary for 1P & miniscope data, to remove extreme
     % vignetting, out of focus fluorescence, blur
@@ -192,13 +201,12 @@ for i = 1:nfiles
         filenameBackgroundSub = cell(nSlices, 1);
         fprintf('Doing background subtraction...\n')
         backSubtic = tic;
-        filterRadius = 50;
-        shifter = 9000;
+        
         for j = 1:nSlices
             filenameBackgroundSub{j} = [filenameNormcorr{j} '_Sub'];
             BackgroundSubtractSbx(filenameNormcorr{j},...
                                   filenameBackgroundSub{j}, filterRadius,...
-                                  'Gaussian Average', shifter, true)
+                                  filterMethod, shifter, smoothDim, smoothSe, plotter)
         end
         backSubtoc = toc;
         % Replacing the normcorr names! So next analysis takes correct file

@@ -51,6 +51,11 @@ end
 Segm = 128;
 Lng = dim(1); %length of image stack
 
+while Lng < (Segm * 2)
+    warning('data is too short (%d), halving window, (%d -> %d)', Lng, Segm, Segm/2)
+    Segm = Segm/2;
+end
+
 
 sampd2 = Segm/2;
 sampd4 = Segm/4;

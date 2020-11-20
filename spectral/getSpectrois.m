@@ -1,4 +1,4 @@
-function getSpectroisnw(varargin)
+function getSpectrois(varargin)
 % 
 % get rois from cross spectral components
 %
@@ -128,12 +128,7 @@ end
 P = PP.P; % plot(x,y), plots at the position (y, x) in an image
 PP.P(1,:) = P(2,:);
 PP.P(2,:) = P(1,:);
-
-for i = 1:PP.Cnt
-    %also redefine peak maxima based on projected maxima in BImg
-    ROIi = Mask == i; 
-    PP.P(3,i) = max(BImg(ROIi)); % maximum
-end
+PP.P(3,:) = []; % remove maximum as it is specific for the frequency in which it was found
 
 % Retrieve the average spectral profile of the ROI
 [PP.SpecProfile, PP.peakFreq, PP.peakVal] = SpecProfileCalcFun(imgStackT, Mask, 1:PP.Cnt, Sax);

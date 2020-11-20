@@ -42,6 +42,9 @@ if ~isempty(varargin)
     end
     if isfield(p, 'voxel')
         VoxelSz = p.voxel;
+        if mod(VoxelSz, 2) == 1 % Voxel size should be an even number
+            VoxelSz = VoxelSz + 1;
+        end
     end
     if isfield(p, 'roundedness')
         PAf = p.roundedness;
