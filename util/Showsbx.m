@@ -40,6 +40,7 @@ bsplit = 0; %don't show slices
 bVers = 0; %gpu or master
 Splitnm = 1;
 bUpCrop = 0;%has the crop been changed after loading the stack
+bFilt = 1; %Median filter images (Yes(1)/No(0))
 
 %number of splits
 if ~isfield(info, 'Slices')
@@ -163,21 +164,25 @@ p.CData = imread('iconvideo.png');
 im = imagesc(medfilt2(Img(:,:,Chan)), clim); colormap gray
 
 
+
 Slider = uicontrol(f,'Style','slider', 'String', 'Slider 1',...
            'Min',1,'Max', framenm, 'SliderStep', [1/(framenm-1) 10/(framenm-1)], ...
            'Value',1, 'Position', [80 10 500 20], 'Callback', @SetPos);
        
 uicontrol(f,'Style', 'pushbutton', 'String', 'Run', 'Position', [20 10 50 20],...
-        'Callback', @run); 
+            'Callback', @run); 
     
 uicontrol(f,'Style', 'pushbutton', 'String', 'Chan', 'Position', [590 10 50 20],...
            'BackGroundColor', 'green', 'Callback', @Change);
        
+uicontrol(f,'Style', 'checkbox', 'String', 'filter', 'Position', [20 40 50 20],...
+            'Value', 1, 'Callback', @Filter);
+       
 if Splitnm > 1     
-    uicontrol(f,'Style', 'listbox', 'String', {int2str((1:Splitnm)')}, 'Position', [20 40 20 Splitnm*15],...
+    uicontrol(f,'Style', 'listbox', 'String', {int2str((1:Splitnm)')}, 'Position', [20 70 20 Splitnm*15],...
                  'Min', 1, 'Max', Splitnm, 'Value', Slice+1, 'Callback', @Setsplit);
              
-    uicontrol(f,'Style', 'checkbox', 'String', 'split', 'Position', [10 100 50 20],...
+    uicontrol(f,'Style', 'checkbox', 'String', 'split', 'Position', [10 130 50 20],...
                  'Value', bsplit, 'Callback', @Showsplit);         
 end
 
@@ -215,6 +220,10 @@ uimenu(cm,'Label','Save Cropped sbx file','Callback', @cropfile);
             drawnow
      end
  
+    function Filter(~, ~)
+        bFilt = bFilt ~= 1;
+    end
+ 
     function run(~, ~)
         %global info Pos %bRun Slider bVers Chan
             bRun = bRun ~= 1;
@@ -224,15 +233,20 @@ uimenu(cm,'Label','Save Cropped sbx file','Callback', @cropfile);
                 else
                     Img = sbxread(strfp, (Pos-1),1);
                 end
-
                 if bVers
                     Img = permute(Img, [2 3 1]);
                 end
+                if bFilt 
+                    Img =  medfilt2(Img(:,:,Chan));
+                else 
+                    Img = Img(:,:,Chan);
+                end
+                
                 if ishandle(im)
-                    im.CData = medfilt2(Img(:,:,Chan));
+                    im.CData = Img;
                 else
                     figure(f)
-                    im = imagesc(medfilt2(Img(:,:,Chan)), clim); colormap gray
+                    im = imagesc(Img, clim); colormap gray
                 end
                 
                 Slider.Value = Slider.Value +1;
