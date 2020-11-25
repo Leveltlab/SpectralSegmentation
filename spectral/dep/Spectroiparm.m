@@ -8,7 +8,7 @@ if exist('spar.mat', 'file')
      load spar.mat
      flds = fieldnames(spar);
      aflds = { 'cutOffHzMin', 'cutOffHzMax', 'border', 'areasz', 'roundedness', 'voxel', 'cutOffCorr'};
-     if sum(ismember(aflds, flds)) == 6
+     if sum(ismember(aflds, flds)) == 7
          valid = true; 
      end
 end
