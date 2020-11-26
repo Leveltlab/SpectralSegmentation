@@ -15,7 +15,7 @@ function BackgroundSubtractSbx(varargin)
 % Input (optional):
 %   1 fileIn: string. filepath and filename of the Sbx file to load
 %   2 fileOut:string. filepath and filename of the Sbx file to save results
-%   3 fRadius:double [1x1]. the radius of the filter. Standard 45. 
+%   3 fRadius:double [1x1]. the radius of the filter. Standard 55. 
 %            final size of filter is fRadius * 2 + 1
 %   4 method: string. which method? 'Circular Average' (default)
 %                                   'Gaussian Average'
@@ -42,6 +42,18 @@ function BackgroundSubtractSbx(varargin)
 clearvars info
 clearvars -global info
 
+
+fRadius = 55;
+shift = 10000; % Shift background prevents underexposure
+method = 'Circular Average'; % possiblities 'Gaussian Average' | 'Circular Average'
+smoothDim = 0;
+smoothSe = 1.85;
+plotter = false;
+
+% How deep into the img edge to take data to average for padding values
+padTaker = 15; 
+
+
 if exist('varargin', 'var') && nargin >= 2 % In case both sbx and spsig file name are given
     fileIn = varargin{1};
     fileOut = varargin{2};
@@ -50,7 +62,7 @@ else % No files gives as input/ executing as script: ask for files
     fileIn = [filePathIn, fileNameIn(1:end-4)];
     [fileNameOut, filePathOut] = uiputfile([fileIn, '-Sub.sbx']);
     fileOut = [filePathOut, fileNameOut(1:end-4)];
-    if fileNameOut == 0 || fileNameIn == 0 % if nothing was selected quit
+    if all(fileNameOut == 0) || all(fileNameIn == 0) % if nothing was selected quit
         fprintf('No file selected!\n')
         return
     end
@@ -59,49 +71,36 @@ end
 % Check filter Radius
 if exist('varargin', 'var') && nargin >= 3
     fRadius = varargin{3};
-else
-    fRadius = 45;
 end
 
 % Check filter method
 if exist('varargin', 'var') &&  nargin >= 4 && ~isempty(varargin{4})
     method = varargin{4};
-else
-    method = 'Circular Average'; % possiblities 'Gaussian Average' | 'Circular Average'
 end
 
 % Shift background values so not too many values become 0
 if exist('varargin', 'var') &&  nargin >= 5 && ~isempty(varargin{5})
     shift = varargin{5};
-else % Use standard shift
-    shift = 9000; % Shift background prevents underexposure
 end
 
 % Over which dimension to do the 1D smoothing to remove banding noise
-smoothDim = 0;
 if exist('varargin', 'var') && nargin >= 6 && ~isempty(varargin{6})
     smoothDim = varargin{6};
     if ~isempty(smoothDim) && smoothDim > 0
-        smoothDim = varargin{7};
+        smoothDim = varargin{6};
     end
 end
 
 % How big should that 1D filter be (standard deviation)
 if exist('varargin', 'var') && nargin >= 6 && ~isempty(varargin{7})
     smoothSe = varargin{7};
-else
-    smoothSe = 1.85;
 end
 
 % Plot final frame?
 if exist('varargin', 'var') &&  nargin == 8
     plotter = varargin{8};
-else
-    plotter = false;
 end
 
-% How deep into the img edge to take data to average for padding values
-padTaker = 15; 
 
 % Create filter using specified method
 switch method
@@ -139,25 +138,16 @@ for i = 0:info.max_idx-1
     imgPadded(end-fRadius+1:end, fRadius+1:end-fRadius) = repmat(mean(img(end-padTaker:end, :)), [fRadius, 1]); % bottom
     imgPadded(fRadius+1:end-fRadius, 1:fRadius)         = repmat(mean(img(:,1:padTaker), 2), [1, fRadius]); % left
     imgPadded(fRadius+1:end-fRadius, end-fRadius+1:end) = repmat(mean(img(:,end-padTaker:end), 2), [1, fRadius]); % right
-    imgPadded(1:fRadius, 1:fRadius)                 = (imgPadded(fRadius+1,1) + imgPadded(1, fRadius+1)) / 2; % top left corner
-    imgPadded(1:fRadius, end-fRadius+1:end)         = (imgPadded(fRadius+1,end) + imgPadded(1, end-fRadius)) / 2; % top right corner
-    imgPadded(end-fRadius+1:end, 1:fRadius)         = (imgPadded(end-fRadius, 1) + imgPadded(end, fRadius+1)) / 2; % bottom left corner
-    imgPadded(end-fRadius+1:end, end-fRadius+1:end) = (imgPadded(end-fRadius, end) + imgPadded(end, end-fRadius)) / 2; % bottom right corner
+    imgPadded(1:fRadius, 1:fRadius)                 = mean(imgPadded(fRadius+1:fRadius+padTaker,1)); % top left corner
+    imgPadded(1:fRadius, end-fRadius+1:end)         = mean(imgPadded(fRadius+1:fRadius+padTaker,end)); % top right corner
+    imgPadded(end-fRadius+1:end, 1:fRadius)         = mean(imgPadded(end-fRadius-padTaker:end-fRadius, 1)); % bottom left corner
+    imgPadded(end-fRadius+1:end, end-fRadius+1:end) = mean(imgPadded(end-fRadius-padTaker:end-fRadius, end)); % bottom right corner
     imgPadded(fRadius+1:end-fRadius, fRadius+1:end-fRadius) = img; % Put in the actual image
     
     background = conv2(imgPadded, filt, 'same');
     background = background(fRadius+1:end-fRadius, fRadius+1:end-fRadius);
     
     imgCorrected = uint16(double(img) - (background - shift));
-    
-    % Banding diminishing smooth
-    if smoothDim == 1
-        % Simple smoothing to reduce CMOS sensor vertical banding noise
-        imgCorrected = smoothG(imgCorrected', smoothSe)';
-    elseif smoothDim == 2
-        % Simple smoothing to reduce CMOS sensor horizontal banding noise
-        imgCorrected = smoothG(imgCorrected, smoothSe);
-    end
     
     % Report status and check for over/under exposure
     if mod(i+1,1000)==0
@@ -169,11 +159,23 @@ for i = 0:info.max_idx-1
             warning('%.1f%% of pixels underexposured, increase the variable shift',...
                 imgCorrected == 0 ./ numel(imCorrected) * 100)
         end
-        % Warning if more than 1% of pixels are 65536, 2^16, overexposed
-        if sum(imgCorrected(:) >= 2^16) > (numel(imgCorrected) / 100)
+        % Warning if more than 0.5% of pixels are 65536, 2^16, overexposed
+        if sum(imgCorrected(:) >= 2^16 - 1) > (numel(imgCorrected) / 200)
             warning('%.1f%% of pixels overexposed, decrease the variable shift or/and check original data for overexposure',...
                 imgCorrected >= 2^16 ./ numel(imgCorrected) * 100)
         end
+    end
+    
+    % Banding diminishing & correlation increasing smooth
+    if smoothDim == 1 % horizontal smoothing
+        % Simple smoothing to reduce CMOS sensor vertical banding noise
+        imgCorrected = smoothG(imgCorrected', smoothSe)';
+    elseif smoothDim == 2 % vertical smoothing
+        % Simple smoothing to reduce CMOS sensor horizontal banding noise
+        imgCorrected = smoothG(imgCorrected, smoothSe);
+%     elseif smoothDim == 3
+%         % Simple smoothing in both directions to reduce noise
+%         imgCorrected = smoothG(smoothG(imgCorrected, smoothSe)', smoothSe)';
     end
     
     fwrite(fileID, imgCorrected', 'uint16');
