@@ -1,5 +1,5 @@
 function sbxsplit(~,~,info, fn)
-%
+% Split an sbx file into multiple sbx files, for different depths
     
 %[fn, pn] = uigetfile('*.mat');
 % sbxread(fn, 0, 1); %gets info and intializes other parameters
