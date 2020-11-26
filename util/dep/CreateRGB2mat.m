@@ -2,7 +2,7 @@ function [RGB] = CreateRGB2mat(data, colors, varargin)
 % Create a colorfull image by overlaying 2D images from a 3D matrix data
 % using a SPECIFIC COLORMAP colors
 % 
-% RGB = CreateRGB2(data, colors, normalization, whitebalance)
+% RGB = CreateRGB2mat(data, colors, normalization, whitebalance)
 % input:
 %   - data: 3D matrix [height x width x nslices]
 %   - colors: [nslices x 3] RGB color values for every slice of data
