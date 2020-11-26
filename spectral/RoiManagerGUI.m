@@ -286,9 +286,14 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     data.freq = freq;
     data.imgStackT = imgStackT; % transpose spectral 
     data.Sax = Sax;
+    selectedFreq = Sax<0.2; % Which frequencies to take from SPic
+    data.BImg = SPic(:,:,selectedFreq);
+    for i = 1:size(data.BImg, 3)
+        data.BImg(:,:,i) = (data.BImg(:,:,i) - min(min(data.BImg(:,:,i)))) ./ range(range(data.BImg(:,:,i)));
+    end
     % BImg = the main background image. get only lowest 5th of frequencies
-    data.BImg = squeeze(max(log(SPic),[],3))'; % Get the max (results in neurons popping out most)
-    vals = unique(data.BImg);
+    data.BImg = squeeze(max(log(data.BImg),[],3))'; % Get the max (results in neurons popping out most)
+    vals = unique(data.BImg(:));
     data.BImg(data.BImg<vals(2)) = vals(2);
     data.Mask = Mask;
     data.PP = PP;
@@ -1896,8 +1901,7 @@ function backGrdView(selected, h)
                 end
                 colors = flipud(jet(nsselect));
                 
-                imdata = num2cell(log1p(data.imgStackT), [1 2]);
-                h.im.CData = CreateRGB2(imdata(sselect), colors, true, true);
+                h.im.CData = CreateRGB2mat(data.imgStackT(:,:,sselect), colors, true, true);
                 
             case 3 % SpatialCorr
                 h.im.CData = data.SpatialCorr;
@@ -1970,8 +1974,8 @@ function backGrdView(selected, h)
                 switches.viewToggle = 999; 
                 
                 infoStr = ['variable should result in a matrix of doubles.',...
-                           'first two dimensions should same as background image, may be 3D. ',...
-                           'three examples: BImgA   or  log1p(SPic)   or   cat(3, BImgAverage, BImgMax)'];
+                           'first two dimensions should same as the background image, may be 3D. ',...
+                           'three examples: BImgA   or  log1p(SPic)   or   cat(3, BImgMax, BImgAverage)'];
                 varName = inputdlg(infoStr, 'Import a variable from the workspace');
                 
                 % quit if nothing was typed
@@ -2393,7 +2397,7 @@ function Help_Callback(~, eventdata, h) %#ok<DEFNU>
         case 'manRoiHelp' % in tab Manual ROI
             strTitle = 'ROI drawing help';
             str = {'Left click to create a corner point for the new ROI contour.'};
-            str{2} = ['If you want to stop drawing the ROI, keep left clicking until no '...
+            str{2} = ['If you want to stop drawing the ROI, keep right clicking until no '...
                       'line segments/ corner points remain.'];
             str{3} = ['If you would completely overwrite an existing ROI, the RoiRejecterGUI '...
                        'will refuse to create your requested ROI.'];
