@@ -218,9 +218,11 @@ end
 
 cm = uicontextmenu;
 im.UIContextMenu = cm;
-uimenu(cm,'Label','Delete Frame','Callback', @deleteframe);
 uimenu(cm,'Label','Change colormap scale','Callback', @ColormapScale);
-uimenu(cm,'Label','Save Cropped sbx file','Callback', @cropfile);
+uimenu(cm,'Label','Save current image as BImg in workspace','Callback', @BImgToWorkspace);
+uimenu(cm,'Label','Save current image as tiff','Callback', @savetif);
+uimenu(cm,'Label','Save sbx file with Deleted Frame','Callback', @deleteframe);
+uimenu(cm,'Label','Save cropped sbx file','Callback', @cropfile);
 
     function SetPos(source, ~)
         % Jump to specific position/frame in sbx file
@@ -244,7 +246,6 @@ uimenu(cm,'Label','Save Cropped sbx file','Callback', @cropfile);
     end
 
     function PlaySbx(~, ~) % play movie
-        %global info Pos %bRun Slider bVers Chan
         bRun = bRun ~= 1;
         while Pos < framenm && bRun
             DrawFrame
@@ -280,6 +281,357 @@ uimenu(cm,'Label','Save Cropped sbx file','Callback', @cropfile);
         end
     end
 
+
+    function ColormapScale(~,~)
+        % Change the colormap scale
+        figure(f)
+        strClim = inputdlg({'Cutoff low', 'Cutoff high'} , 'Change Colormap scale' , 1,...
+                            {num2str(clim(1)), num2str(clim(2))});
+        if ~isempty(strClim)
+            clim(1) = str2double(strClim{1});
+            clim(2) = str2double(strClim{2});
+            caxis(clim)
+        end
+    end
+
+
+    function Showsplit(source, ~)
+        % Toggle to ignore splits or to remain in same split
+        bsplit = source.Value;
+        info.bsplit = bsplit;
+        if bsplit
+            framenm = floor(info.max_idx/Splitnm);
+        else
+            framenm = info.max_idx;
+        end
+        if framenm < Slider.Value
+            Slider.Value = framenm;
+        end
+        Slider.Max = framenm;
+        Slider.SliderStep = [1/(framenm-1) 10/(framenm-1)];
+    end
+
+
+    function Setsplit(source, ~)
+        % Set which depth to show
+        if bsplit
+            Slice = source.Value - 1;
+            info.Slice = Slice;
+            DrawFrame
+            drawnow
+        end
+    end
+    
+
+    function sbxaverage(~,~)
+        % Average some number frames to decrease noise a lot
+        NmFrames = 100;
+        prompt = {'Number of frames to average'};
+        dlg_title = 'Average frames';
+        num_lines = [1 30];
+        def = {'100'};
+        answer = inputdlg(prompt,dlg_title, num_lines,def);
+        if ~isempty(answer)
+            NmFrames = round(str2double(answer{1}));
+        end
+
+        if info.bsplit %if splitting has been set on
+            Img = sbxread(info.strfp, (Pos-1)*info.Slices, NmFrames*info.Slices);
+            if bVers
+                Img = squeeze(Img(Chan,:,:, 1+info.Slice:info.Slices:NmFrames*info.Slices));
+            else
+                Img = squeeze(Img(:,:,Chan, 1+info.Slice:info.Slices:NmFrames*info.Slices));
+            end
+        else
+            Img = sbxread(info.strfp, (Pos-1), NmFrames);
+            if bVers
+                Img = squeeze(Img(Chan,:,:,:));
+            else
+                Img = squeeze(Img(:,:,Chan,:));
+            end
+        end
+
+        Img = uint16(mean(Img,3));
+        if ishandle(im)
+            im.CData = Img;
+        else
+            figure(f)
+            im = imagesc(Img, clim); colormap gray
+        end
+    end
+
+
+    function BImgToWorkspace(~,~)
+        % Save the Img to workspace
+        BImg = Img - double(clim(1));
+        BImg = BImg./double(clim(2)-clim(1));
+        assignin('base', 'BImg', BImg)
+    end
+
+
+    function savetif(~,~)
+        % Saves the current image as a tif file
+        clim = double(clim);
+        BImg = double(Img) - clim(1);
+        BImg = BImg./(clim(2)-clim(1)).*65535;
+
+        [fn, pn] = uiputfile([info.strfp '_av.tiff']);
+        if ischar(fn)
+            imwrite(uint16(BImg),[pn fn])
+        end
+    end
+
+    
+    function ChangeChannel(source, ~)
+        % Change the color channel
+        if lnChan > 1
+            if Chan == 1
+                Chan = 2;
+                set(source, 'BackGroundColor', 'red');
+            else
+                Chan = 1;
+                set(source, 'BackGroundColor', 'green');
+            end
+        end
+        
+    end
+
+
+    function deleteframe(~,~)
+        % Save a new sbx file with a frame deleted
+        pn = uigetdir('Save file location');
+        
+        if ischar(pn)
+            fn = [pn '\' filename{1} '_copy.sbx'];
+            file = fopen(fn, 'w');
+            disp('Copying file.........')
+
+            wb = waitbar(0);
+            frewind(info.fid);
+            for i = 1:(Pos-1)
+                data = fread(info.fid,info.nsamples/2,'uint16=>uint16');
+                fwrite(file, data, 'uint16');
+                waitbar(i/info.max_idx, wb)
+            end
+
+            %frame to be skipped
+            fread(info.fid,info.nsamples/2,'uint16=>uint16');
+
+            for i = 1:(info.max_idx-Pos)
+                data = fread(info.fid, info.nsamples/2,'uint16=>uint16' );
+                fwrite(file, data, 'uint16');
+                waitbar((i+Pos)/info.max_idx, wb)
+            end
+            close(wb)
+            info.max_idx = info.max_idx -1;
+
+            %also update the frame numbers in the info structure
+            if isfield(info, 'frame')
+                Mx = max(info.frame);
+                ix = find(info.frame == Mx);
+                %take care of bug in counting frames
+                if ix < length(info.frame)
+                    info.frame(ix+1:end) = info.frame(ix+1:end) + 65535;
+                end
+                %update frame positions now that one frame has been removed
+                info.frame(info.frame > Pos) = info.frame(info.frame > Pos) - 1;
+            end
+
+            save(fn(1:end-4), 'info');
+            fclose(file);
+            disp('Done!!!!!!')
+        else
+            fprintf('Not saving sbx file with a deleted frame because canceled\n')
+        end
+    end
+
+
+    function SetCrop(~,~)
+        % Set a crop which gets used by other functions like align and cropsbx
+        % saved crop from earlier file
+        if isfield(info, 'simon') || (isfield(info, 'scanbox_version') &&  info.scanbox_version == 2.5 )
+            IWidth = info.Shape(info.Perm(2));
+            IHeight = info.Shape(info.Perm(1));
+        else
+            IWidth = info.sz(2);
+            IHeight = info.sz(1);
+        end
+        
+        try
+            if ~isempty(Crop) && Crop.x(end) <= IWidth && Crop.y(end) <= IHeight
+                org(1) = Crop.x(1);
+                org(2) = Crop.y(1);
+                wide = length(Crop.x);
+                high = length(Crop.y);
+                
+                info.crop = Crop;
+                info.d1 = wide;
+                info.d2 = high;
+                
+                if isgraphics(hCropRectangle)
+                    delete(hCropRectangle)
+                end
+                hCropRectangle = rectangle('Position',[org(1), org(2), wide, high],...
+                                           'EdgeColor', 'y');
+                                       
+                button = questdlg('Renew/Change Crop','Crop', 'Cancel');
+                if strcmp(button, 'Cancel') || strcmp(button, 'No')
+                    return;
+                else
+                    bUpCrop = 1;
+                end
+            end
+        catch
+            %just ignore if this fails
+        end
+        
+        [x, y] = getpts;
+        
+        if length(x)>1 && isnumeric(x)
+            x = sort(round(x));
+            y = sort(round(y));
+            if x(1) < 1
+                x(1) = 1;
+            end
+            if x(2) > IWidth
+                x(2) = IWidth;
+            end
+            if y(1) < 1
+                y(1) = 1;
+            end
+            if y(2) > IHeight
+                y(2) = IHeight;
+            end
+            
+            w = x(2)-x(1)+1;
+            h = y(2)-y(1)+1;
+            wide = floor(w/8)*8;
+            high = floor(h/8)*8;
+            org = round((w-wide)/2+x(1));
+            org(2) = round((h-high)/2+y(1));
+            
+            if isgraphics(hCropRectangle)
+                delete(hCropRectangle)
+            end
+            hCropRectangle = rectangle('Position',[org(1), org(2), wide, high],...
+                                       'EdgeColor', 'y');
+            
+            info.crop.x = (org(1):org(1)+wide-1);
+            info.crop.y = (org(2):org(2)+high-1);
+            info.d1 = wide;
+            info.d2 = high;
+            Crop = info.crop;
+        end
+        
+    end
+
+    function cropfile(~,~)
+        % Save a new sbx file that's a cropped version of this sbx file
+        if ~isempty(Crop) % crop present
+            pn = uigetdir('Save file location');
+            fn = [pn '\' filename{1} '_cropped.sbx'];
+
+            file = fopen(fn, 'w');
+            disp('Copying file.........')
+
+            simon = 0;
+            if isfield(info, 'simon')
+                simon = info.simon;
+            end
+
+            wb = waitbar(0);
+            frewind(info.fid);
+            for i = 1:info.max_idx
+                Y_temp = fread(info.fid, info.nsamples/2,'uint16=>uint16' );
+                Y_temp = reshape(Y_temp,info.Shape);
+                if ~simon
+                    Y_temp = intmax('uint16')- Y_temp;
+                end
+                if info.scanbox_version == 2.5 || simon
+                    if info.nchan == 2
+                        Y_temp = Y_temp(Crop.x,Crop.y,:);
+                        dim = size(Y_temp);
+                        Yt = single(reshape(Y_temp, dim(1), dim(2)*2));
+                    else
+                        Yt = single(Y_temp(Crop.x,Crop.y,1));
+                    end
+                else
+                    if info.nchan == 2
+                        Y_temp = Y_temp(:,Crop.x,Crop.y);
+                        Y_temp = permute(Y_temp, [2 3 1]);
+                        dim = size(Y_temp);
+                        Yt = single(reshape(Y_temp, dim(1), dim(2)*2));
+                    else
+                        Yt = single(squeeze(Y_temp(1,Crop.x,Crop.y)));
+                    end
+                end
+                fwrite(file, Yt, 'uint16');
+                waitbar(i/info.max_idx, wb)
+            end
+            fclose(file);
+            close(wb)
+
+            info.sz = [length(Crop.y),length(Crop.x)];
+            info.Shape = [length(Crop.x),length(Crop.y), info.nchan];
+            info.Perm = [2 1 3 4];
+            info.simon = 1;
+
+            save(fn(1:end-4), 'info');
+            disp('Done!!!!!!')
+        else % No crop
+            msgbox('No crop yet, select a crop first via the button shown in this message',...
+                'no crop', 'custom', iconcrop)
+        end
+    end
+
+    function sbxalign(~,~)
+        % Starts motion correction!
+        f  = figure('ToolBar','none',...
+                    'Position', [100 750 250 180], 'name', 'Align'); %'WindowStyle', 'modal',
+        if info.nchan == 2
+            ChCntr = uicontrol(f,'Style', 'listbox', 'String', {'Green', 'Both R & G'},...
+                'Position', [130 90 100 50],  'Value', 1);
+            uicontrol(f,'Style', 'text', 'String', 'Which channels to align',...
+                'Position', [20 100 100 40],  'Value', 1);
+        end
+        
+        method = [];
+        bg = uibuttongroup('Position',[0 0.78 1 0.2], 'SelectionChangedFcn', @bselection);
+        uicontrol(bg,'Style', 'radiobutton', 'String','Rigid', 'Position',[60 10 100 20]);
+        uicontrol(bg,'Style', 'radiobutton', 'String','Nonrigid', 'Position',[130 10 100 20]);
+        
+        function bselection(~,event)
+            method = event.NewValue.String;
+            % disp(method)
+        end
+        
+        if ~(isfield(info, 'firmware') && str2double(info.firmware) >= 4.1)
+            SkipCtrl = uicontrol(f,'Style', 'edit', 'String', '65537',...
+                'Position', [130 60 100 20]);
+            uicontrol(f,'Style', 'text', 'String', 'Skip frame (or -1)',...
+                'Position', [20 60 100 20]);
+        end
+        
+        uicontrol('Position',[130 10 100 30],'String','Continue',...
+            'Callback','uiresume(gcbf)');
+        uiwait(gcf)
+        
+        if ~isempty(method)
+            info.AlignMethod = method;
+        end
+        if info.nchan == 2
+            info.SelChan = ChCntr.Value; %green or both
+        else
+            info.SelChan = 1;
+        end
+        if ~(isfield(info, 'firmware') && str2double(info.firmware) >= 4.1)
+            info.Skipframe = str2double(SkipCtrl.String) - 1; %frame indices are 0 based
+        end
+        close(f)
+        
+        simonalign3();
+    end
+
     function sbxmp4out(~,~)
         % res = questdlg('Save image sequence to avi file', 'Avi', 'Yes', 'No', 'Yes');
         strFileOut = [strfp '.mp4'];
@@ -287,7 +639,7 @@ uimenu(cm,'Label','Save Cropped sbx file','Callback', @cropfile);
         
         if ischar(newPn) && ischar(newFn)
             
-            if isfield(info, Freq)
+            if isfield(info, 'Freq')
                 Framerate = info.Freq;
             elseif isfield(info, 'Tframe') %frame time
                 Framerate = round(1/info.Tframe);
@@ -365,288 +717,6 @@ uimenu(cm,'Label','Save Cropped sbx file','Callback', @cropfile);
             close(outputVideo)
             disp('Video saved')
         end
-    end
-
-    function Showsplit(source, ~)
-        % Toggle to ignore splits or to remain in same split
-        bsplit = source.Value;
-        info.bsplit = bsplit;
-        if bsplit
-            framenm = floor(info.max_idx/Splitnm);
-        else
-            framenm = info.max_idx;
-        end
-        if framenm < Slider.Value
-            Slider.Value = framenm;
-        end
-        Slider.Max = framenm;
-        Slider.SliderStep = [1/(framenm-1) 10/(framenm-1)];
-    end
-
-    function Setsplit(source, ~)
-        % Set which depth to show
-        if bsplit
-            Slice = source.Value - 1;
-            info.Slice = Slice;
-            DrawFrame
-            drawnow
-        end
-    end
-
-    function ChangeChannel(source, ~)
-        % global Chan
-        if lnChan > 1
-            if Chan == 1
-                Chan = 2;
-                set(source, 'BackGroundColor', 'red');
-            else
-                Chan = 1;
-                set(source, 'BackGroundColor', 'green');
-            end
-        end
-        
-    end
-
-    function deleteframe(~,~)
-        % Save a new sbx file with a frame deleted
-        pn = uigetdir('Save file location');
-        fn = [pn '\' filename{1} '_copy.sbx'];
-        
-        file = fopen(fn, 'w');
-        disp('Copying file.........')
-        
-        wb = waitbar(0);
-        frewind(info.fid);
-        for i = 1:(Pos-1)
-            data = fread(info.fid,info.nsamples/2,'uint16=>uint16');
-            fwrite(file, data, 'uint16');
-            waitbar(i/info.max_idx, wb)
-        end
-        
-        %frame to be skipped
-        fread(info.fid,info.nsamples/2,'uint16=>uint16');
-        
-        for i = 1:(info.max_idx-Pos)
-            data = fread(info.fid, info.nsamples/2,'uint16=>uint16' );
-            fwrite(file, data, 'uint16');
-            waitbar((i+Pos)/info.max_idx, wb)
-        end
-        close(wb)
-        info.max_idx = info.max_idx -1;
-        
-        %also update the frame numbers in the info structure
-        if isfield(info, 'frame')
-            Mx = max(info.frame);
-            ix = find(info.frame == Mx);
-            %take care of bug in counting frames
-            if ix < length(info.frame)
-                info.frame(ix+1:end) = info.frame(ix+1:end) + 65535;
-            end
-            %update frame positions now that one frame has been removed
-            info.frame(info.frame > Pos) = info.frame(info.frame > Pos) - 1;
-        end
-        
-        save(fn(1:end-4), 'info');
-        fclose(file);
-        
-        disp('Done!!!!!!')
-    end
-
-    function cropfile(~,~)
-        % Save a new sbx file that's a cropped version of this sbx file
-        if ~isempty(Crop) % crop present
-            pn = uigetdir('Save file location');
-            fn = [pn '\' filename{1} '_cropped.sbx'];
-
-            file = fopen(fn, 'w');
-            disp('Copying file.........')
-
-            simon = 0;
-            if isfield(info, 'simon')
-                simon = info.simon;
-            end
-
-            wb = waitbar(0);
-            frewind(info.fid);
-            for i = 1:info.max_idx
-                Y_temp = fread(info.fid, info.nsamples/2,'uint16=>uint16' );
-                Y_temp = reshape(Y_temp,info.Shape);
-                if ~simon
-                    Y_temp = intmax('uint16')- Y_temp;
-                end
-                if info.scanbox_version == 2.5 || simon
-                    if info.nchan == 2
-                        Y_temp = Y_temp(Crop.x,Crop.y,:);
-                        dim = size(Y_temp);
-                        Yt = single(reshape(Y_temp, dim(1), dim(2)*2));
-                    else
-                        Yt = single(Y_temp(Crop.x,Crop.y,1));
-                    end
-                else
-                    if info.nchan == 2
-                        Y_temp = Y_temp(:,Crop.x,Crop.y);
-                        Y_temp = permute(Y_temp, [2 3 1]);
-                        dim = size(Y_temp);
-                        Yt = single(reshape(Y_temp, dim(1), dim(2)*2));
-                    else
-                        Yt = single(squeeze(Y_temp(1,Crop.x,Crop.y)));
-                    end
-                end
-
-                fwrite(file, Yt, 'uint16');
-                waitbar(i/info.max_idx, wb)
-            end
-            fclose(file);
-            close(wb)
-
-            info.sz = [length(Crop.y),length(Crop.x)];
-            info.Shape = [length(Crop.x),length(Crop.y), info.nchan];
-            info.Perm = [2 1 3 4];
-            info.simon = 1;
-
-            save(fn(1:end-4), 'info');
-            disp('Done!!!!!!')
-            
-        else % No crop
-            msgbox('No crop yet, select a crop first via the button shown in this message',...
-                'no crop', 'custom', iconcrop)
-            
-        end
-    end
-
-    function ColormapScale(~,~)
-        figure(f)
-        strClim = inputdlg({'Cutoff low', 'Cutoff high'} , 'Change Colormap scale' , 1,...
-                            {num2str(clim(1)), num2str(clim(2))});
-        if ~isempty(strClim)
-            clim(1) = str2double(strClim{1});
-            clim(2) = str2double(strClim{2});
-            caxis(clim)
-        end
-    end
-
-    function sbxalign(~,~)
-        % Starts motion correction!
-        f  = figure('ToolBar','none',...
-                    'Position', [100 750 250 180], 'name', 'Align'); %'WindowStyle', 'modal',
-        if info.nchan == 2
-            ChCntr = uicontrol(f,'Style', 'listbox', 'String', {'Green', 'Both R & G'},...
-                'Position', [130 90 100 50],  'Value', 1);
-            uicontrol(f,'Style', 'text', 'String', 'Which channels to align',...
-                'Position', [20 100 100 40],  'Value', 1);
-        end
-        
-        method = [];
-        bg = uibuttongroup('Position',[0 0.78 1 0.2], 'SelectionChangedFcn', @bselection);
-        uicontrol(bg,'Style', 'radiobutton', 'String','Rigid', 'Position',[60 10 100 20]);
-        uicontrol(bg,'Style', 'radiobutton', 'String','Nonrigid', 'Position',[130 10 100 20]);
-        
-        function bselection(~,event)
-            method = event.NewValue.String;
-            % disp(method)
-        end
-        
-        if ~(isfield(info, 'firmware') && str2double(info.firmware) >= 4.1)
-            SkipCtrl = uicontrol(f,'Style', 'edit', 'String', '65537',...
-                'Position', [130 60 100 20]);
-            uicontrol(f,'Style', 'text', 'String', 'Skip frame (or -1)',...
-                'Position', [20 60 100 20]);
-        end
-        
-        uicontrol('Position',[130 10 100 30],'String','Continue',...
-            'Callback','uiresume(gcbf)');
-        uiwait(gcf)
-        
-        if ~isempty(method)
-            info.AlignMethod = method;
-        end
-        
-        if info.nchan == 2
-            info.SelChan = ChCntr.Value; %green or both
-        else
-            info.SelChan = 1;
-        end
-        if ~(isfield(info, 'firmware') && str2double(info.firmware) >= 4.1)
-            info.Skipframe = str2double(SkipCtrl.String) - 1; %frame indices are 0 based
-        end
-        close(f)
-        
-        simonalign3();
-    end
-
-    function SetCrop(~,~)
-        % Set a crop which gets used by other functions like align and cropsbx
-        % saved crop from earlier file
-        if isfield(info, 'simon') || (isfield(info, 'scanbox_version') &&  info.scanbox_version == 2.5 )
-            IWidth = info.Shape(info.Perm(2));
-            IHeight = info.Shape(info.Perm(1));
-        else
-            IWidth = info.sz(2);
-            IHeight = info.sz(1);
-        end
-        
-        try
-            if ~isempty(Crop) && Crop.x(end) <= IWidth && Crop.y(end) <= IHeight
-                org(1) = Crop.x(1);
-                org(2) = Crop.y(1);
-                wide = length(Crop.x);
-                high = length(Crop.y);
-                
-                info.crop = Crop;
-                info.d1 = wide;
-                info.d2 = high;
-                
-                button = questdlg('Renew/Change Crop','Crop', 'Cancel');
-                if strcmp(button, 'Cancel') || strcmp(button, 'No')
-                    return;
-                else
-                    bUpCrop = 1;
-                end
-            end
-        catch
-            %just ignore if this fails
-        end
-        
-        [x, y] = getpts;
-        
-        if length(x)>1 && isnumeric(x)
-            x = sort(round(x));
-            y = sort(round(y));
-            if x(1) < 1
-                x(1) = 1;
-            end
-            if x(2) > IWidth
-                x(2) = IWidth;
-            end
-            if y(1) < 1
-                y(1) = 1;
-            end
-            if y(2) > IHeight
-                y(2) = IHeight;
-            end
-            
-            w = x(2)-x(1)+1;
-            h = y(2)-y(1)+1;
-            wide = floor(w/8)*8;
-            high = floor(h/8)*8;
-            org = round((w-wide)/2+x(1));
-            org(2) = round((h-high)/2+y(1));
-            
-            if isgraphics(hCropRectangle)
-                delete(hCropRectangle)
-            end
-            hCropRectangle = rectangle('Position',[org(1), org(2), wide, high],...
-                                       'EdgeColor', 'y');
-            
-            info.crop.x = (org(1):org(1)+wide-1);
-            info.crop.y = (org(2):org(2)+high-1);
-            
-            info.d1 = wide;
-            info.d2 = high;
-            
-            Crop = info.crop;
-        end
-        
     end
 
     function helpShowsbx(~,~)
