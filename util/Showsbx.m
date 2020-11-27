@@ -69,7 +69,30 @@ framenm = info.max_idx; %total number of frames
 if isfield(info, 'crop')
     %if imported sbx already has been cropped
     Crop = info.crop;
-elseif ~isempty(Crop)
+    % Set crop to position that doesn't cause crashes
+    if isfield(info, 'simon') || (isfield(info, 'scanbox_version') &&  info.scanbox_version == 2.5 )
+        dwidth = info.Shape(info.Perm(2));
+        dheight = info.Shape(info.Perm(1));
+    else
+        dwidth = info.sz(2);
+        dheight = info.sz(1);
+    end
+    if Crop.x(end)>dwidth
+        Crop.x = Crop.x - (Crop.x(end)-dwidth);
+    end
+    if Crop.y(end)>dheight
+        Crop.y = Crop.y - (Crop.y(end)-dheight);
+    end
+    if length(Crop.x)>dwidth
+        fprintf('Adjusting crop.x settings to fit data\n')
+        Crop.x = 1:dwidth;
+    end
+    if length(Crop.y)>dheight
+        fprintf('Adjusting crop.y settings to fit data\n')
+        Crop.y = 1:dheight;
+    end
+end
+if ~isempty(Crop)
     %by default use previous crop parameters
     info.crop = Crop;
     info.d1 = length(Crop.x);
@@ -135,7 +158,13 @@ p = uipushtool(t,'TooltipString','Split the sbx file into multiple files (for di
 
 p.CData = iconsplit;
 
-p = uipushtool(t,'TooltipString','Align: Starts NoRMCorre motion correction! Remember to set crop first to remove artefacts',...
+if isempty(Crop)
+    tooltipString = 'Align: Starts NoRMCorre motion correction! Remember to set crop first to remove artefacts';
+else
+    tooltipString = 'Align: Starts NoRMCorre motion correction! Crop present';
+end
+
+p = uipushtool(t,'TooltipString', tooltipString,...
     'ClickedCallback',...
     @sbxalign);
 
@@ -157,6 +186,13 @@ p.CData = imread('iconvideo.png');
 
 im = imagesc(medfilt2(Img(:,:,Chan)), clim); colormap gray
 
+if isstruct(Crop)
+    hCropRectangle = rectangle('Position', [Crop.x(1), Crop.y(1), length(Crop.x), length(Crop.y)],...
+                               'EdgeColor', 'y', 'LineWidth', 1);
+else
+    hCropRectangle = gobjects(1);
+end
+    
 %_____ buttons inside the figure itself
 % movie position slider
 Slider = uicontrol(f,'Style','slider', 'String', 'Slider 1',...
@@ -196,7 +232,7 @@ uimenu(cm,'Label','Save Cropped sbx file','Callback', @cropfile);
             Slider.Value = Pos;
         end
         DrawFrame
-        title(num2str(Pos))
+        title(im.Parent, num2str(Pos))
         drawnow
     end
 
@@ -214,7 +250,7 @@ uimenu(cm,'Label','Save Cropped sbx file','Callback', @cropfile);
             DrawFrame
             
             Slider.Value = Slider.Value +1;
-            title(num2str(Pos)) % Useful for debugging
+            title(im.Parent, num2str(Pos)) % Useful for debugging
             drawnow, pause(0.01)
             Pos = Slider.Value;
         end
@@ -490,7 +526,7 @@ uimenu(cm,'Label','Save Cropped sbx file','Callback', @cropfile);
     end
 
     function sbxalign(~,~)
-        % Motion correction!
+        % Starts motion correction!
         f  = figure('ToolBar','none',...
                     'Position', [100 750 250 180], 'name', 'Align'); %'WindowStyle', 'modal',
         if info.nchan == 2
@@ -555,7 +591,7 @@ uimenu(cm,'Label','Save Cropped sbx file','Callback', @cropfile);
                 org(2) = Crop.y(1);
                 wide = length(Crop.x);
                 high = length(Crop.y);
-                rectangle('Position',[org(1), org(2), wide, high], 'EdgeColor', 'w')
+                
                 info.crop = Crop;
                 info.d1 = wide;
                 info.d2 = high;
@@ -574,8 +610,8 @@ uimenu(cm,'Label','Save Cropped sbx file','Callback', @cropfile);
         [x, y] = getpts;
         
         if length(x)>1 && isnumeric(x)
-            x = round(x);
-            y = round(y);
+            x = sort(round(x));
+            y = sort(round(y));
             if x(1) < 1
                 x(1) = 1;
             end
@@ -596,7 +632,11 @@ uimenu(cm,'Label','Save Cropped sbx file','Callback', @cropfile);
             org = round((w-wide)/2+x(1));
             org(2) = round((h-high)/2+y(1));
             
-            rectangle('Position',[org(1), org(2), wide, high], 'EdgeColor', 'w')
+            if isgraphics(hCropRectangle)
+                delete(hCropRectangle)
+            end
+            hCropRectangle = rectangle('Position',[org(1), org(2), wide, high],...
+                                       'EdgeColor', 'y');
             
             info.crop.x = (org(1):org(1)+wide-1);
             info.crop.y = (org(2):org(2)+high-1);
