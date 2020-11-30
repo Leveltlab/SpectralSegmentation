@@ -1,5 +1,5 @@
 //mex transpose image stack
-#include "Windows.h"
+
 #include "mex.h"
 #include <iostream>
 #include <time.h> 
@@ -8,6 +8,7 @@
 using namespace std;
 
 typedef unsigned short uint16;
+typedef unsigned int UINT;
 
 struct _Sinf
 {
