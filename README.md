@@ -50,8 +50,8 @@ Readme's
 
 Paper
 ======
-We are submitting a manuscript on this pipeline (WIP)
-(reference)
+We are submitting a manuscript on this pipeline (WIP). A preprint has been published on biorxiv
+[Kraker et al. 2020](https://doi.org/10.1101/2020.10.20.345371)
 
 
 Matlab dependencies
@@ -112,4 +112,7 @@ References
 	*Journal of Neuroscience Methods*, vol. 291, pp 83-94, 2017; 
 	doi: [/10.1016/j.jneumeth.2017.07.031](https://doi.org/10.1016/j.jneumeth.2017.07.031)
 	
-	
+- Kraker L., Seignette, K., Thamizharasu, P., Pica, I.F., Levelt, C.N. & Togt, C. (2020) 
+	Specseg: cross spectral power-based segmentation of neurons and neurites in chronic calcium imaging datasets.
+	doi: [10.1101/2020.10.20.345371](https://doi.org/10.1101/2020.10.20.345371)
+
