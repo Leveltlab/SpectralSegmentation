@@ -118,9 +118,12 @@ void mexFunction(
     UINT lines = (UINT)Sinf.Dimensions[1];
     FILE **  ppfile = new FILE * [lines];
     char* strp = Sinf.StrPath;
-    
-    //stdio has a limit on open files < 512
+ 
+    #ifdef _WIN32
+    //stdio has a limit on open files < 512 in windows
     if(lines > 500) _setmaxstdio(lines+12);
+    #endif
+    
     
     char** Fn = new char * [lines];    
     for(UINT i = 0; i < lines; i++){
