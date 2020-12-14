@@ -1,11 +1,18 @@
+% Execute all preprocessing steps from raw sbx file to RoiManagerGUI step.
+% 
 % Doing the normcorr motion correction, transposing, spectral analysis and
 % automated ROI creation for all splits, for multiple files in one script
 % Optional steps are motion correction, background subtraction, ROI getting
 % 
 %
-% You can set the analysis settings either via the script by changing the
-% code via "Settings via script", 
-% or you can run the next section "Get the settings via input dialogs"
+% Usage:
+% 1. Load recordings by running this first section.
+% 2(option 1). Set analysis settings either via the script by changing 
+%              the code via "Settings via script" (section 2)
+%  (option 2). Set all relevant analysis settings via walkthrough pop-up
+%              prompts via "Get settings via input dialogs" (section 3)
+% 3. Run analysis by running section "Process all the files" (section 5)
+% 
 % 
 % Leander de Kraker
 
@@ -79,7 +86,7 @@ if timed
 end
 
 
-%% Get the settings via input dialogs
+%% Get settings via input dialogs
 dlgdims = [1 85];
 
 % Do NoRMCorre? %
@@ -229,7 +236,7 @@ clearvars answer prompt dlgtitle dlgdims definput
 % specific file (after things crash or are unsatisfactory for example)
 i = 1; 
 
-%% process all the files
+%% Process all the files
 
 for i = 1:nfiles
     fn = filenames{i};

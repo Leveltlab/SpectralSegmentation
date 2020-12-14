@@ -7,7 +7,7 @@ ROI segmentation is based on cross-spectral power over a range of frequencies an
 The SpecSeg toolbox contains user-friendly graphical interfaces to detect, adjust ROIs and visualize their activity traces.
 This pipeline includes code adapted from [normcorre](https://github.com/flatironinstitute/NoRMCorre) ([Pnevmatikakis & Giovannucci 2016](https://doi.org/10.1016/j.jneumeth.2017.07.031)),
  to apply motion correction to sbx files. To be able to execute the motion correction, download the code from 
- [normcorre](https://github.com/flatironinstitute/NoRMCorre) and add the code into the matlab path below SpectralSegmentation.<br /> 
+ [NoRMCorre](https://github.com/flatironinstitute/NoRMCorre) and add the code into the matlab path below SpectralSegmentation.<br /> 
 Spike estimation can be done on the fluorescence traces, with code that uses [*MLspike*](https://github.com/MLspike/spikes) ([Deneux et al. 2016](https://doi.org/10.1038/ncomms12190)).<br />
 This is the pipeline that is used by the Leveltlab in the Netherlands Institute of Neuroscience (NIN).<br /><br />
 The pipeline is easily executable manually per step with the script [SpectralPipeline](https://github.com/Leveltlab/SpectralSegmentation/blob/master/SpectralPipeline.m).<br />
@@ -41,6 +41,24 @@ The average- and maximum fluorescence can show fluorescence that is not related 
  Therefore, these cross-spectral power images are very useful for ROI selection.
 
 
+Installation
+======
+The SpecSeg pipeline only requires MATLAB to be able run on most operating systems.
+1 Download the SpecSeg code from this Github.
+2 To be able to use motion correction, download [NoRMCorre](https://github.com/flatironinstitute/NoRMCorre).
+3 To be able to do spike estimation on ROI signals, download [*MLspike*](https://github.com/MLspike/spikes).
+4 In MATLAB, add the folders from these repositories to your MATLAB path.
+
+Transposing datasets (StackTranspose.m) works via a MATLAB mex function.
+ The mex function is compiled in MATLAB from the C++ code [Zorder.cpp](https://github.com/Leveltlab/SpectralSegmentation/blob/master/spectral/dep/Zorder.cpp).
+ For Windows 64-bit, and Mac 64-bit Zorder is compiled and should work automatically.
+However, for other operating systems it needs to be compiled for your system in MATLAB.<br />
+5 (if necessary). Compile Zorder.cpp by setting MATLAB's current directory to SpectralSegmentation/Spectral/Dep and executing: *mex Zorder.cpp*
+For this to work a compiler must be installed in MATLAB, get information on that by executing *mex -setup* in MATLAB.
+To find a suitable compiler go to: https://www.mathworks.com/support/compilers.
+If you get the C++ compiler by installing Visual Studio, make sure to install:
+ [*Desktop Development with C++*](https://www.mathworks.com/matlabcentral/answers/443349-how-do-i-install-visual-studio-2017-or-2019-for-use-with-matlab-simulink).
+
 Readme's
 ======
 [Pipeline manual](https://github.com/Leveltlab/SpectralSegmentation/blob/master/docs/Spectral-Segmentation_Manual.pdf)
@@ -51,7 +69,7 @@ Readme's
 Paper
 ======
 We are submitting a manuscript on this pipeline (WIP). A preprint has been published on biorxiv
-[Kraker et al. 2020](https://doi.org/10.1101/2020.10.20.345371)
+([Kraker et al. 2020](https://doi.org/10.1101/2020.10.20.345371)).
 
 
 Matlab dependencies
