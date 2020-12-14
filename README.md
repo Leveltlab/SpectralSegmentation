@@ -44,16 +44,16 @@ The average- and maximum fluorescence can show fluorescence that is not related 
 Installation
 ======
 The SpecSeg pipeline only requires MATLAB to be able run on most operating systems.
-1 Download the SpecSeg code from this Github.
-2 To be able to use motion correction, download [NoRMCorre](https://github.com/flatironinstitute/NoRMCorre).
-3 To be able to do spike estimation on ROI signals, download [*MLspike*](https://github.com/MLspike/spikes).
-4 In MATLAB, add the folders from these repositories to your MATLAB path.
+1. Download the SpecSeg code from this Github.
+2. To be able to use motion correction, download [NoRMCorre](https://github.com/flatironinstitute/NoRMCorre).
+3. To be able to do spike estimation on ROI signals, download [*MLspike*](https://github.com/MLspike/spikes).
+4. In MATLAB, add the folders from these repositories to your MATLAB path.
 
-Transposing datasets (StackTranspose.m) works via a MATLAB mex function.
- The mex function is compiled in MATLAB from the C++ code [Zorder.cpp](https://github.com/Leveltlab/SpectralSegmentation/blob/master/spectral/dep/Zorder.cpp).
- For Windows 64-bit, and Mac 64-bit Zorder is compiled and should work automatically.
-However, for other operating systems it needs to be compiled for your system in MATLAB.<br />
-5 (if necessary). Compile Zorder.cpp by setting MATLAB's current directory to SpectralSegmentation/Spectral/Dep and executing: *mex Zorder.cpp*
+    Transposing datasets (StackTranspose.m) works via a MATLAB mex function.
+     The mex function is compiled in MATLAB from the C++ code [Zorder.cpp](https://github.com/Leveltlab/SpectralSegmentation/blob/master/spectral/dep/Zorder.cpp).
+     For Windows 64-bit, and Mac 64-bit Zorder is compiled and should work automatically.
+    However, for other operating systems it needs to be compiled for your system in MATLAB.<br />
+5. (if necessary). Compile Zorder.cpp by setting MATLAB's current directory to SpectralSegmentation/Spectral/Dep and executing: *mex Zorder.cpp*
 For this to work a compiler must be installed in MATLAB, get information on that by executing *mex -setup* in MATLAB.
 To find a suitable compiler go to: https://www.mathworks.com/support/compilers.
 If you get the C++ compiler by installing Visual Studio, make sure to install:
