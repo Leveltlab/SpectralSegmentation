@@ -1,54 +1,13 @@
 % Doing the normcorr motion correction, transposing, spectral analysis and
 % automated ROI creation for all splits, for multiple files in one script
 % Optional steps are motion correction, background subtraction, ROI getting
+% 
 %
+% You can set the analysis settings either via the script by changing the
+% code via "Settings via script", 
+% or you can run the next section "Get the settings via input dialogs"
+% 
 % Leander de Kraker
-
-% CROPPING SETTINGS % % % % % (for motion correction!)
-% Most important part of cropping is removing the lines (on the left
-% and right side) which have value 653357 and will thus overpower all 
-% relevant data during motion correction.
-% x = 102:774; % HORIZONTAL CROP
-% y = 25:512;  % VERTICAL CROP
-
-% Run motion normcorre correction? % % % % % % % % % % % % %
-doNoRMCorre = false; % (if false, cropping settings aren't used)
-
-% BACKGROUND SUBTRACTION parameters % % % % % Necessary for 1 photon data
-doBackgroundSubtract = true;
-filterRadius = 55; % The radius of the filter for background subtraction
-filterMethod = 'Circular Average'; % Options Gaussian Average | Circular Average
-shifter = 9000; % The data values has to be increased to prevent underexposure/ over correction
-% 1D gaussian smoothing to slightly decrease vertical or horizontal banding noise. 
-smoothDim = 0; % options: 0 (no smoothing), 1 (horizontal smoothing), 2 (vertical smoothing)
-smoothSe  = []; % size for the smoothing
-plotter = true; % plot last frame
-
-
-% Also run getSpectrois to detect the ROIs? % % % % % % % %
-getROIs = true;
-if getROIs
-    % Arm the spar: Spectral roi finder PARameters
-    global spar
-    spar = Spectroiparm();
-end
-
-% Save timing info? % % % % % % % % % % % % % % % % % % % % 
-timed = false;
-if timed
-    % File in which timing info is
-    timedFile = 'D:\spectralTimed.mat';
-    if ~isfile(timedFile)
-        warning('%s does not exist!! please say which file to add the timing data to!', timedFile)
-        return
-% %         or run following code to create a new timedFile there: 
-        timedData = struct('computerName',{},'fileSize',[],'filePath', [], 'fileName',{},...
-                     'nSplits', [], 'normcorrT',[],'transposeT',[],'decimatT',[],...
-                     'spectralT',[],'fluorescenceT',[], 'backSubT', [], 'getRoisT', [],...
-                     'nRois', [], 'date', {});
-        save(timedFile, 'timedData')
-    end
-end
 
 % Load as many files as user wants
 filenames = {};
@@ -68,14 +27,213 @@ end
 filenames = filenames';
 filepaths = filepaths';
 nfiles = length(filenames);
-clearvars selecting
+clearvars selecting i
 
-i = 1;
-%% process the files
+global info
+
+%% Settings via script
+
+% CROPPING SETTINGS % % % % % (for motion correction!)
+% Most important part of cropping is removing the lines (on the left
+% and right side) which have value 653357 and will thus overpower all 
+% relevant data during motion correction.
+x = 102:774; % HORIZONTAL CROP
+y = 25:512;  % VERTICAL CROP
+
+% Run motion normcorre correction? % % % % % % % % % % % % %
+doNoRMCorre = true; % (if false, cropping settings aren't used)
+
+% BACKGROUND SUBTRACTION parameters % % % % % Necessary for 1 photon data
+doBackgroundSubtract = false;
+filterRadius = 55; % The radius of the filter for background subtraction
+filterMethod = 'Circular Average'; % Options Gaussian Average | Circular Average
+shifter = 9000; % The data values has to be increased to prevent underexposure/ over correction
+% 1D gaussian smoothing to slightly decrease vertical or horizontal banding noise. 
+smoothDim = 1; % options: 0 (no smoothing), 1 (horizontal smoothing), 2 (vertical smoothing)
+smoothSe  = 1.75; % size for the smoothing
+plotter = true; % plot last frame
+
+% Also run getSpectrois to detect the ROIs? % % % % % % % %
+getROIs = false;
+if getROIs
+    % Arm the spar: Spectral roi finder PARameters
+    global spar
+    spar = Spectroiparm();
+end
+
+% Save timing info? % % % % % % % % % % % % % % % % % % % % 
+timed = false;
+if timed
+    % File in which timing info is stored
+    timedFile = 'D:\spectralTimed.mat';
+    if ~isfile(timedFile)
+        warning('%s does not exist!! please say which file to add the timing data to!', timedFile)
+        return
+% %         or run following code to create a new timedFile there: 
+        timedData = struct('computerName',{},'fileSize',[],'filePath', [], 'fileName',{},...
+                     'nSplits', [], 'normcorrT',[],'transposeT',[],'decimatT',[],...
+                     'spectralT',[],'fluorescenceT',[], 'backSubT', [], 'getRoisT', [],...
+                     'nRois', [], 'date', {});
+        save(timedFile, 'timedData')
+    end
+end
+
+
+%% Get the settings via input dialogs
+dlgdims = [1 85];
+
+% Do NoRMCorre? %
+doNoRMCorre = questdlg('do NoRMCorre motion correction?', 'run NoRMCorre?', 'yes', 'no', 'yes');
+if strcmp(doNoRMCorre, 'yes')
+    doNoRMCorre = true;
+elseif strcmp(doNoRMCorre, 'no')
+    doNoRMCorre = false;
+else
+    fprintf('canceled selecting settings\n')
+    return
+end
+% Get crop for NoRMCorre
+if doNoRMCorre
+    if exist('filepaths', 'var')
+        load([filepaths{1} filenames{1}(1:end-4) '.mat'], 'info');
+        definput = {sprintf('1:%d', info.sz(2)), sprintf('1:%d', info.sz(1))};
+        clearvars info
+    else
+        definput = {'1:796', '1:512'};
+    end
+
+    prompt = {'x, horizontal crop', 'y, vertical crop'};
+    dlgtitle = 'cropping settings for motion correction';
+
+    answer = inputdlg(prompt, dlgtitle, dlgdims, definput);
+    if isempty(answer)
+        fprintf('canceling selecting settings\n')
+        return
+    end
+    x = str2num(answer{1});
+    y = str2num(answer{2});
+end
+
+% Do background subtraction? %
+doBackgroundSubtract = questdlg('Do background subtraction (for 1-photon data)',...
+                                'background subtraction settings',...
+                                'yes','no','no');
+if strcmp(doBackgroundSubtract, 'yes');    doBackgroundSubtract = true;
+elseif strcmp(doBackgroundSubtract, 'no'); doBackgroundSubtract = false;
+else; fprintf('Cancelling selecting settings\n'); return
+end
+% Get the specific background subtraction settings
+if doBackgroundSubtract 
+    prompt = {'filterRadius (actual size of filter = [radius*2, radius*2])', ...
+        ['shift data to prevent underexposure/ over correction\n'...
+        '(only change if BackgroundSubtract gives exposure warnings)'],...
+        'Plot results and background image for final frame? (no or yes)'};
+    dlgtitle = 'background subtract settings';
+    definput = {'55', '9000', 'no'};
+    answer = inputdlg(prompt, dlgtitle, dlgdims, definput);
+    if isempty(answer)
+        fprintf('stopping settings selection\n')
+        return
+    end
+    filterRadius = str2double(answer{1});
+    shifter = str2double(answer{2});
+    if strcmpi(answer{3}, 'yes')
+        plotter = true;
+    else
+        plotter = false;
+    end
+    filterMethod = questdlg('filtering method for background image estimation', 'background subtract settings',...
+                            'Circular Average (advised)',...
+                            'Gaussian Average',...
+                            'Circular Average (advised)');
+    if strcmp(filterMethod, 'Circular Average (advised)')
+        filterMethod = 'Circular Average';
+    elseif strcmp(filterMethod, 'Gaussian Average')
+        % That's the correct string already: do nothing
+    else
+        fprintf('Stopping setting selection, no valid method for background subtraction\n')
+        return
+    end
+    smoothDim = questdlg('1D gaussian smoothing to diminish (vertical or horizontal banding) noise?',...
+                         'background subtract setings',...
+                         'no', 'horizontal smoothing', 'vertical smoothing', 'vertical smoothing');
+    if strcmp(smoothDim, 'no')
+        smoothDim = 0;
+        smoothSe = [];
+    elseif strcmp(smoothDim, 'horizontal smoothing')
+        smoothDim = 1;
+    elseif strcmp(smoothDim, 'vertical smoothing')
+        smoothDim = 2;
+    else % canceled
+        fprintf('Canceling selecting settings\n')
+        return
+    end
+    if smoothDim > 0
+        answer = inputdlg('size of smoothing (standard deviation of gaussian)',...
+                          'background subtract settings',...
+                          dlgdims, {'1.7'});
+        if isempty(answer)
+            fprintf('Canceled selecting settings at final dlg\n')
+            return
+        end
+        smoothSe = str2num(answer{1});
+    end
+end
+
+% get ROIs? %
+getROIs = questdlg('automatic ROI detection?', 'get ROIs?', 'yes', 'no', 'yes');
+if strcmp(getROIs, 'yes')
+    getROIs = true;
+    global spar
+    spar = Spectroiparm();
+elseif strcmp(getROIs, 'no')
+    getROIs = false;
+else
+    fprintf('Cancelling selecting settings\n')
+end
+
+% Timing info % 
+timed = questdlg('Save processing time/log of the analysis?', 'time/log analysis?',...
+    'yes', 'no', 'no');
+if strcmp(timed, 'yes')
+    timed = true;
+elseif strcmp(timed, 'no')
+    timed = false;
+else
+    timed = false;
+end
+if timed
+    % File in which timing info is stored
+    timedFile = 'D:\nonexistent.mat'; % Default timedFile name! % % % 
+    if ~isfile(timedFile) % Creating new file for timing data
+        warning('%s does not exist! please say which file to add the timing data to!', timedFile)
+        [timedFile, timedFilePath] = uiputfile('*.mat', 'Where to save timing file', 'spectralTimed.mat');
+        if timedFile==0 % User didn't select a file so forget about saving timed data
+            timed = false;
+        else % Save new requested file
+            timedFile = [timedFilePath, timedFile];
+            fprintf('\nPlease change default timedFile name (line 208) to the new file for future use:\n%s\n', timedFile)
+            timedData = struct('computerName',{},'fileSize',[],'filePath', [], 'fileName',{},...
+                         'nSplits', [], 'normcorrT',[],'transposeT',[],'decimatT',[],...
+                         'spectralT',[],'fluorescenceT',[], 'backSubT', [], 'getRoisT', [],...
+                         'nRois', [], 'date', {});
+            save(timedFile, 'timedData')
+        end
+    end
+end
+
+clearvars answer prompt dlgtitle dlgdims definput
+
+%% 
+% Set the i if you want to run a specific section of the analysis for a
+% specific file (after things crash or are unsatisfactory for example)
+i = 1; 
+
+%% process all the files
+
 for i = 1:nfiles
     fn = filenames{i};
     pn = filepaths{i};
-    
     pnfn = [pn fn(1:end-4)]; % pathname with filename  
     % prepare to load a different sbx file: thoroughly delete info variable
     clearvars info 
@@ -185,7 +343,7 @@ for i = 1:nfiles
                 filenameNormcorr{j} = [pnfn sprintf('_Split%d_normcorr', j)];
             end
         else
-            filenameNormcorr{j}= [pnfn sprintf('_normcorr', j)];
+            filenameNormcorr{j}= [pnfn '_normcorr'];
         end
         
     else % No NoRMCorre
