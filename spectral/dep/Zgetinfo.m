@@ -2,7 +2,8 @@ function [Dim, Freq] = Zgetinfo(strfn)
 
 fid = fopen(strfn);
 Header = fgetl(fid);
-strh = strsplit(Header(1:100),{' ', '\0'});
+idx = 1:min(length(Header), 100); % 
+strh = strsplit(Header(idx),{' ', '\0'});
 
 datestr = [strh{5} ' ' strh{6}];
 Dim = [str2double(strh{1}) str2double(strh{2}) str2double(strh{3})];
