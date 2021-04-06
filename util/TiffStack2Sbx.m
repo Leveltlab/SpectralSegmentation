@@ -1,4 +1,4 @@
-% Takes a tiff file which consists of multiple grayscale images
+% Takes tiff file(s) which consists of multiple grayscale images
 %    and converts it to 16 bit unsigned integer sbx format, with
 %    accompanying .mat info file
 % Pop up enables loading of as many tif files as you want. Press cancel
@@ -58,7 +58,7 @@ for i = 1:nfiles
     end
     
     nframes = length(tiffInfo);
-
+    
     % Read all frames of the tif and write them to the sbx file
     hwb = waitbar(0, 'writing sbx file');
     for f = 1:nframes
@@ -88,3 +88,4 @@ for i = 1:nfiles
     save([fileSbx(1:end-4) '.mat'], 'info');
     fprintf('done saving %s\n', fileNameSbx{i})
 end
+

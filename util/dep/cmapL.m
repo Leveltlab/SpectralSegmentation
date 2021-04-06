@@ -60,7 +60,7 @@ function colmap = cmapL(colors, n)
 % inferno = black to purple to yellow, standard matplotlib
 % greenFancy = from black to blue to green to white
 % greenFancyDark = darker version of greenFancy
-%
+% safe = suitable for colorblind in 11 steps
 %
 % Leander de Kraker
 % 2018-10-22, edited 2020-5-1
