@@ -8,13 +8,18 @@
 
 % sbx data is required. TIFF can be converted to sbx
 %% Convert tiff files that have multiple frames. (full movie)
-TiffStack2Sbx 
+TiffStack2Sbx
 
 %% Convert a folder full of tiff files, each tif file consisting of 1 frame
-TiffImages2Sbx 
+TiffImages2Sbx
+
+%% Convert H5 files to sbx
+Hdf52Sbx
+
 
 %% For 1 photon/ miniscope data background subtraction is necessary
 BackgroundSubtractSbx
+
 
 %% Motion correct sbx data
 Showsbx 
