@@ -36,6 +36,7 @@ nfiles = length(Masks);
 
 BImgs = cellfun(@transpose, BImgs, 'un',0);
 Masks = cellfun(@transpose, Masks, 'un',0);
+nLinksMask = cellfun(@transpose, nLinksMask, 'un',0); 
 
 dims = size(Masks{1});
 
