@@ -1,26 +1,51 @@
-function ChronicViewer(BImg2, Masks2, names, nLinksMask, linkMat, contours, score, inRoi)
-% UI for going through chronically analyzed recordings
+function ChronicViewer(BImgs, Masks, names, nLinksMask, linkMat, contours, score, inRoi)
+% UI for going through chronically linked recordings
+% 
+% It is possible to edit the match matrix. Editing the match matrix will
+% recalculate relevant variables: number of links in the match & overlap
+% score of the match.
+% When editing the match matrix, duplicate ROI numbers will be removed 
+% automatically.
+% 
+% ChronicViewer2(BImg2, Masks2, names, nLinksMask, linkMat, contours, score, inRoi)
+% BImgs: [1 x n] cell array with 2D double. Registered spectral images.
+% Masks: [1 x n] cell array with 2D double. Registered ROI masks.
+% names: [1 x n] string names of the different recordings.
+% nLinksMask: [1 x n] cell array with 2D doubles: ROI masks, with nr of
+%                      links instead of ROI number per ROI
+% linkMat: [nmatches x n] double. Which ROI in each match
+% contours: [1 x n] struct with registered contour information (PP)
+% score: [nmatches x 1] double. The overlap score of each match
+% inRoi: [1 x n] cell array. all overlap info for all ROIs in all recordings
+% 
+% n = number of linked recordings
+% 
 % 
 % The masks view only shows masks that are chronically linked to another
 % ROI in at least 1 other recording.
 % 
-% Todo:
-%  http://undocumentedmatlab.com/blog/customizing-listbox-editbox-scrollbars
-%  
-%  recalculate the scores after the cells are edited. 
-%  import the variable inRoi
-%  
+% 
+% Leander de Kraker
+% 2021-5-12
+% 
 
+% The height of the table individual ROIs according to the java properties
+tableRowHeight =  17.8349; 
 
-nfiles = length(Masks2);
-dims = size(Masks2{1});
+nfiles = length(Masks);
+
+BImgs = cellfun(@transpose, BImgs, 'un',0);
+Masks = cellfun(@transpose, Masks, 'un',0);
+
+dims = size(Masks{1});
+
 
 sShow = true(1, nfiles);
 sCont = 1:nfiles;
 rShow = 1:length(linkMat);
-selCells = [2,2]; % which cells of the table are selected
-selFiles = [1]; % Which files does that selection correspond to
-selRoi = {1}; % Which ROIs does that selection correspond to
+selCells = [2,2; 3,2]; % which cells of the table are selected
+selFiles = [1, 1]; % Which files does that selection correspond to
+selRoi = [{1} {2}]; % Which ROIs does that selection correspond to
 contAlpha = 0.4;
 autoZoom = false;
 oldZoom = [1, dims(1), 1, dims(2)];
@@ -31,10 +56,11 @@ colors = flipud(cmapL([0 0 1; 0 1 1; 0 1 0; 1 1 0; 1 0 0; 1 0 1], nfiles));
 % [subplot margin side&top],[figure bottomspace,topspace],[leftspace,rightspace]
 subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.025 0], [0.025 0]);
 
-hFig = figure('name','Chronic Viewer', 'units', 'normalized', 'position', [0.1 0.05 0.8 0.85]);
+hFig = figure('name','Chronic Viewer', 'units', 'normalized', 'position', [0.1 0.05 0.825 0.85]);
 
 hImgAx = subplot(1, 3, [1 2]); hold on
 hImgAx.ButtonDownFcn = @hImgDown;
+hImgAx.YDir = 'reverse';
 hImg = imagesc(zeros(dims([1 2])),'hittest','off');
 axis([1, dims(2), 1, dims(1)])
 
@@ -45,45 +71,47 @@ for i = 1:nfiles
     % Draw contours and save handles
     hCons{i} = gobjects(1,contours(i).Cnt);
     for j = 1:contours(i).Cnt
-        hCons{i}(j) = plot(contours(i).Con(j).y, contours(i).Con(j).x,...
+        hCons{i}(j) = plot(contours(i).Con(j).x, contours(i).Con(j).y,...
             'color',[colors(i,:), contAlpha],'hittest','off');
     end
     
     % Write colored legend text
-    names{i} = names{i}(1:16); % Shorten the filename
     names{i} = strrep(names{i},'_',' '); % replace underscores with spaces
-    hLegendText(i) = text(3,dims(1)-12-i*12,names{i},'color',colors(i,:));
+    hLegendText(i) = text(3,12+i*12,names{i},'color',colors(i,:));
 end
 
 % Positions of the other UI elements
-hRoisTAx= subplot(8, 3, [3 6 9 12 15]); % table axis
-hViewAx = subplot(16, 6, 77); 
-hAlphAx = subplot(16, 6, 83);
-hZoomAx = subplot(16, 6, 89);
-hSaveAx = subplot(16, 6, 95);
-hClickTAx= subplot(8, 3, 18); % clicked on image roi information table axis
-hSessTAx = subplot(4, 6, 24); % which sessions are selected table axis
+hRoisTAx= subplot(16, 3, [3 24]); % chronic table table axis
+hInfoAx = subplot(16, 3, [27 30]);  % Info axis
+hViewAx = subplot(16, 6, 89); % select background image list axis
+hAlphAx = subplot(16, 6, 90); % Alpha slider axis
+hZoomAx = subplot(16, 6, 95); % Auto zoom button axis
+hSaveAx = subplot(16, 6, 96); % Save button axis
+hClickTAx= subplot(16, 3, [33 36]); % clicked on image roi information table axis
+hSessTAx = subplot(16, 3, [39 42]); % which sessions are selected table axis
 hRoisTAx.Units = 'pixels';
-hClickTAx.Units = 'pixels';
+hInfoAx.Units  = 'pixels';
 hViewAx.Units  = 'pixels';
 hAlphAx.Units  = 'pixels';
 hZoomAx.Units  = 'pixels';
 hSaveAx.Units  = 'pixels';
+hClickTAx.Units= 'pixels';
 hSessTAx.Units = 'pixels';
-hViewAx.Visible  = 'off';
 hRoisTAx.Visible = 'off';
-hClickTAx.Visible = 'off';
+hInfoAx.Visible  = 'off';
+hViewAx.Visible  = 'off';
 hAlphAx.Visible  = 'off';
 hZoomAx.Visible  = 'off';
 hSaveAx.Visible  = 'off';
+hClickTAx.Visible= 'off';
 hSessTAx.Visible = 'off';
 
 % Select sessions table
 hSessionTable = uitable('Position',hSessTAx.Position,'Units','normalized',...
     'CellSelectionCallback',@SessionSelect);
-hSessionTable.ColumnName = [{'img'},{'cont'}];
-hSessionTable.ColumnWidth = [{40}, {40}];
-hSessionTable.Data = repmat({true},[nfiles,2]);
+hSessionTable.RowName = [{'img'},{'cont'}];
+hSessionTable.ColumnWidth = [num2cell(repmat(35, [1, nfiles]))];
+hSessionTable.Data = repmat({true},[2,nfiles]);
 
 % View dropdown menu
 hViewPopup = uicontrol('Style', 'popup',...
@@ -96,8 +124,8 @@ hAlph = uicontrol('Style','slider', 'Min',0, 'Max',1, 'Value',contAlpha,...
 hAlph.Position(4) = 15;
 hAlphTitle = uicontrol('Style','text',...
     'position',hAlphAx.Position,'horizontalAlignment','left',...
-    'string','Contours alpha');
-hAlphTitle.Position([2, 4]) = [hAlphTitle.Position(2)+15, 15];
+    'string','Contours alpha (opacity)');
+hAlphTitle.Position([2, 4]) = [hAlphTitle.Position(2)+tableRowHeight, 15];
 % Normalized units allows resizing of the UI
 hAlph.Units   = 'normalized';
 hAlphTitle.Units = 'normalized';
@@ -111,34 +139,43 @@ hSaveButton = uicontrol('Style','pushbutton','String','save table changes',...
     'Position',hSaveAx.Position,'Units','normalized','Callback',@SaveRois);
 hSaveButton.FontWeight = 'bold';
 
-% Rois selectable info table
+% TABLE Chronic matching ROI info table
 hRoisTable = uitable('Position',hRoisTAx.Position,'Units','normalized',...
-    'CellSelectionCallback',@RoiSelect, 'CellEditCallback',@RoiEdit);
+            'CellSelectionCallback',@RoiSelect, 'CellEditCallback',@RoiEdit);
 titles = cell(1,nfiles);
 for i = 1:nfiles
     titles{i} = sprintf('rec %d', i);
 end
 nLinks = sum(linkMat~=0, 2);
-% length(score)
-% length(nLinks)
-% [nLinks, score]
 [~, sorted]=  sortrows([nLinks score], 'descend');
 linkMat = [nLinks(sorted), linkMat(sorted,:), score(sorted,:)];
+linkMat = [zeros(1,size(linkMat,2)); linkMat];
 hRoisTable.ColumnWidth = [{35}, num2cell(repmat(35, [1, nfiles]))];
 hRoisTable.ColumnName = [{'n links'}, titles, {'score'}];
 hRoisTable.ColumnEditable = [false, true(1,nfiles), false];
 hRoisTable.Data = num2cell(linkMat);
 
-hClickedTable = uitable('Position',hClickTAx.Position,'Units','normalized');
+
+% TABLE that shows info on ROIs which you clicked on in main image
+hClickedTable = uitable('Position',hClickTAx.Position,'Units','normalized',...
+                'CellSelectionCallBack', @clickTableCallback);
 hClickedTable.Data = num2cell(zeros(4,nfiles));
 hClickedTable.ColumnName = [titles];
 hClickedTable.ColumnWidth = [num2cell(repmat(35, [1, nfiles]))];
 hClickedTable.RowName = [{'ROI'},{'row'},{'n-links'},{'score'}];
 
+
+% Text that says something about the UI status
+hInfoText = uicontrol('Style', 'text', 'String', 'hello',...
+            'Position',hInfoAx.Position, 'Units','normalized');
+hInfoText.HorizontalAlignment = 'Left';
+
 % Start the UI with nice background image
 UpdateView
+RefreshInfoText
 
-% Callback functions and such
+
+% Callback functions and such % % % % % % % % % % % % % % % % % % % % % %
 
 function BackgroundView(source,~)
     % Callback function to change the background view
@@ -152,11 +189,11 @@ end
 function SessionSelect(source, event)
     % Callback to select and deselect sessions
     if ~isempty(event.Indices)
-        idx = sub2ind([nfiles 2], event.Indices(1), event.Indices(1,2));
+        idx = sub2ind([2, nfiles], event.Indices(1), event.Indices(1,2));
         source.Data{idx} = ~source.Data{idx};
     end
-    sShow = cell2mat(source.Data(:,1));
-    sCont = find(cell2mat(source.Data(:,2)));
+    sShow = cell2mat(source.Data(1,:));
+    sCont = find(cell2mat(source.Data(2,:)));
     UpdateView
     UpdateCont
 end
@@ -164,68 +201,69 @@ end
 
 function RoiSelect(~, event)
     % Callback to select and deselect ROI
-    
-    % Set the previous selection linewidth and alpha back to normal
-    for i = 1:size(selCells,1)
-        if length(selRoi{i})==1
-            if selRoi{i}>0
-                % Set properties of the contour of session, roi
-                hCons{selFiles(i)}(selRoi{i}).Color(4) = contAlpha;
-                hCons{selFiles(i)}(selRoi{i}).LineWidth = 1;
-            end
-        else % the nLinks or score column was clicked -> color all ROIs
-            for j = 1:nfiles
-                if selRoi{i}(j)>0
-                    hCons{j}(selRoi{i}(j)).Color(4) = contAlpha;
-                    hCons{j}(selRoi{i}(j)).LineWidth = 1;
+    if ~isempty(event.Indices)
+        % Set the previous selection linewidth and alpha back to normal
+        for i = 1:size(selCells,1)
+            if length(selRoi{i})==1
+                if selRoi{i}>0
+                    % Set properties of the contour of session, roi
+                    hCons{selFiles(i)}(selRoi{i}).Color(4) = contAlpha;
+                    hCons{selFiles(i)}(selRoi{i}).LineWidth = 1;
+                end
+            else % the nLinks or score column was clicked -> color all ROIs
+                for j = 1:nfiles
+                    if selRoi{i}(j)>0
+                        hCons{j}(selRoi{i}(j)).Color(4) = contAlpha;
+                        hCons{j}(selRoi{i}(j)).LineWidth = 1;
+                    end
                 end
             end
         end
-    end
-    
-    % Which ROIs were clicked? 
-    selCells = event.Indices; % Selected cells
-    selFiles = selCells(:,2)-1; % -1 because first column is nLinks
-    selRoi = cell(1,length(selFiles)); % Which ROIs need to get highlighted  
-    for i = 1:length(selFiles)
-        if selFiles(i)>0 && selFiles(i)<=nfiles % A ROI in a session was clicked
-             selRoi{i} = hRoisTable.Data{selCells(i,1),selCells(i,2)};
-        else % multiple rois should be selected because cell nLinks or score was clicked
-            % Get the ROI number out of the table
-            for j = 1:nfiles
-                selRoi{i}(j) = hRoisTable.Data{selCells(i,1),j+1};
-            end
-        end
-    end
-    
-    % Set the clicked rois to fat contours
-    for i = 1:size(selCells,1)
-        if length(selRoi{i})==1 
-            if selRoi{i}>0
-                hCons{selFiles(i)}(selRoi{i}).Color(4) = 1;
-                hCons{selFiles(i)}(selRoi{i}).LineWidth = 2;
-            end
-        else % the nLinks or score column was clicked -> color all ROIs
-            for j = 1:nfiles
-                if selRoi{i}(j)>0
-                    hCons{j}(selRoi{i}(j)).Color(4) = 1;
-                    hCons{j}(selRoi{i}(j)).LineWidth = 2;
-                end
-            end
-        end
-    end
-    
-    rShow = unique(event.Indices(:,1));
-%     rois = linkMat(rShow, 2:end)
-%     [~, idx] = find(rois)
-%     idx = idx(1:size(rois,1))
 
-    % With certain views the image changes as well
-    if viewToggle == 2 || viewToggle == 4
-        UpdateView
-    end
-    if autoZoom
-        AutoZoomFunc
+        % Which ROIs were clicked? Update selected ROIs
+        selCells = event.Indices; % Selected cells
+        selFiles = selCells(:,2)-1; % -1 because first column is nLinks
+        selRoi = cell(1,length(selFiles)); % Which ROIs need to get highlighted  
+        for i = 1:length(selFiles)
+            if selFiles(i)>0 && selFiles(i)<=nfiles % A ROI in a session was clicked
+                 selRoi{i} = hRoisTable.Data{selCells(i,1),selCells(i,2)};
+            else % multiple rois should be selected because cell nLinks or score was clicked
+                % Get the ROI number out of the table
+                for j = 1:nfiles
+                    selRoi{i}(j) = hRoisTable.Data{selCells(i,1),j+1};
+                end
+            end
+        end
+
+
+        % Set the clicked rois to fat contours
+        for i = 1:size(selCells,1)
+            if length(selRoi{i})==1 
+                if selRoi{i}>0
+                    hCons{selFiles(i)}(selRoi{i}).Color(4) = 1;
+                    hCons{selFiles(i)}(selRoi{i}).LineWidth = 2;
+                end
+            else % the nLinks or score column was clicked -> color all ROIs
+                for j = 1:nfiles
+                    if selRoi{i}(j)>0
+                        hCons{j}(selRoi{i}(j)).Color(4) = 1;
+                        hCons{j}(selRoi{i}(j)).LineWidth = 2;
+                    end
+                end
+            end
+        end
+        
+        rShow = unique(event.Indices(:,1));
+        
+        RefreshInfoText
+        
+        % With certain views the image changes as well
+        if viewToggle == 2 || viewToggle == 4
+            UpdateView
+        end
+        if autoZoom
+            AutoZoomFunc
+        end
     end
 end
 
@@ -237,10 +275,23 @@ function RoiEdit(source,event)
     % present twice in the table, so the previous spot/row should be deleted,
     % and also needs recalculated number of links and new score
     
+    % Remember scrollposition
+    jscrollpane = javaObjectEDT(findjobj(source));
+    viewport    = javaObjectEDT(jscrollpane.getViewport);
+    P = viewport.getViewPosition();
+    
+    
     row = event.Indices(1);
     column = event.Indices(2);
     oldData = event.PreviousData;
     newData = event.NewData;
+    
+    
+    if ((P.y-1) /tableRowHeight) > row 
+        % scroll position is bigger than row to go to, which has to mean it
+        % is not in view: change scroll position
+        P.y = (rowToGoTo-1) *tableRowHeight;
+    end
     
     if newData > 0 
         % Where this ROI was previously should be deleted
@@ -278,11 +329,62 @@ function RoiEdit(source,event)
     
     linkMat(row,end) = OverlapScore(inRoi, linkMat(:,2:end-1), row); % Recalculate score
     
-    source.Data = num2cell(linkMat);
-    jScrollPane = findjobj(source);
-    jScrollPane.getVerticalScrollBar.setValue(row)
+    % If the added ROI was a new match enable new match by adding empty entry
+    if row == 1
+        linkMat = [zeros(1, size(linkMat,2)); linkMat];
+        selCells(1) = selCells(1)+1; % the selected cell is thus shifted
+    end
+    
+    source.Data = num2cell(linkMat);    
+    
+    % Reset Set scroll position
+    drawnow() % This is necessary to ensure the view position is set after matlab hijacks it
+    viewport.setViewPosition(P);
+    
+    eventToGive.Indices = selCells;
+    RoiSelect(nan, event)
 end
 
+
+function clickTableCallback(source, event)
+    % Clicked in the clickedTable, 
+    % Option 1: If clicked on ROI number add ROI in RoiTable
+    %   but only if clicked on ROI number in clickedTable and if only
+    %   one match is selected in the RoiTable.
+    % Option 2: If clicked on row scroll to match in RoiTable
+    
+    clickedCells = event.Indices; % Selected cells
+    
+    if size(clickedCells,1) == 1 % Only do things if clicked on one cell
+
+        if length(unique(selCells(:,1)))==1 && clickedCells(1)==1
+            % Add ROI into roiTable
+            RoiToAdd = source.Data{clickedCells(1), clickedCells(2)};
+            if RoiToAdd ~= 0
+                row = selCells(1);
+                rec = clickedCells(2)+1; % +1 because first row chronic table is nlinks.
+                eventToGive.Indices = row;
+                eventToGive.Indices(2) = rec;
+                eventToGive.PreviousData = hRoisTable.Data{row,rec};
+                eventToGive.NewData = source.Data{clickedCells(1), clickedCells(2)};
+                
+                if eventToGive.PreviousData ~= eventToGive.NewData
+                    RoiEdit(hRoisTable, eventToGive)
+                end
+            end
+        elseif clickedCells(1)==2
+            % Scroll to clicked row
+            rowToGoTo = source.Data{clickedCells(1), clickedCells(2)};
+            if rowToGoTo ~= 0
+                jscrollpane = javaObjectEDT(findjobj(hRoisTable));
+                viewport    = javaObjectEDT(jscrollpane.getViewport);
+                P = viewport.getViewPosition();
+                P.y = (rowToGoTo-1) *tableRowHeight;
+                viewport.setViewPosition(P);
+            end
+        end
+    end
+end
 
 
 function UpdateView
@@ -300,9 +402,9 @@ function UpdateView
         if viewToggle == 1 || viewToggle == 2 
             
             if viewToggle == 1 % Background images
-                hImg.CData = CreateRGB2(BImg2(sShow2), colors2);
+                hImg.CData = CreateRGB2(BImgs(sShow2), colors2);
             else % Mask view!
-                MasksShow = Masks2;
+                MasksShow = Masks;
                 for x = sShow2(:)' % ROI selection
                     idx = linkMat(rShow, x+1);
                     MasksShow{x}(~ismember(MasksShow{x},idx)) = 0;
@@ -335,7 +437,7 @@ function UpdateView
            
         elseif viewToggle == 4 
             % Mask pixel overlap determines intensity
-            linkHeat = Masks2;
+            linkHeat = Masks;
             for x = sShow2(:)' % ROI selection possible
                 idx = linkMat(rShow, x+1);
                 linkHeat{x}(~ismember(linkHeat{x},idx)) = 0;
@@ -373,13 +475,13 @@ end
 
 
 function hImgDown(~,event)
-    % Plots text with fprintf haha
+    % Highlights ROI in the table and main image after clicking on main image
 %     source
 %     event
     point = round(event.IntersectionPoint);
     hClickedTable.Data = num2cell(zeros(4,nfiles));
     for i = 1:nfiles
-        roi = Masks2{i}(point(2), point(1));
+        roi = Masks{i}(point(2), point(1));
         if roi>0
             table = cell2mat(hRoisTable.Data(:,i+1));
             row = find(table==roi);
@@ -392,6 +494,26 @@ function hImgDown(~,event)
             end
     	end
     end
+end
+
+
+function RefreshInfoText
+    % Refresh the info text
+    if length(unique(selCells(:,1)))==1 
+        str = sprintf('match   %4d   selected    ', selCells(1));
+    else
+        str = 'If you select one match ';
+    end
+    str = {[str...
+        'in the "match matrix ↑" you can add a ROI into that match '...
+        'by clicking on the ROI number in the "clicked table ↓"'...
+        'Get ROIs into the "clicked table ↓" by clicking on ROIs in the "main image".']};
+    str{2} = ['You can move to the match matrix row by clicking on the row nr in the "clicked table ↓".'];
+    str{3} = ['You can remove ROIs in the match matrix by deleting or typing 0 '...
+              'in the desired ROI entry in the "match matrix ↑".'];
+    str{4} = ['You can also edit the match matrix by typing a ROI nr in the desired ROI entry'...
+              'in the "match matrix" itself.'];
+    hInfoText.String = str;
 end
 
 
@@ -427,11 +549,13 @@ end
 function AutoZoomFunc
     % zoom to the final selected contour
     [~, idx] = find(linkMat(rShow(end),2:end)>0);
-    roi = linkMat(rShow(end),idx(1)+1);
-    hImgAx.XLim = [min(contours(idx(1)).Con(roi).y)-30,...
-                   max(contours(idx(1)).Con(roi).y)+30];
-    hImgAx.YLim = [min(contours(idx(1)).Con(roi).x)-30,...
-                   max(contours(idx(1)).Con(roi).x)+30];
+    if ~isempty(idx)
+        roi = linkMat(rShow(end),idx(1)+1);
+        hImgAx.XLim = [min(contours(idx(1)).Con(roi).x)-35,...
+                       max(contours(idx(1)).Con(roi).x)+35];
+        hImgAx.YLim = [min(contours(idx(1)).Con(roi).y)-35,...
+                       max(contours(idx(1)).Con(roi).y)+35];
+    end
 end
 
 
@@ -455,7 +579,7 @@ function SaveRois(source, ~)
     % Saving the changes of the edited linkMat table
     
     hSaveButton.String = 'saving the table';
-    assignin('base', 'linkMat2', linkMat(:,2:end-1));
+    assignin('base', 'linkMat2', linkMat(2:end, 2:end-1));
     assignin('base', 'score', linkMat(:,1));
     
     try

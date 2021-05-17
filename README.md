@@ -8,7 +8,8 @@ The SpecSeg toolbox contains user-friendly graphical interfaces to detect, adjus
 This pipeline includes code adapted from [normcorre](https://github.com/flatironinstitute/NoRMCorre) ([Pnevmatikakis & Giovannucci 2016](https://doi.org/10.1016/j.jneumeth.2017.07.031)),
  to apply motion correction to sbx files. To be able to execute the motion correction, download the code from 
  [NoRMCorre](https://github.com/flatironinstitute/NoRMCorre) and add the code into the matlab path below SpectralSegmentation.<br /> 
-Spike estimation can be done on the fluorescence traces, with code that uses [*MLspike*](https://github.com/MLspike/spikes) ([Deneux et al. 2016](https://doi.org/10.1038/ncomms12190)).<br />
+Spike estimation can be done on the fluorescence traces, with code that uses [*MLspike*](https://github.com/MLspike/spikes) ([Deneux et al. 2016](https://doi.org/10.1038/ncomms12190)). 
+MLspike requires the [brick](https://github.com/MLspike/brick) toolbox. Add MLspike and brick folders to the Matlab path.<br />
 This is the pipeline that is used by the Leveltlab in the Netherlands Institute of Neuroscience (NIN).<br /><br />
 The pipeline is easily executable manually per step with the script [SpectralPipeline](https://github.com/Leveltlab/SpectralSegmentation/blob/master/SpectralPipeline.m).<br />
 Or via the script that runs the pipeline automatically for as many files as requested [AutomatedPipeline](https://github.com/Leveltlab/SpectralSegmentation/blob/master/AutomatedAnalysis.m), until RoiManagerGUI which requires manual input.<br />
@@ -20,9 +21,6 @@ Or via the script that runs the pipeline automatically for as many files as requ
 Why use the spectral segmentation toolbox
 ===========
 - User-friendly.
-- The cross-spectral power images that result from the spectral analysis show excellent separation of active neural elements from the background. 
-The cross-spectral power has the advantage over correlation in the time domain of the fluorescence signal in that it has power over multiple different frequencies. 
-Different frequencies contain different signal sources; noise can be visible in some frequencies, while neurons can be visible in others (see figure below).
 - Automatic ROI detection, with a user interface for a-priori selection of properties such as ROI size, minimum roundness, minimum signal correlation, etc.
 - Powerful ROI editor. Create new ROIs, split existing ROIs, delete ROIs manually or based on properties like size, roundness and spectral power.
 Visualize and explore the fluorescence data in many ways.
@@ -30,6 +28,9 @@ Visualize and explore the fluorescence data in many ways.
 (cell bodies, dendrites, axons, 1P, 2P, chronic glass windows, chronic GRIN lenses, cortical and subcortical brain regions)
 - To increase speed and decrease memory load fluorescence data is transposed and memory mapped.
 - Some scripts increase speed by using parallel processing.
+- The cross-spectral power images that result from the spectral analysis show excellent separation of active neural elements from the background. 
+The cross-spectral power has the advantage over correlation in the time domain of the fluorescence signal in that it has power over multiple different frequencies. 
+Different frequencies contain different signal sources; noise can be visible in some frequencies, while neurons can be visible in others (see figure below).
 - Chronic tracking of ROIs over multiple sessions (imaged days to months apart).
 
 <img src="https://github.com/Leveltlab/SpectralSegmentation/blob/master/docs/Figure_spectral-Delier_20190916_002-1-Declutter.png">
@@ -46,7 +47,7 @@ Installation
 The SpecSeg pipeline only requires MATLAB to be able run on most operating systems.
 1. Download the SpecSeg code from this Github.
 2. To be able to use motion correction, download [NoRMCorre](https://github.com/flatironinstitute/NoRMCorre).
-3. To be able to do spike estimation on ROI signals, download [*MLspike*](https://github.com/MLspike/spikes).
+3. To be able to do spike estimation on ROI signals, download [*MLspike*](https://github.com/MLspike/spikes) and [brick](https://github.com/MLspike/brick).
 4. In MATLAB, add the folders from these repositories to your MATLAB path.
 
     Transposing datasets (StackTranspose.m) works via a MATLAB mex function.
@@ -81,16 +82,15 @@ They are required for some of the functions and scripts in the toolbox.
 - Signal Processing Toolbox.
 - Statistics and Machine Learning Toolbox.
 - Statistics Toolbox.
-- (optional) MATLAB Parallel Server. 
 - (optional) Parallel Computing Toolbox. 
-- (optional) Polyspace Bug Finder. 
+- (optional) Polyspace Bug Finder.
 
 
 Troubleshooting/ questions
 ======
 For questions, troubleshooting or comments, 
 please contact Chris van der Togt (c.vandertogt@nin.knaw.nl) or Leander de Kraker (l.de.kraker@nin.knaw.nl).
-	
+Or open an [issue](https://github.com/Leveltlab/SpectralSegmentation/issues) in this Git.
 	
 Developers
 ======

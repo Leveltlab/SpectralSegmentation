@@ -845,7 +845,9 @@ nLinks = nLinks(sorted);
 clearvars keep idx i j n matchedMasks h h1 RGB rois spaces
 
 %% Chronic viewer checker UI
-ChronicViewer(BImg2, Masks2, filenames, nLinksMask, linkMat2, PP, score, inRoi)
+filenamesShort = ShortenFileNames(filenames, 1, filedates);
+
+ChronicViewer(BImg2, Masks2, filenamesShort, nLinksMask, linkMat2, PP, score, inRoi)
 
 
 %% Save chronic info
@@ -869,5 +871,5 @@ save(filename, 'nfiles', 'BImg2', 'Masks2', 'PP', 'filenames', 'filepaths', 'fil
     'transformed', 'thres', 'linked2', 'linkMat2', 'score', 'nLinks', 'nLinksMask', 'inRoi',...
     'nFoundBackMat','nFoundBackPercMat', 'confusionFoundMat')
 fprintf('saved %s\n', filename)
-inRoi
+
 
