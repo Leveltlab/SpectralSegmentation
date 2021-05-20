@@ -1,8 +1,10 @@
-function [RGB] = CreateRGB2mat(data, colors, varargin)
+function [RGB] = CreateRGB2_mat(data, colors, varargin)
 % Create a colorfull image by overlaying 2D images from a 3D matrix data
 % using a SPECIFIC COLORMAP colors
+% CreateRGB2_mat uses a matrix, while CreateRGB2 uses a cell matrix as
+% input.
 % 
-% RGB = CreateRGB2mat(data, colors, normalization, whitebalance)
+% RGB = CreateRGB2_mat(data, colors, normalization, whitebalance)
 % input:
 %   - data: 3D matrix [height x width x nslices]
 %   - colors: [nslices x 3] RGB color values for every slice of data
@@ -16,15 +18,15 @@ function [RGB] = CreateRGB2mat(data, colors, varargin)
 % See also CreateRGB2, CreateRGB
 % 
 % Leander de Kraker
-% 2019-3-1
+% 2020-9-17
 
 % normalize?
-if (nargin >= 3) && (varargin{1} == true)
+if (nargin > 3) && (varargin{1} == true)
     norma = true;
 else
     norma = false;
 end
-if (nargin == 4) && (varargin{2} == true)
+if (nargin == 5) && (varargin{2} == true)
     wbalance = true;
 else
     wbalance = false;
@@ -42,7 +44,7 @@ if minval == -inf
     vals = mink(data,2);
     data(data<vals(2)) = vals(2);
     minval = vals(2);
-    fprintf('CreateRGB2mat: replacing -inf value from data with second lowest\n')
+    fprintf('CreateRGB2mat: removing -inf value from data with second lowest\n')
 end
 if maxval == inf
     vals = maxk(data,2);

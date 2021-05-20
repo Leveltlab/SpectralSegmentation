@@ -113,7 +113,7 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     % hObject    handle to figure
     
     % nargin == varargin + hObject, evendata and handles.
-    if nargin == 6 || nargin == 7 || nargin == 8 || nargin == 9
+    if ismember(nargin, [6 7 8 9])
         % Use variables if given 
         Mask = varargin{1};
         PP = varargin{2};
@@ -143,8 +143,7 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
         if ~isnumeric(SPic)
             warning('\n\nWrong variables are given probably! SPic should be numeric\n\n'); return
         end
-    else
-        % load data otherwise
+    else % load data otherwise
         [fn, pn] = uigetfile('*SPSIG.mat');
         fprintf('Loading...\n')
         SPSIGfile = [pn fn];
@@ -153,6 +152,15 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
         
         % Try to find the 2P transposed datafile based on given SPSIG file
         datafile = [pn fn(1:end-9) 'DecTrans.dat'];
+        if nargin == 4 % If RoiManagerGUI got false as only input, do not use decimated data
+            fprintf('one input given\n')
+            if varargin{1} == false
+                fprintf('selecting original transposed data\n')
+                datafile =  [pn fn(1:end-9) 'Trans.dat'];
+            else
+                fprintf('using decimated dataset')
+            end
+        end
         if exist(datafile, 'file') ~= 2
             datafile =  [pn fn(1:end-9) 'Trans.dat'];
             if exist(datafile,'file') ~= 2 % if not found, request it
@@ -462,8 +470,12 @@ function majorToggles_Callback(hObject, ~, h) %#ok<DEFNU>
     % If an inactive major toggle was clicked, change panels etc.
     if switches.currentMajor ~= buttonN
         % Turn previous panel off
+        if isfield(h, 'createRoiSearchBox') && isgraphics(h.createRoiSearchBox)
+            h.createRoiSearchBox.Color(4) = 0;
+        end
+        
         switch switches.currentMajor
-            case 1 % ROI rejector panel
+            case 1 % Roi rejection panel
                 h.majorToggle1 = TurnOff(h.majorToggle1);
                 uistack(h.majorPanel1, 'bottom');
                 h.majorPanel1.Visible = 'off';
@@ -475,7 +487,7 @@ function majorToggles_Callback(hObject, ~, h) %#ok<DEFNU>
                 h.majorToggle3 = TurnOff(h.majorToggle3);
                 uistack(h.majorPanel3, 'bottom');
                 h.majorPanel3.Visible = 'off';
-            case 4 % Show Data panel
+            case 4 % Visualisation panel
                 h.majorToggle4 = TurnOff(h.majorToggle4);
                 uistack(h.majorPanel4, 'bottom');
                 h.majorPanel4.Visible = 'off';
@@ -499,6 +511,9 @@ function majorToggles_Callback(hObject, ~, h) %#ok<DEFNU>
                 h.majorToggle3 = TurnOn(h.majorToggle3);
                 h.majorPanel3.Visible = 'on';
                 uistack(h.majorPanel3, 'top');
+                if isfield(h, 'createRoiSearchBox') && isgraphics(h.createRoiSearchBox)
+                    h.createRoiSearchBox.Color(4) = 1;
+                end
             case 4 % Show Data panel
                 h.majorToggle4 = TurnOn(h.majorToggle4);
                 h.majorPanel4.Visible = 'on';
@@ -670,7 +685,7 @@ function SelectROI(pos, h, do)
             signal = mean(sbxt.Data.y(:,data.Mask'==id),2);
             h.signalAx2.NextPlot = 'replacechildren';
             plot(data.xas, signal, 'color', [0 0 0], 'Parent', h.signalAx2);
-            ylims = [round(min(signal),-2)-100, round(max(signal),-2)+100];
+            ylims = [round(min(signal),-1)-10, round(max(signal),-1)+10];
             xlims = h.signalAx2.XLim;
             h.signalAx2.YLim = ylims;
             % Say which ROI is being plotted, at 80% height of the signalAx 
@@ -968,6 +983,14 @@ function CreateRoi(h, do)
             h.createRoiAx2.XLim = [1, size(piece,2)];
             h.createRoiAx2.YLim = [1, size(piece,1)];
             plot(centre(2),centre(1), 'xk', 'Parent', h.createRoiAx2)
+            plot([1 size(piece,2) size(piece,2) 1 1], [1 1 size(piece,1), size(piece,1), 1],...
+                'y', 'Parent', h.createRoiAx2)
+            % Plot the searchfield
+            if isfield(h, 'createRoiSearchBox')
+                delete(h.createRoiSearchBox)
+            end
+            h.createRoiSearchBox = plot(piecey([1 1 end end 1]), piecex([1 end end 1 1]),...
+                                        'y', 'Parent', h.mainAx, 'HitTest', 'off');
         elseif strcmp(do,'update')
             % A different contour threshold is being requested. Try to
             % extract the search area that was calculated previously
@@ -980,7 +1003,9 @@ function CreateRoi(h, do)
                 h.createRoiAx2.NextPlot = 'replacechildren';
                 imagesc(piece, 'Parent', h.createRoiAx2)
                 h.createRoiAx2.NextPlot = 'add';
-                plot(centre(2),centre(1), 'xk', 'Parent', h.createRoiAx2)
+                plot(centre(2),centre(1), 'xk', 'Parent', h.createRoiAx2)      
+                plot([1 size(piece,2) size(piece,2) 1 1], [1 1 size(piece,1), size(piece,1), 1],...
+                    'y', 'Parent', h.createRoiAx2)
             end
         end
         
@@ -1112,6 +1137,7 @@ function CreateRoi(h, do)
     else
         h.applyNewRoi.ForegroundColor = [1 0 0]; % red if not allowed to save
     end
+    guidata(h.hGUI, h)
     setappdata(h.hGUI, 'switches', switches)
 end
 
@@ -1503,8 +1529,8 @@ function ClusterRoi(h)
     for i = 1:nCluster
         h.clusterSignal(i).Color = cval(i,:);
     end
-    h.signalAx2.YLim = [min(2000, round(min(clusterSignal(:)),-2)-100),...
-                        max(6000, round(max(clusterSignal(:)),-2)+100)];
+    h.signalAx2.YLim = [round(min(clusterSignal(:)),-1)-10,...
+                        round(max(clusterSignal(:)),-1)+10];
     h.signalAx2.XLim = [1, data.xas(end)];
     h.signalAx2.YDir = 'normal';
     
@@ -1901,7 +1927,7 @@ function backGrdView(selected, h)
                 end
                 colors = flipud(jet(nsselect));
                 
-                h.im.CData = CreateRGB2mat(data.imgStackT(:,:,sselect), colors, true, true);
+                h.im.CData = CreateRGB2_mat(data.imgStackT(:,:,sselect), colors, true, true);
                 
             case 3 % SpatialCorr
                 h.im.CData = data.SpatialCorr;
@@ -2176,8 +2202,8 @@ function DrawData(xm, ym, signal, h)
     
     % And set the nice limits for the data
     h.signalAx1.XLim = [data.xas(1) data.xas(end)];
-    h.signalAx1.YLim =  [round(min(switches.ylims(1,:)),-2)-100,...
-                        round(max(switches.ylims(2,:)),-2)+100];
+    h.signalAx1.YLim =  [round(min(switches.ylims(1,:)),-1)-10,...
+                        round(max(switches.ylims(2,:)),-1)+10];
     
     switches.selNumCur = mod(num, switches.selNumMax) + 1;
     setappdata(h.hGUI, 'switches', switches)
@@ -2409,7 +2435,9 @@ function Help_Callback(~, eventdata, h) %#ok<DEFNU>
                    'If the current background image is a color image, the different color channels (Red, green, blue) '...
                    'will be averaged together.']};
             str{2} = 'Decrease the threshold to include more pixels into the new ROI.';
-            str{3} = 'Do not forget to press apply when you want to save the new ROI.';
+            str{4} = ['If the search field is not large enough, go into the RoiManagerGUI.m code '...
+                   'and edit the variable "voxelSz" in function "CreateROI". No restart of GUI required after edit.'];
+            str{6} = 'Do not forget to press apply when you want to save the new ROI.';
             
         case 'roiSelectHelp' % in tab Reject ROIs
             strTitle = 'ROI selection/ rejection help';
