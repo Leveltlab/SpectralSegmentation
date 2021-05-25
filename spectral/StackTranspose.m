@@ -37,7 +37,6 @@ strfp = fullfile(pn, filename);
 load([strfp '.mat'])
 
 %save frequency with data file
-%freq = 30.1; %image sampling frequency
 if isfield(info, 'Freq')
     Inf.Freq = info.Freq;
 elseif isfield(info, 'Slices')
