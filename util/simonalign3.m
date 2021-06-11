@@ -19,8 +19,8 @@ function simonalign3
      disp(['Crop x :' num2str(min(info.crop.x)) ':' num2str(max(info.crop.x)) ] ) 
      disp(['Crop y :' num2str(min(info.crop.y)) ':' num2str(max(info.crop.y)) ] ) 
  else
-     info.crop.x = (1:info.sz(1));
-     info.crop.y = (1:info.sz(2));
+     info.crop.x = (1:info.sz(2)); %width
+     info.crop.y = (1:info.sz(1)); %height
      disp(['Crop x :' num2str(min(info.crop.x)) ':' num2str(max(info.crop.x)) ] ) 
      disp(['Crop y :' num2str(min(info.crop.y)) ':' num2str(max(info.crop.y)) ] ) 
  end
