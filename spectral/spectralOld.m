@@ -8,9 +8,6 @@ function spectral(varargin)
 % Chris van der togt, 01-07-2020 
 % Netherlands Institute for Neuroscience, 
 % Amsterdam, the Netherlands
-% INPUT: filename_DecTrans.dat; transposed decimated data of an aligned calcium imaging movie.
-% OUTPUT: Saves data to SPSIG.mat file
-% UPDATE: 01-05-2021 Number of steps estimated from working memory and worker number 
 
 %% Get the filename
 if exist('varargin', 'var') && nargin == 1
@@ -21,76 +18,65 @@ else
     [fn, fp] = uigetfile('*_DecTrans.dat');  
     strfp = [fp fn];
 end
-mfn = strsplit(fn, '_DecTrans');
 
 [dim, freq] = Zgetinfo(strfp);
 
-Segm = 128; %fft window length for 1Hz sampling rate
-Lng = dim(1); %length of image stack
-Wdth = dim(2);%horizontal orientation
-Lines = dim(3)-2; %number of lines to process = height - 2
-BytesBlock = 2^15*Wdth*Wdth;%(bytes per double, width of line, length of trace)
+mfn = strsplit(fn, '_DecTrans');
 
-P = gcp;
-NumWorkers = P.NumWorkers;
-usr = memory;
-SysMem = usr.MemAvailableAllArrays/2;
-%number of lines to process given amount(0.5) of available memory and estimated memory
-%usage per line.
-BW = floor((SysMem-BytesBlock)/(NumWorkers * Segm * Segm * 64 * 8));
-W = BW-2;
-if W < 1  %set minimum of W and BW
-    W = 1;
-    BW = 3;
-end
-steps = floor(Lines/W);
-if steps < 1 %set maximum of W and BW
-    steps = 1;
-    W = Lines;
-    BW = Lines+2;
-end
+gcp
 
-lastW = 0;
-%remaining step if necessary
-if rem(Lines, W) > 0
-    steps = steps + 1;
-    lastW = rem(Lines, W);
-end
-nwLines = steps*W;
 
 %% SPECTRAL POWER OF SURROUNDING 8 PIXELS
 
 %now open as memory mapped file
 sbxt = memmapfile(strfp, 'Format', 'double', 'Offset', 500);
 
+Wdth = dim(2);%horizontal orientation
+Lines = dim(3)-2; %number of lines to process = height - 2
+
+%find optimal number of lines to process simultaneusly(more lines - more memory) 
+f = factor(Lines); %factorize line dimension
+c = combnk(1:length(f),2); %all combinations of 2 factors
+p = [prod(f(c')) f]; %the products of these combinations + individual factors
+[~, i] = min(abs(p-20)); %The closest to 10
+W = p(i);
+BW = W+2;
+steps = Lines/W;
+
+%total number of lines should be divisable by W
+if rem(Lines, W) > 0
+    disp(['Error ' num2str(dim(3)) 'not divisible by ' num2str(W)])
+end
+
+Segm = 128;
+Lng = dim(1); %length of image stack
+
+while Lng < (Segm * 2)
+    warning('data is too short (%d), halving window, (%d -> %d)', Lng, Segm, Segm/2)
+    Segm = Segm/2;
+end
+
+
 sampd2 = Segm/2;
 sampd4 = Segm/4;
 Sax = (0:sampd4)/(sampd4)/2*freq;
 
+
 cnt0 = length(1:Segm:Lng-Segm+1);
 cnt1 = length(sampd2+1:Segm:Lng-Segm+1);
 cnt = cnt0 + cnt1;
-SPic = zeros(sampd4+1, Wdth-2, W, steps);
+SPic = zeros(sampd4+1, Wdth-2, W, Lines/W);
 Win = hamming(Segm); 
 
 tic
 %%
-disp(['Done in ' num2str(steps) ' steps, please wait.'])
-
-hwb = waitbar(0, 'Estimating Cross-spectral Power');
-q = parallel.pool.DataQueue;
-afterEach(q, @updatewb);
-
+hw = waitbar(0, 'Estimating Cross-spectral Power');
 for r = 1:steps
-    Skip = W;
-    if (r == steps && lastW > 0) 
-        BW = lastW+2;
-        W = lastW;
-    end
-    indices = (1:Wdth*BW) + Skip * Wdth *(r-1);
-     
-    Dec = XYgetZ(indices, sbxt, Lng);
-    Dec = reshape(Dec, Lng, Wdth, BW); 
+    %slice = (1:W)+(W-2)*(double(r)-1); %W vertical locations
+    %D = ZT.Read(slice,b); %read horizontal lines of z ordered data
+    indices = (1:Wdth*BW) + W * Wdth *(r-1);
+    D = XYgetZ(indices, sbxt, Lng);
+    Dec = reshape(D, Lng, Wdth, BW); 
 
     %reshape to block of Width x BW with Lng length
     %to obtain 50% overlapping data segments and slicable for parallel computing   
@@ -98,11 +84,12 @@ for r = 1:steps
     D0 = reshape(D0, Segm, cnt0, Wdth, BW);
     D1 = Dec(sampd2+1:sampd2+cnt1*Segm,:,:);  
     D1 = reshape(D1, Segm, cnt1, Wdth, BW); 
+
     Dc = cat(2, D0, D1);
-    
+
     CSpect = zeros(sampd4+1, Wdth-2, W, 8);
     ASpect = zeros(sampd4+1, Wdth, BW);
-    p = 0;  
+
     parfor j = 1:cnt
         Tmp = squeeze(Dc(:,j,:,:));
         Tmp = reshape(Tmp, Segm, Wdth * BW);
@@ -111,31 +98,23 @@ for r = 1:steps
         [C, A] = getcsdf(Tmp, Segm, Wdth, BW, Win);
         CSpect = CSpect + C;
         ASpect = ASpect + A;
-        send(q, j)
     end
 
     CSpect = CSpect./cnt;
     ASpect = ASpect./cnt;
 
     Powsum = getcorpow(CSpect, ASpect);
-    SPic(:, :, 1:W, r) = Powsum;
+    SPic(:, :, :, r) = Powsum;
 
+    waitbar(r/steps, hw, ['Estimating Cross-spectral Power: ' num2str( round(r/steps * 1000)/10) '%' ], '%3.1f') 
 end
-close(hwb)
+close(hw)
 
-SPic = reshape(SPic, sampd4+1, Wdth-2, nwLines);
-SPic = SPic(:,:,1:Lines);
+SPic = reshape(SPic, sampd4+1, Wdth-2, Lines); 
 SPic = shiftdim(SPic,1);
 SPic = padarray(SPic, [1 1 0]); %make original size by padding borders
 
 save([fp mfn{1} '_SPSIG.mat'], 'SPic', 'Sax', 'freq')
 toc
+fprintf('Done with spectral calculation\n')
 
-%%
-    function updatewb(~)
-        p = p + 1;
-        fraction = r*p/steps/cnt; 
-        waitbar(fraction, hwb, ['Estimating Cross-spectral Power: ' num2str(round(fraction * 1000)/10) '%' ], '%3.1f')
-
-    end
-end
