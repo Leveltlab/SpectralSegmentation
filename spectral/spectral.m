@@ -25,19 +25,24 @@ mfn = strsplit(fn, '_DecTrans');
 
 [dim, freq] = Zgetinfo(strfp);
 
+P = gcp;
+NumWorkers = P.NumWorkers;
+
 Segm = 128; %fft window length for 1Hz sampling rate
 Lng = dim(1); %length of image stack
 Wdth = dim(2);%horizontal orientation
 Lines = dim(3)-2; %number of lines to process = height - 2
-BytesBlock = 2^15*Wdth*Wdth;%(bytes per double, width of line, length of trace)
+sampd2 = Segm/2;
+sampd4 = Segm/4;
 
-P = gcp;
-NumWorkers = P.NumWorkers;
-usr = memory;
-SysMem = usr.MemAvailableAllArrays/2;
+BytesA = 8 * 4 * Wdth * Lng;%(width of line, length of trace * 4 * 8 bytes)
+BytperLine = BytesA * (NumWorkers + 1);
+
 %number of lines to process given amount(0.5) of available memory and estimated memory
 %usage per line.
-BW = floor((SysMem-BytesBlock)/(NumWorkers * Segm * Segm * 64 * 8));
+usr = memory();
+SysMem = usr.MemAvailableAllArrays;
+BW = floor(SysMem/2/BytperLine);
 W = BW-2;
 if W < 1  %set minimum of W and BW
     W = 1;
@@ -63,8 +68,6 @@ nwLines = steps*W;
 %now open as memory mapped file
 sbxt = memmapfile(strfp, 'Format', 'double', 'Offset', 500);
 
-sampd2 = Segm/2;
-sampd4 = Segm/4;
 Sax = (0:sampd4)/(sampd4)/2*freq;
 
 cnt0 = length(1:Segm:Lng-Segm+1);
@@ -75,7 +78,7 @@ Win = hamming(Segm);
 
 tic
 %%
-disp(['Done in ' num2str(steps) ' steps, please wait.'])
+disp(['Runs in ' num2str(steps) ' steps, please wait.'])
 
 hwb = waitbar(0, 'Estimating Cross-spectral Power');
 q = parallel.pool.DataQueue;
