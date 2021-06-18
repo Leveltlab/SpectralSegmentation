@@ -121,7 +121,7 @@ for r = 1:steps
     ASpect = ASpect./cnt;
 
     Powsum = getcorpow(CSpect, ASpect);
-    SPic(:, :, 1:W, r) = Powsum;
+    SPic(:,:,1:W,r) = Powsum;
 
 end
 close(hwb)
@@ -137,8 +137,7 @@ toc
 %%
     function updatewb(~)
         p = p + 1;
-        fraction = r*p/steps/cnt; 
-        waitbar(fraction, hwb, ['Estimating Cross-spectral Power: ' num2str(round(fraction * 1000)/10) '%' ], '%3.1f')
-
+        fraction = p/cnt; 
+        waitbar(fraction, hwb, ['Estimating Cross-spectral Power, Step ' num2str(r) ': ' num2str(round(fraction * 1000)/10) '%' ], '%3.1f')
     end
 end
