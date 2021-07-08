@@ -90,6 +90,7 @@ end
 dlgdims = [1 85];
 
 % Do NoRMCorre? %
+%
 doNoRMCorre = questdlg('do NoRMCorre motion correction?', 'run NoRMCorre?', 'yes', 'no', 'yes');
 if strcmp(doNoRMCorre, 'yes')
     doNoRMCorre = true;

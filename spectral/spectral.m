@@ -68,10 +68,10 @@ nwLines = steps*W;
 %now open as memory mapped file
 sbxt = memmapfile(strfp, 'Format', 'double', 'Offset', 500);
 
-Sax = (0:sampd4)/(sampd4)/2*freq;
+Sax = (0:sampd4)/(Segm)/2*freq;
 
-cnt0 = length(1:Segm:Lng-Segm+1);
-cnt1 = length(sampd2+1:Segm:Lng-Segm+1);
+cnt0 = length(1:Segm:Lng)-1;
+cnt1 = length(sampd2+1:Segm:Lng)-1;
 cnt = cnt0 + cnt1;
 SPic = zeros(sampd4+1, Wdth-2, W, steps);
 Win = hamming(Segm); 

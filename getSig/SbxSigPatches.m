@@ -19,8 +19,8 @@ removeROIs = false;
 maxnPlot = 150;
 
 %% The number of rows and column that will get extracted from the sbx file
-nX = 12; % across the width 
-nY = 10; % across the height
+nX = 20; % across the width 
+nY = 20; % across the height
 n = nY*nX; % update the number of patches
 
 fprintf('will divide the sbx file into %d x %d = %d patches\n', nX, nY, n);
@@ -47,7 +47,7 @@ colors = jet(n);
 
 load([pn fn(1:end-9) 'SPSIG.mat'],'Mask')
 Mask = Mask';
-removeROIs = true;
+removeROIs = false;
 
 %% Divide the sbx file into n patches
 
@@ -220,7 +220,8 @@ if ~exist('BImg','var')
 end
 BImg = BImg';
 
-save(savename, 'freq', 'sigraw', 'sig', 'seal', 'den', 'decon', 'Mask', 'PP','BImg')
+% save(savename, 'freq', 'sigraw', 'sig', 'seal', 'den', 'decon', 'Mask', 'PP','BImg')
+save(savename, 'freq', 'sigraw', 'sig', 'Mask', 'PP','BImg')
 if n<maxnPlot
     save(savename,'rainbowFrameRGB','-append')
 end
