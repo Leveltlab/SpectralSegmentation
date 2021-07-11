@@ -65,10 +65,10 @@ nwLines = steps*W;
 
 %% SPECTRAL POWER OF SURROUNDING 8 PIXELS
 
-%now open as memory mapped file
+%now open as memory mapped file, Decimated file contains doubles!!
 sbxt = memmapfile(strfp, 'Format', 'double', 'Offset', 500);
 
-Sax = (0:sampd4)/(Segm)/2*freq;
+Sax = (0:sampd4)/Segm*freq;
 
 cnt0 = length(1:Segm:Lng)-1;
 cnt1 = length(sampd2+1:Segm:Lng)-1;
@@ -111,7 +111,7 @@ for r = 1:steps
         Tmp = reshape(Tmp, Segm, Wdth * BW);
         Tmp = detrend(Tmp); 
         Tmp = reshape(Tmp, Segm, Wdth, BW);
-        [C, A] = getcsdf(Tmp, Segm, Wdth, BW, Win);
+        [C, A] = getcsdf(Tmp, sampd4+1, Wdth, BW, Win);
         CSpect = CSpect + C;
         ASpect = ASpect + A;
         send(q, j)

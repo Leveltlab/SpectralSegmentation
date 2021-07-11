@@ -1,11 +1,10 @@
-function [SDF, AUTO] = getcsdf(data, Segment, Width, Height, Win)
+function [SDF, AUTO] = getcsdf(data, Seg, Width, Height, Win)
 % on parallel pool
 %
 %
 %
 
-
-Seg = round(Segment/4)+1; %reduce output
+%Seg = round(Segment/4)+1; %reduce output
 SDF = zeros(Seg, Width-2, Height-2,  8);
 
 data = bsxfun(@times, data, Win);
