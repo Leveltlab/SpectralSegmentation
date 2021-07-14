@@ -351,7 +351,7 @@ function sparBorderBox_Callback(hObject, ~, h)
     border = str2double(hObject.String);
     if (spar.border ~= border) % border should have changed
         % border shouldn't be too big, or negative
-        if border < min(data.dims([1 2]))/2 && border >= 0
+        if border < min(data.dims([1 2]))/2 && border >= 5
             % Plot the new requested border
             PlotBorderLine(border, data.dims, h)
             h = guidata(h.hGUI); % Update the handles
@@ -361,7 +361,7 @@ function sparBorderBox_Callback(hObject, ~, h)
         else
             % Reset the users input
             hObject.String = spar.border;
-            fprintf('border input was not good (maybe too large or nan)\n')
+            fprintf('border input was not good (maybe too small, large or nan)\n')
         end
     end
 end

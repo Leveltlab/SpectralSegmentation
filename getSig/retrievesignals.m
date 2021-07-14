@@ -53,8 +53,18 @@ end
 load(filename, 'Mask', 'PP', 'BImg');
 
 % memorymap transposed data file
-[sbxt, dim, freq] = transmemap([filename(1:end-9) 'Trans.dat']); 
-fprintf('\nloaded file %s\n',filename(1:end-4))
+filenameTrans = [filename(1:end-9) '_Trans.dat'];
+if ~isfile(filenameTrans) % Resort to manual selection of transposed data
+    [fnTrans, pnTrans] = uigetfile('*.dat', 'Where is the transposed data file?');
+    if fnTrans == 0
+        fprintf('No transposed data found, unable to do signal retrieval\n')
+        return
+    else
+        filenameTrans = [pnTrans fnTrans];
+    end
+end
+[sbxt, dim, freq] = transmemap(filenameTrans); 
+fprintf('\nloaded file %s\n',filenameTrans(1:end-4))
 
 % Create background ROIs
 [~, ~, buf] = BufferMask(Mask, bufSize);

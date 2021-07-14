@@ -66,6 +66,9 @@ else  % If not called/ executing with input, request file
     
 end
 
+clearvars info
+clearvars -global info
+
 sbxread(sbxName, 0,1);
 global info
 fprintf('Creating background image for %s\n', sbxName)
