@@ -63,9 +63,11 @@ end
 fprintf('\nloading...')
 load(filenameSPSIG, 'SPic', 'Sax')
 
-filenameTrans = [filenameSPSIG(1:end-9) 'DecTrans.dat'];
+sfn = regexp(filenameSPSIG,'SPSIG', 'split');
+filenameTrans = [sfn{1} 'DecTrans.dat'];
+
 if ~isfile(filenameTrans) %Using decimated data
-    filenameTrans = [filenameSPSIG(1:end-9) 'Trans.dat'];
+    filenameTrans = [sfn{1} 'Trans.dat'];
     if ~isfile(filenameTrans) % Resort to manual selection of transposed data
         [fnTrans, pnTrans] = uigetfile('*.dat', 'Where is the transposed data file (prefering decimated data)?');
         if fnTrans == 0
