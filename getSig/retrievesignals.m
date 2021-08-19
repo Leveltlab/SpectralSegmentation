@@ -11,6 +11,7 @@ function infoSigPar = retrievesignals(filename)
 % corrected sig = raw - 0.7 * background sig
 %
 % version changes:
+%   version 1.4 (2021-8-19): save frametimes (in seconds) to SPSIG as well
 %   version 1.3 (2019-3-11): 'a' set to 0.7
 % 	version 1.2 (2019-2-26): Changes in plotting and SEAL variables corrected
 %	version 1.1            : Changes in plotting
@@ -25,7 +26,7 @@ bufSize = 4; % n pixels buffer around ROIs before background ROI starts
 surround = 11; % take area of n pixels around the buffer as background ROI
 
 infoSigPar = struct(); % info with script parameters
-infoSigPar.scriptVersion  = 1.3;
+infoSigPar.scriptVersion  = 1.4;
 infoSigPar.alpha  = alpha; % alpha of neuropil substraction
 infoSigPar.bufSize = bufSize;
 infoSigPar.surround = surround;
@@ -33,6 +34,7 @@ infoSigPar.surround = surround;
 % Activate much tighter subplots
 % [subplot margin top&side],[figure bottomspace,topspace],[leftspace,rightspace]
 subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.06], [0.1 0.1], [0.1 0.02]);
+
 
 % Select file if code is being called as script
 try
@@ -66,10 +68,12 @@ end
 [sbxt, dim, freq] = transmemap(filenameTrans); 
 fprintf('\nloaded file %s\n',filenameTrans(1:end-4))
 
+
 % Create background ROIs
 [~, ~, buf] = BufferMask(Mask, bufSize);
 % Background contours and seperate masks
 [backCon, zones, backMask] = BufferMask(buf+Mask, surround); 
+
 
 % Plotting the contours
 figure('Units','normalized', 'Position', [0 0.2 0.475 0.5], 'Name', 'signal retrieval');
@@ -85,6 +89,7 @@ for i = 1:PP.Cnt
 end
 title(sprintf('%s',filename(1:end-4)))
 drawnow
+
 
 Mt = Mask'; %the mask needs to be transposed
 idx = find(Mt(:)> 0); %get the image indices for all rois
@@ -126,12 +131,13 @@ fprintf('done: %.0f sec\n', toc)
 % is not much lower then the original raw signal
 sigrawCorrected = sigraw - alpha*(sigrawBack - repmat(prctile(sigrawBack,2), [size(sigrawBack,1), 1]));
 
-xas = (1:length(sigraw))./freq;
+
+frameTimes = (1:length(sigraw))'./freq; % In seconds
 
 % Baseline correction
 window = round(5000*freq/15); %adapted for framerate
-if length(xas) < window
-    window = length(xas)-1; %otherwise you will get inf
+if length(frameTimes) < window
+    window = length(frameTimes)-1; %otherwise you will get inf
 end
 
 % baseline estimation due to Pnevmatikakis et al
@@ -142,14 +148,14 @@ sigCorrected = basecorrect(sigrawCorrected, window);
 
 % Save the retrieved signal
 save(filename, 'sig', 'sigraw', 'sigBack', 'sigCorrected', ...
-               'freq', 'infoSigPar', '-append')
+               'freq', 'frameTimes', 'infoSigPar', '-append')
 fprintf('saved fluorescence and dF\\F0\n')
 
 
 % Plot retrieved df/f
 subplot(1,2,2);
 RGB = CreateRGB({log1p(sig)', sigrawBack'}, 'rg b');
-imagesc(xas./60, 1:size(sig,2), RGB); 
+imagesc(frameTimes./60, 1:size(sig,2), RGB); 
 title('df/f signal (yellow=soma, blue=background'); xlabel('time (minutes)')
-xlim([0 xas(end)/60]); ylabel('ROI (n)')
+xlim([0 frameTimes(end)/60]); ylabel('ROI (n)')
 
