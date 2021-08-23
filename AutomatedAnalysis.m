@@ -50,6 +50,11 @@ y = 25:512;  % VERTICAL CROP
 % Run motion normcorre correction? % % % % % % % % % % % % %
 doNoRMCorre = true; % (if false, cropping settings aren't used)
 
+% Convert *_eye.mat file into .mp4 file?
+doEyeConvert = true;
+doEyeInvert = true; % Invert black-white?
+doEyeDeFlicker = false; % Diminish flickering brightness between subsequent frames?
+
 % BACKGROUND SUBTRACTION parameters % % % % % Necessary for 1 photon data
 doBackgroundSubtract = false;
 filterRadius = 55; % The radius of the filter for background subtraction
@@ -122,6 +127,31 @@ if doNoRMCorre
     y = str2num(answer{2});
 end
 
+% Do eye file format conversion? (keeps the original)
+doEyeConvert = questdlg('Convert "*_eye.mat" file into "*_eye.mp4" (keeps original)',...
+                        'Create videofile for eye tracking?',...
+                        'yes','no','yes');
+if strcmp(doEyeConvert, 'yes')
+    doEyeConvert = true;
+    doEyeInvert = questdlg('Invert black-white in eye video file?',...
+                               'Eye video file settings',...
+                               'yes', 'no', 'yes');
+    doEyeDeFlicker = questdlg('Deflicker the eye video?',...
+                              'Eye video file settings',...
+                               'yes', 'no', 'yes');
+    if strcmp(doEyeInvert, 'yes')
+        doEyeInvert = true;
+    else
+        doEyeInvert = false;
+    end
+    if strcmp(doEyeDeFlicker, 'yes')
+        doEyeDeFlicker = true;
+    else
+        doEyeDeFlicker = false;
+    end
+else
+    doEyeConvert = false;
+end
 % Do background subtraction? %
 doBackgroundSubtract = questdlg('Do background subtraction (for 1-photon data)',...
                                 'background subtraction settings',...
@@ -379,6 +409,19 @@ for i = 1:nfiles
         filenameNormcorr = filenameBackgroundSub;
     else % No background subtraction
         backSubtoc = NaN;
+    end
+    
+    
+    %% Eye file file conversion % % % % 
+    if doEyeConvert
+        filenameEye = strsplit(fn, {'_normcorr','_Split','_split','_copy','.sbx'});
+        filenameEye = [filenameEye{1}, '_eye.mat'];
+        % Check presence eye file
+        if exist([pn filenameEye], 'file')
+            EyeData2Avi(filenameEye, pn, doEyeInvert, doEyeDeFlicker)
+        else
+            fprintf('No Eye file found!\n')
+        end
     end
     
     
