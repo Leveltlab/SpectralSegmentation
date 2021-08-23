@@ -6,10 +6,10 @@ function EyeData2Avi(varargin)
 % Can be run either as a script or a function
 %
 % Input:
-%   filenameMat: [string] mat file name which holds the eye data
 %   filepath: [string] filepath where the file is and will be located
-%   invert: [1x1 boolean (true/ false)] Invert the brightness of the video
+%   filenameMat: [string] mat file name which holds the eye data
 %   deFlicker: [1x1 boolean (true/false)] Try to de-flicker the video
+%   invert: [1x1 boolean (true/ false)] Invert the brightness of the video
 % 
 % 
 % Leander de Kraker

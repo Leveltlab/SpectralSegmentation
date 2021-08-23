@@ -418,7 +418,7 @@ for i = 1:nfiles
         filenameEye = [filenameEye{1}, '_eye.mat'];
         % Check presence eye file
         if exist([pn filenameEye], 'file')
-            EyeData2Avi(filenameEye, pn, doEyeInvert, doEyeDeFlicker)
+            EyeData2Avi(pn, filenameEye, doEyeDeFlicker, doEyeInvert)
         else
             fprintf('No Eye file found!\n')
         end
