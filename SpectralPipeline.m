@@ -7,8 +7,11 @@
 %
 
 % sbx data is required. TIFF can be converted to sbx
-%% Convert tiff files that have multiple frames. (full movie)
+%% Convert (multiple) tiff files that have multiple frames (full movie) to as many sbxfiles
 TiffStack2Sbx
+
+%% Convert multiple tiff files that have multiple frames to one sbx file
+TiffStack2OneSbx
 
 %% Convert a folder full of tiff files, each tif file consisting of 1 frame
 TiffImages2Sbx
@@ -23,8 +26,8 @@ BackgroundSubtractSbx
 
 %% Motion correct sbx data
 Showsbx 
-% Rightclick on main image to adjust color scale
 % Press the A button for the Alignment/motion correction
+% Rightclick on main image to adjust color scale
 
 %% Transpose the motion corrected sbx file to improve reading speed
 % Creates _Trans.dat file
