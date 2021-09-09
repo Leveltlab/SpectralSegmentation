@@ -84,7 +84,7 @@ function varargout = RoiManagerGUI(varargin)
 % Made by: Leander de Kraker
 % 2018-2020
 
-% Last Modified by GUIDE v2.5 21-Aug-2020 17:55:32
+% Last Modified by GUIDE v2.5 09-Sep-2021 16:18:30
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -411,6 +411,8 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     
     % Update handles structure
     guidata(hObject, h);
+    set(hObject, 'WindowKeyPressFcn', @(hObject, eventdata)myKeyPressFcn(hObject, eventdata, h))
+    
 end
 % UIWAIT makes RoiManagerGUI wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
@@ -2127,7 +2129,9 @@ function DrawRois(h)
     
     h.manRoi = gobjects(1);
     
-    guidata(h.hGUI,h); % Save the handles
+    guidata(h.hGUI,h); % Save the handles    
+    set(h.hGUI, 'WindowKeyPressFcn', @(hObject, eventdata)myKeyPressFcn(hObject, eventdata, h))
+
 end
 
 
@@ -2490,6 +2494,12 @@ function Help_Callback(~, eventdata, h) %#ok<DEFNU>
                 str{5} = ['loaded file: ' data.SPSIGfile];
             end
             
+            str{8}  = 'hotkeys can be used:';
+            str{9}  = 'z = toggle zoom (shift click to zoom out)';
+            str{10} = 'g = grab/pan image';
+            str{11} = 'd = datacursor (pretty useless)';
+            str{12} = '"enter"  can be used to apply ROI creation or splitting';
+            
         otherwise
             strTitle = 'otherwise is an error';
             str = sprintf('Unknown tag pressed?!?! %s', eventdata.Source.Tag);
@@ -2560,4 +2570,50 @@ function saveButton_Callback(~, ~, h) %#ok
         end
     end
 end
+
+
+
+% --- Executes on key press with focus on hGUI or any of its controls.
+function myKeyPressFcn(hObject, eventdata, h)
+% Activates when keyboard keys are pressed while the figure is in focus
+%     h.im % Handles are fickle. Check if im is still present.
+    key = eventdata.Key;
+    resetFcn = false;
+    switch key
+        case 'z' % toggle zoom
+            zoom
+            resetFcn = true;
+        case 'g' % toggle grab hand
+            pan
+            resetFcn = true;
+        case 'd'
+            datacursormode on
+            resetFcn = true;
+        case 'return' % Apply function depending on activated functionality tab
+            switches = getappdata(h.hGUI, 'switches');
+            switch switches.currentMajor
+                case 2 % Roi Splitting panel: Apply Split ROI
+                    applyClustering_Callback([], [], h)
+                case 3 % Roi Creation panel:  Apply automatic ROI
+                    applyNewRoi_Callback([], [], h)
+                case 5 % Manual ROI creation: Apply manual ROI
+                    applyManRoi_Callback([], [], h)
+            end
+    end
+    
+    if resetFcn
+        % Editing modemanager to prevent user callbacks change when switching mode (zoom/pan)
+        % https://undocumentedmatlab.com/articles/enabling-user-callbacks-during-zoom-pan
+        hManager = uigetmodemanager(hObject);
+        try 
+            [hManager.WindowListenerHandles.Enabled] = deal(false);
+        catch me % very old Matlab version probably
+            throw(me)
+            set(hManager.WindowListenerHandles, 'Enable', 'off')
+        end
+        set(hObject, 'WindowKeyPressFcn', @(hObject, eventdata)myKeyPressFcn(hObject, eventdata, h))
+        set(hObject, 'KeyPressFcn', [])
+    end
+end
+
 
