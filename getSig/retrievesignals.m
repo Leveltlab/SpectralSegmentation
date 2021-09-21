@@ -55,9 +55,10 @@ end
 load(filename, 'Mask', 'PP', 'BImg');
 
 % memorymap transposed data file
-filenameTrans = [filename(1:end-9) '_Trans.dat'];
+filenameTrans = strsplit(filename, {'_SPSIG','.mat'});
+filenameTrans = [filenameTrans{1} '_Trans.dat'];
 if ~isfile(filenameTrans) % Resort to manual selection of transposed data
-    [fnTrans, pnTrans] = uigetfile('*.dat', 'Where is the transposed data file?');
+    [fnTrans, pnTrans] = uigetfile('*_Trans.dat', 'Where is the transposed data file?');
     if fnTrans == 0
         fprintf('No transposed data found, unable to do signal retrieval\n')
         return
