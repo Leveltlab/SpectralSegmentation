@@ -37,7 +37,7 @@ function varargout = SpectParArm(varargin)
 
 % Edit the above text to modify the response to help SpectParArm
 
-% Last Modified by GUIDE v2.5 09-May-2020 13:30:29
+% Last Modified by GUIDE v2.5 22-Sep-2021 19:06:53
 
 % Begin initialization code - DO NOT EDIT
     gui_Singleton = 1;
@@ -119,6 +119,9 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
         if isfield(spar, 'cutOffCorr')
             h.sparCutOffCorrBox.String = num2str(spar.cutOffCorr);
         end
+        if isfield(spar, 'useFluorescenceImg')
+            h.sparFluorescenceCheckBox.Value = spar.useFluorescenceImg;
+        end
     end
     
     % Allow the usual toolbars (amount of options edited in the guide fig)
@@ -170,6 +173,7 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
     spar.roundedness = str2double(h.sparRoundednessBox.String);  
     spar.voxel = str2double(h.sparVoxelBox.String);
     spar.cutOffCorr = str2double(h.sparCutOffCorrBox.String);
+    spar.useFluorescenceImg = h.sparFluorescenceCheckBox.Value;
     
     % Save the sax and specImg for future use in the GUI
     data.sax = sax;
@@ -480,14 +484,6 @@ function sparCutOffHzMaxBox_Callback(hObject, ~, h)
 end
 
 
-% --- Executes on button press in DisplayCheckBox.
-function DisplayCheckBox_Callback(hObject, ~, ~)
-    % Sets the global DISPLAY boolean
-    global DISPLAY
-    DISPLAY = hObject.Value;
-end
-
-
 function sparCutOffCorrBox_Callback(hObject, ~, ~)
     % edits spar when cutoffcorr gets edited
     global spar
@@ -503,6 +499,24 @@ function sparCutOffCorrBox_Callback(hObject, ~, ~)
 end
 
 
+% --- Executes on button press in sparFluorescenceCheckBox.
+function sparFluorescenceCheckBox_Callback(hObject, ~, ~)
+    % use fluorescence images, means that the fluorescence images are added
+    % in the automatic ROI search in getSpectrois after all spectral images
+    % are used
+    global spar
+    spar.useFluorescenceImg = hObject.Value;
+end
+
+
+% --- Executes on button press in DisplayCheckBox.
+function DisplayCheckBox_Callback(hObject, ~, ~)
+    % Sets the global DISPLAY boolean
+    global DISPLAY
+    DISPLAY = hObject.Value;
+end
+
+
 % --- Executes on button press in acceptButton.
 function acceptButton_Callback(~, ~, ~)
     % Saves the spar and exits the UI
@@ -515,4 +529,3 @@ function acceptButton_Callback(~, ~, ~)
     % and close the GUI
     closereq()
 end
-

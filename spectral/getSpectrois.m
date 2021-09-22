@@ -8,8 +8,9 @@ function getSpectrois(varargin)
 %
 % input : SPSIG file : series of spectral images 
 %         spar : parameter structure (optional)
-% output: Mask: an image with the same size as BImg, with numbers that
-%               denote which ROI is present at which pixel
+%
+% output: Mask (H x W)(2D double): Numbers denote which ROI is present at 
+%                                  which pixel
 %         
 %         PP: struct with ROI information
 %         PP.Cnt: The number of ROIs
@@ -24,38 +25,37 @@ function getSpectrois(varargin)
 %         PP.P: row 2: y values of the pixel with highest value in the BImg
 %         PP.P: row 3: the maximum value of BImg in each ROI
 %
-%         SpatialCorr:
+%         BImg (H x W) (2D double): maximum projection of the used spectral
+%                                   images.
+%         
+%         SpatialCorr (H x W) (2D double): Signal correlation values for
+%                 every ROI, from seedpoint to the other pixels in that ROI
+%
 %         spar: Spectral PARameters used to find the ROIs
 %
 %
 global DISPLAY
 global spar
 DISPLAY = false;
-runSparArm = false;
 
-if exist('varargin', 'var') && nargin == 2
+if exist('varargin', 'var') && nargin >= 1
     filenameSPSIG = varargin{1};
-    
-    spar = varargin{2};
-    flds = fieldnames(spar);
-    if ismember(flds, 'cutOffHz') % Update the cutOffHz field
-        spar.cutOffHzMax = spar.cutOffHz;
-        spar.cutOffHzMin = 0;
-    end
-    
-    aflds = {'cutOffHzMax', 'cutOffHzMin', 'border', 'areasz', 'roundedness', 'voxel', 'cutOffCorr'};
-    if sum(ismember(aflds, flds)) < 7
-        disp('Error; number of input values is not valid; please run : SpectParArm(imgStackT, Sax)')
-        runSparArm = true;
-    end
-    
-elseif exist('varargin', 'var') && nargin == 1
-    filenameSPSIG = varargin{1};
-    runSparArm = true;
-
 else
     [fn, pn] = uigetfile('*_SPSIG.mat');
     filenameSPSIG = [pn fn];
+end
+
+if exist('varargin', 'var') && nargin >= 2
+    spar = varargin{2};
+    runSparArm = false;
+    flds = fieldnames(spar);
+    aflds = {'cutOffHzMax', 'cutOffHzMin', 'border', 'areasz',...
+             'roundedness', 'voxel', 'cutOffCorr','useFluorescenceImg'};
+    if sum(ismember(aflds, flds)) < 8
+        warning('number of input values is not valid')
+        runSparArm = true;
+    end
+else
     runSparArm = true;
 end
 
@@ -94,8 +94,27 @@ if runSparArm
     waitfor(h)
 end
 
+%%
 selectedFreq = (Sax >= spar.cutOffHzMin) & (Sax <= spar.cutOffHzMax);
 Spect = imgStackT(:,:,selectedFreq);
+SaxUsed = Sax;
+if spar.useFluorescenceImg % Add fluorescence images to the spectral images
+    load(filenameSPSIG, 'BImgMax', 'BImgAverage')
+    if exist('BImgMax', 'var')
+        maxSpect = max(Spect(:));
+        if max(BImgAverage(:)) > maxSpect
+            BImgAverage = BImgAverage ./ max(BImgAverage(:)) .* maxSpect;
+        end
+        if max(BImgMax(:)) > maxSpect
+            BImgMax = BImgMax ./ max(BImgMax(:)) .* maxSpect;
+        end
+        Spect(:,:,end+1) = BImgMax;
+        Spect(:,:,end+1) = BImgAverage;
+        SaxUsed(end+1:end+2) = 0;
+    else
+        warning('Tried to use BImgMax and BImgAverage in ROI search but they are absent')
+    end
+end
 
 BImg = max(Spect, [], 3);
 
@@ -121,18 +140,20 @@ for i = 1:dim(3)
     figure(1), hold off, imagesc(Img), colormap gray, hold on   
     [PP, Mask, SpatialCorr, rlog] = roisfromlocalmax(Img, PP, Mask, spar, sbxt, freq, SpatialCorr);   
 
-    str = sprintf('number of ROIs found (%.2fHz): %5d. time elapsed = %.2fminutes\n', Sax(i), PP.Cnt, toc/60);
+    str = sprintf('number of ROIs found (%.2fHz): %5d. time elapsed = %.2fminutes\n', SaxUsed(i), PP.Cnt, toc/60);
     fprintf(str)
     
     SummaryGetRois(rlog, spar)
     
-    figure(1)
-    Con = PP.Con;
-    for k = 1:PP.Cnt
-        plot(Con(k).x, Con(k).y, 'r')
+    if isfield(PP, 'Con')
+        figure(1)
+        Con = PP.Con;
+        for k = 1:PP.Cnt
+            plot(Con(k).x, Con(k).y, 'r')
+        end
+        title(str)
+        pause(0.05)
     end
-    title(str)
-    pause(0.05)
 end
 
 % swap x and y values, otherwise positions are not correct in Displayrois
