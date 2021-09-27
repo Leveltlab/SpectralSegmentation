@@ -34,7 +34,8 @@ else
 end
 
 strfp = fullfile(pn, filename);
-load([strfp '.mat'])
+%load([strfp '.mat'])
+sbxread(strfp, 1, 1);
 
 %save frequency with data file
 if isfield(info, 'Freq')
@@ -46,11 +47,11 @@ else
 end
 
 d = dir([strfp, '.sbx']);
-max_idx = d.bytes/info.nsamples;
+max_idx = d.bytes/info.nsamples; 
 
 %parameters for transposing
 Inf.StrPath = strSavepath; %Path for temporary files
-Inf.Save = [strSavepath '\' filename '_Trans.dat'];
+Inf.Save = fullfile(strSavepath, [filename '_Trans.dat']);
 Inf.Source = [strfp '.sbx'];        %source input .sbx file
 Inf.Dimensions = [info.Shape(1) info.Shape(2) info.Shape(3) max_idx];
 

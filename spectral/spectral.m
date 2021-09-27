@@ -38,10 +38,24 @@ sampd4 = Segm/4;
 BytesA = 8 * 4 * Wdth * Lng;%(width of line, length of trace * 4 * 8 bytes)
 BytperLine = BytesA * (NumWorkers + 1);
 
+archstr = computer('arch');
+%only for fwindows available
+if strcmp(archstr, 'win64')
+    usr = memory();
+    SysMem = usr.MemAvailableAllArrays;
+    
+elseif strcmp(archstr, 'glnxa64') 
+     [~, Memstr] = system( "free -b | awk '/^Mem/ {print $4}'");
+     SysMem = str2num(Memstr);
+    
+elseif strcmp(archstr, 'maci64')
+    
+end
+
+
 %number of lines to process given amount(0.5) of available memory and estimated memory
 %usage per line.
-usr = memory();
-SysMem = usr.MemAvailableAllArrays;
+
 BW = floor(SysMem/2/BytperLine);
 W = BW-2;
 if W < 1  %set minimum of W and BW
