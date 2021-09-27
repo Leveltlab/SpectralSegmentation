@@ -1,5 +1,5 @@
 function [Savedrois, Mask, SC, rejlog] = roisfromlocalmax(IM, Savedrois, Mask, varargin)
-% roisfromlocalmax(IM, threshold, distance = 10, area = 20, border = 15, )
+% roisfromlocalmax(IM, threshold, distance = 10, area = 20, border = 10, )
 % IM : image
 % Savedrois : array of saved Roi parameters
 % Mask : rois as image regions with index value
@@ -17,14 +17,14 @@ function [Savedrois, Mask, SC, rejlog] = roisfromlocalmax(IM, Savedrois, Mask, v
 
 global DISPLAY
 % Parameters for ROI search
-distance = 20;     % Distance between rois (maxima)
+distance = 10;     % Minimum distance between roi maxima
 fractionmax = 0.2; % Higest fraction of maxima (pnt) to use
 threshold = 0.80;  % Contour threshold greater than percentile of pixel range
-Significance = 0.90; % Maximum shoud be greater than percentile of pixel range
+Significance = 0.90; % Maximum should be greater than percentile of pixel range
 % Parameters which can be chosen by spar
 area = [60 120];   % Minimum/max size of roi
-border = 15;       % Edge of image to ignore
-VoxelSz = 60;      % Determines area to find contours
+border = 10;       % Edge of image to ignore
+VoxelSz = 50;      % Determines area to find contours
                    % All rois should be within the size of an area of VoxelSz x VoxelSz
 PAf = 0.70;        % Minimal ratio perimeter to squared area; roundedness factor (circle = 1.0)
 cutOffCorr = 0.5;  % Cutoff threshold for pixel correlations
@@ -59,16 +59,15 @@ if length(varargin) > 1
     freq = varargin{3}; %frequency of transposed images
     SC = varargin{4}; % SpatialCorr
 end
-% lowest value to zero
-% IM = setminlevel(IM);
 
 % Get reasonable maxima sorted on height
-pnt = mylocalmax(IM, border);
+%pnt = mylocalmax(IM, border);
+pnt = localmax(IM, border, VoxelSz);
 
 % Reduce number of points to 1/4 with largest peak
 Nmp = round(length(pnt)*fractionmax);
 dim = size(IM);
-% hold on, plot(pnt(1:Nmp, 2), pnt(1:Nmp, 1), 'r+')
+%hold on, plot(pnt(1:Nmp, 2), pnt(1:Nmp, 1), 'r+')
 
 % Size of image sample in pixels
 SzImg = VoxelSz*VoxelSz;
@@ -79,13 +78,7 @@ SigTh = round(Significance*SzImg);
 
 rejlog = nan(Nmp, 4);
 Cnt = Savedrois.Cnt;
-for i = 1:Nmp
-%     if debug
-%          if i == 27 || i == 30 || i == 40 || i == 42 || i == 50 || i == 125 
-%               DISPLAY = 1;
-%          else; DISPLAY = 0; end
-%     end
-          
+for i = 1:Nmp        
     % Detect if this point is on a previously selected roi
     if ~(Mask(pnt(i,1),pnt(i,2)) > 0)
         pVal = pnt(i,3); %pixelvalue of maximum
@@ -99,14 +92,12 @@ for i = 1:Nmp
         if lxw < 1, lxw = 1; hxw = VoxelSz; end
         if hxw > dim(2), hxw = dim(2); lxw = hxw - VoxelSz+1;end
 
-
         M = Mask(lyw:hyw, lxw:hxw); 
         I = IM(lyw:hyw, lxw:hxw);   % Voxel for contours
 
         % Cut out previous rois setting to zero
         I(M>0) = 0;            % Set previous ROI locations to zero
         If = imgaussfilt(I,1); % Smooth sample
-
 
         Ws = sort(If(:));            % Range of pixel values              
         th = Ws(thx);                % Pixel value threshold
@@ -133,8 +124,7 @@ for i = 1:Nmp
                     bval = true; %valid maximum not in previously selected contour
                     if Cnt > 0
                         %if other points of previous rois are in this contour
-                        %determine if it is simply overlapping or much
-                        %larger
+                        %determine if it is simply overlapping or much larger
                         In = find(inpolygon(Savedrois.P(2,:),Savedrois.P(1,:), Con.x, Con.y),1);
 %                         figure(3), imagesc(Mask(lyw:hyw, lxw:hxw) + F.*Cnt)
                         if ~isempty(In)
@@ -159,7 +149,7 @@ for i = 1:Nmp
                     if bval
                         yrange = lyw:hyw;
                         xrange = lxw:hxw;                             
-                        [NwCon, NwA, NwF, NwV, Ro, Rvar] = PixelCor(size(Mask), F, sbxt, py, px, Iy, Ix, yrange, xrange, freq, cutOffCorr);
+                        [NwCon, NwA, NwF, NwV, Ro, Rvar] = PixelCor(size(Mask), F, sbxt, py, px, Iy, Ix, yrange, xrange, cutOffCorr);
                         if ~isempty(NwCon) &&  NwA > area(1) && Ro >= PAf % Exists and area greater than minimum, and roundedness > roundedness factor
                             Con = NwCon;
                             Con.y = Con.y + lyw - 1;
@@ -183,7 +173,8 @@ for i = 1:Nmp
                             rejlog(i,:) = [2 NwA, Ro, Rvar];
                             if DISPLAY == 1
                                 figure(3), 
-                                title(sprintf('good!: rounded %.2f, rvar %.2f,', Ro, Rvar))
+                                title(sprintf('good!: rounded %.2f, rvar %.2f,', Ro, Rvar)) 
+                                %pause
                             end
                         elseif NwA > area(1) && Ro < PAf  %not round enough but large area, => increase threshold
                             bval = false;
@@ -192,6 +183,7 @@ for i = 1:Nmp
                         elseif DISPLAY == 1
                                 figure(3), 
                                 title([ 'rejected: A ' num2str(NwA) ', Ro '  num2str(Ro) ', Rvar ' num2str(Rvar)] )
+                                %pause
                         else 
                             rejlog(i,:) = [isempty(NwCon) NwA, Ro, 0];
                         end
@@ -207,19 +199,18 @@ for i = 1:Nmp
             end
             if bval == false || it >= 10
                 rejlog(i,:) = [isempty(Con), A, Ro, 0];
-%                  if(isempty(Con))
-%                      figure(2), imagesc(I), colormap gray, hold on
-%                      plot(px, py, '+r')
-%                      disp("Area: " + A + " Roundedness: " + Ro)
-%                  end
+                if DISPLAY == 1
+                        figure(3), 
+                        title([ 'rejected: A ' num2str(NwA) ', Ro '  num2str(Ro) ] )
+                        %pause
+                end 
+
             end
-%             pause(0.5); %hold off
         else
                rejlog(i,:) = [-1, 0, 0, 0];
         end
     else % This point was in an existing contour
-        rejlog(i,:) = [nan, nan, pnt(i,2), pnt(i,1)];
-        
+        rejlog(i,:) = [nan, nan, pnt(i,2), pnt(i,1)];        
     end
     if(isnan(rejlog(i,1)) && isnan(rejlog(i,2)) && isnan(rejlog(i,3)))
         disp(i)

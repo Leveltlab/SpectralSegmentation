@@ -108,7 +108,7 @@ if exist('varargin','var')&& nargin == 4
 else
     figure
     imagesc(data(:,:,:,3)); colormap(hot)
-    title(sprintf('frame %d',i))
+%     title(sprintf('frame %d',i))
     colorbar; caxis([0 255]);
     
     invert = questdlg('Invert brightness?', 'Pupil needs to be black, invert?',...

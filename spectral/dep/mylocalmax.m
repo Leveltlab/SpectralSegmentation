@@ -1,6 +1,6 @@
 function cent  = mylocalmax(d, edge)
 
-%edgee ignores border pixels 
+%edge ignores border pixels 
 dsz=size(d);
 [x, y]=find(d(edge:dsz(1)-edge,edge:dsz(2)-edge));
 
@@ -27,7 +27,7 @@ for j=1:length(y)
         (val >d(x(j)+1,y(j)-1))   &&...
         (val >d(x(j)+1,y(j)))     && ...
         (val >d(x(j)+1,y(j)+1))   && ...
-        (val > Pval)           
+        (val >= Pval)           
             
         
        % cent = [cent ;  y(j) ; x(j) ; val];

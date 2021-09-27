@@ -3,10 +3,16 @@ function DecimateTrans(varargin)
 % signal decimated to 1Hz, with the data format changed to double, instead
 % of uint16
 % 
+% DecimateTrans(strfp, freqDec)
+% DecimateTrans([], freqDec)
+% DecimateTrans
+% 
 % Can be executed as script or as function
-% input:
-%   string, folder and filename of the trans.dat file that will be
+% input (both are optional):
+%   1: strfp: (string): folder and filename of the trans.dat file that will be
 %           decimated
+%   2: freqDec: (double 1x1): frequency in Hz to decimate data to. default
+%                                                                0.5 Hz
 % 
 % Chris v.d. Togt
 % 2020-7-25
@@ -15,15 +21,20 @@ function DecimateTrans(varargin)
 % 
 
 %% Get the filename
+
+freqDec = 0.5;
+strfp = [];
 if exist('varargin', 'var') && nargin == 1
     strfp = varargin{1};
-    [filePath,filenameTrans] = fileparts(strfp);
-    filePath = [filePath '\'];
-else
-    [filenameTrans, filePath] = uigetfile('*_Trans.dat');   
-    strfp = [filePath filenameTrans];
+elseif exist('varargin', 'var') && nargin == 2
+    strfp = varargin{1};
+    freqDec = varargin{2};
 end
 
+if ~exist(strfp, 'file')
+    [filenameTrans, filePath] = uigetfile('*_Trans.dat', 'select transposed data');   
+    strfp = [filePath filenameTrans];
+end
 filenameBase = split(filenameTrans, '_Trans');
 
 gcp
@@ -41,10 +52,10 @@ steps = ceil(Lng/5000)*10;
 chunk = floor(width/steps);
 rem = width - steps*chunk;
 
-Df1 = ceil(frequency); % decimation factor 
-freq = frequency/Df1;  % downsampled frequency (about 1 Hz)
-LngD1 = ceil(Lng/Df1); % number of samples after decimating
-nbytes = fprintf(fileDecimated, "%d %d %d %d %s", LngD1, dim(2), dim(3), freq, datetime);
+Decf = round(frequency/freqDec); % decimation factor 
+freqDec = frequency/Decf;  % downsampled frequency (about 0.5 Hz)
+LngD1 = ceil(Lng/Decf); % number of samples after decimating
+nbytes = fprintf(fileDecimated, "%d %d %d %d %s", LngD1, dim(2), dim(3), freqDec, datetime);
 fwrite(fileDecimated,zeros(500-nbytes,1));
 D1 = zeros(LngD1, chunk);
 
@@ -54,7 +65,7 @@ for j = 1:steps
     D = double(XYgetZ(indices, sbxt, Lng));
     D = reshape(D, Lng, [] ); 
     parfor i = 1:length(indices)
-        D1(:,i) = decimate(D(:,i), Df1);
+        D1(:,i) = decimate(D(:,i), Decf);
     end
     fwrite(fileDecimated, D1,'double');
     waitbar(j/steps, hw, ['processed: ' num2str(round(j/steps*1000)*0.1) '%'])
@@ -65,11 +76,12 @@ indices = (1 + steps*chunk):(steps*chunk + rem);
 D = double(XYgetZ(indices, sbxt, Lng));
 D = reshape(D, Lng, [] );
 parfor i = 1:length(indices)
-	D1(:,i) = decimate(D(:,i), Df1);
+	D1(:,i) = decimate(D(:,i), Decf);
 end
 fwrite(fileDecimated, D1,'double');
 close(hw)
 fclose(fileDecimated);
+sbxt = [];
 fprintf('done with decimating data\n')
 
 %% Reading the Dec file  %%

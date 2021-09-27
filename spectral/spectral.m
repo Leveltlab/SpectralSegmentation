@@ -28,12 +28,16 @@ mfn = strsplit(fn, '_DecTrans');
 P = gcp;
 NumWorkers = P.NumWorkers;
 
-Segm = 128; %fft window length for 1Hz sampling rate
+%Segm = 32; %fft window length for 0.5 Hz sampling rate
+%0.5Hz => 32, 1Hz => 64, 2 Hz => 128, etc
+si = find(round(freq * 64) < 2.^(5:10) + 2.^(4:9), 1, 'first');
+Segm = 2.^(si+4);
+sampd2 = Segm/2;
+sampdd = 32;
+
 Lng = dim(1); %length of image stack
 Wdth = dim(2);%horizontal orientation
 Lines = dim(3)-2; %number of lines to process = height - 2
-sampd2 = Segm/2;
-sampd4 = Segm/4;
 
 BytesA = 8 * 4 * Wdth * Lng;%(width of line, length of trace * 4 * 8 bytes)
 BytperLine = BytesA * (NumWorkers + 1);
@@ -82,12 +86,16 @@ nwLines = steps*W;
 %now open as memory mapped file, Decimated file contains doubles!!
 sbxt = memmapfile(strfp, 'Format', 'double', 'Offset', 500);
 
-Sax = (0:sampd4)/Segm*freq;
+Sax = (0:sampdd)/Segm*freq;
 
 cnt0 = length(1:Segm:Lng)-1;
 cnt1 = length(sampd2+1:Segm:Lng)-1;
 cnt = cnt0 + cnt1;
-SPic = zeros(sampd4+1, Wdth-2, W, steps);
+if cnt < 2 
+    errordlg('This file is too short for spectral processing!')
+    return
+end
+SPic = zeros(sampdd+1, Wdth-2, W, steps);
 Win = hamming(Segm); 
 
 tic
@@ -117,15 +125,15 @@ for r = 1:steps
     D1 = reshape(D1, Segm, cnt1, Wdth, BW); 
     Dc = cat(2, D0, D1);
     
-    CSpect = zeros(sampd4+1, Wdth-2, W, 8);
-    ASpect = zeros(sampd4+1, Wdth, BW);
+    CSpect = zeros(sampdd+1, Wdth-2, W, 8);
+    ASpect = zeros(sampdd+1, Wdth, BW);
     p = 0;  
     parfor j = 1:cnt
         Tmp = squeeze(Dc(:,j,:,:));
         Tmp = reshape(Tmp, Segm, Wdth * BW);
         Tmp = detrend(Tmp); 
         Tmp = reshape(Tmp, Segm, Wdth, BW);
-        [C, A] = getcsdf(Tmp, sampd4+1, Wdth, BW, Win);
+        [C, A] = getcsdf(Tmp, sampdd+1, Wdth, BW, Win);
         CSpect = CSpect + C;
         ASpect = ASpect + A;
         send(q, j)
@@ -140,11 +148,12 @@ for r = 1:steps
 end
 close(hwb)
 
-SPic = reshape(SPic, sampd4+1, Wdth-2, nwLines);
+SPic = reshape(SPic, sampdd+1, Wdth-2, nwLines);
 SPic = SPic(:,:,1:Lines);
 SPic = shiftdim(SPic,1);
 SPic = padarray(SPic, [1 1 0]); %make original size by padding borders
 
+disp('Saving Spectral Components')
 save([fp mfn{1} '_SPSIG.mat'], 'SPic', 'Sax', 'freq')
 toc
 
