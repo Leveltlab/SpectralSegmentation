@@ -4,7 +4,7 @@
 % automated ROI creation for all splits, for multiple files in one script
 % Optional steps are motion correction, background subtraction, ROI getting
 % 
-%
+% 
 % Usage:
 % 1. Load recordings by running this first section.
 % 2(option 1). Set analysis settings either via the script by changing 
@@ -442,7 +442,7 @@ for i = 1:nfiles
     filenameDecTrans = cell(nSlices,1);
     decTic = tic;
     for j = 1:nSlices
-        DecimateTrans(filenameTrans{j})
+        DecimateTrans(filenameTrans{j}, 1)
         filenameDecTrans{j} = [filenameNormcorr{j} '_DecTrans.dat'];
     end
     dectoc = toc(decTic);

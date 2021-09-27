@@ -37,8 +37,9 @@ doSigCorrected = exist('sigCorrected','var');
 
 % parameters, please check params with G = spk_demoGUI
 parallel_process = true; % default
-MLspike_params = load('MLpest20180927', 'MLpest');
-MLspike_params = MLspike_params.MLpest;
+%MLspike_params = load('MLpest20180927', 'MLpest');
+MLspike_params = load('MLpest20210313', 'par'); %these are better parameters, but please check with G = spk_demoGUI
+MLspike_params = MLspike_params.par;
 MLspike_params.dt = 1/freq;
 
 nrois = size(sig,2);

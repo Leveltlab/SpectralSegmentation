@@ -1,8 +1,8 @@
 function [Con, A, F, V, roundedness, Rvar] = PixelCor(...
-                Dim, F, sbxt, py, px, Iy, Ix, yrange, xrange, freq, ThC)
+                Dim, F, sbxt, py, px, Iy, Ix, yrange, xrange, ThC)
 % Correlates all pixels in an ROI selected as valid in roisfromlocalmax, with 
-% the median trace associated with the pixels surrounding a max in the spectral image
-%
+% the median trace associated with the pixels surrounding a localmax in the spectral image
+% 2018
 %takes as input:
 %Dim: for dimension purposes (Image size)
 %F :  Mask of selected ROI in Voxel
@@ -21,34 +21,53 @@ function [Con, A, F, V, roundedness, Rvar] = PixelCor(...
 %F   : new voxel mask
 %V   : spatial map of pixel correlations in Voxel
 %Ro  : Roundedness
-%Rvar : %variance of pixel correlations
+%Rvar : %Mean covariance of pixels
 %
-%first extract the traces from the Trans file associated with
-%this ROI
-%Chris van der Togt, 2018
-%added correlation cutoff and median filtering of correlations
-%Chris van der Togt, 2019
+% added correlation cutoff and median filtering of correlations
+% Added median correlation of surround to obtain a better cutoff 
+% Chris van der Togt, 2021
 
 global DISPLAY
 Con = []; %found contour
 A = 0; %area of found contour
 roundedness = 0; %Roundedness of contour
 Rvar = 0; %variance of pixel correlations
+
+se = strel('disk', 6);
+Fd = imdilate(F,se); %dilated roi in mask
+
+Fb = Fd - F; %border pixels
+se = strel('disk', 2);
+Fb = imerode(Fb, se);
+
 Mt =  zeros(Dim);
 Mt(yrange, xrange) = F;
 
-Mt = logical(Mt');%transposed
-Sigpix = sbxt.Data.y(:,Mt(:));
-R = floor(freq);
+Mb =  zeros(Dim);
+Mb(yrange, xrange) = Fb;
 
-if R > 1.5 % decimate signal if sampling rate is above 1.5Hz
-    Sp = zeros(ceil(size(Sigpix,1)/(R*2)), size(Sigpix,2));      
-    for q = 1:size(Sigpix,2)
-        Sp(:,q) = decimate(double(Sigpix(:,q)), R*2); %signals for all pixels in ROI decimated by freq * 2 => 0.5Hz
-    end
-    Sigpix = Sp;
-    clear Sp
+Mt = logical(Mt');%transposed
+Sigpix = double(sbxt.Data.y(:,Mt(:)));
+PreRoiSz = sum(Mt(:));
+%R = round(freq);
+
+Mb = logical(Mb');
+Sigborder = double(sbxt.Data.y(:,Mb(:)));
+
+%if R > 1.5 % decimate signal if sampling rate is above 1.5Hz
+%     Sp = zeros(ceil(size(Sigpix,1)/(R*2)), size(Sigpix,2));      
+%     for q = 1:size(Sigpix,2)
+%         Sp(:,q) = decimate(double(Sigpix(:,q)), R*2); %signals for all pixels in ROI decimated by freq * 2 => 0.5Hz
+%     end
+if DISPLAY == 1
+        %ax = (1:ceil(size(Sigpix,1)/(R*2))) .*R*2;
+        figure(4)  %, plot(ax, mean(Sp,2)), hold on, 
+        plot(median(Sigpix,2), 'b'), hold on
+        plot(median(Sigborder,2), 'g'), hold off
 end
+%    Sigpix = Sp;
+ %   clear Sp
+%end
 %some index accounting to find the traces associated with the ROI
 %max
 Ft = F'; %transpose indices
@@ -56,17 +75,24 @@ linix = find(Ft(:));
 Seed = zeros(size(Ft));
 Seed(px-1:px+1, py-1:py+1) = 1;
 Seedx = find(Seed);
-[~, Inix] = intersect(linix, Seedx);
-Msig = median(Sigpix(:,Inix), 2); %take median of signal of max and surrounding 8 pixels,
+[~, ISix] = intersect(linix, Seedx);
+Msig = median(Sigpix(:,ISix), 2); %take median of signal of max and surrounding 8 pixels,
 
 Cor = corr(Msig, Sigpix, 'rows', 'pairwise');
+Corb = corr(Msig, Sigborder, 'rows', 'pairwise');
+Cmx = max(Cor);
+%n1 = length(Cor);
+Cmd = median(Corb);
+%n2 = length(Corb);
+% [~, ~, T ]= rrsig(Cmx, Cmd, n1, n2);
 
 % In voxel
 V = zeros(size(Ft));
 V(linix) = Cor;
 
 %determine correlation strength at which to set contourc level
-thr = ThC * max(abs(Cor)); 
+%thr = ThC * max(Cor); 
+thr = ThC * (Cmx - Cmd) + Cmd; %difference between center and border
 
 V = V'; %transpose back
 if thr < 0.5
@@ -109,12 +135,34 @@ for j = 1:length(iv)
        end
     end
 end
+
 if A > 0 && DISPLAY
     Vimg = V;
     Vimg(Vimg==0) = nan;
-    figure(3), hold off, imagesc(Vimg), hold on
+    figure(3), hold off, imagesc(Vimg), caxis([0 1]), hold on
     plot(Con.x, Con.y, 'w')
     colormap([0 0 0 ; parula(256)]); colorbar;
     drawnow
+
+% For debugging
+  %  if PreRoiSz >  1.5 * A
+        figure(4)
+        Rix = find(F);
+        [~, Ix] = intersect(linix, Rix);
+        [~, Inx] = intersect(linix, find(~F));
+        plot(median(Sigpix(:,Ix), 2), 'b')
+        hold on
+        plot(median(Sigpix(:,Inx), 2), 'g')
+ 
+        Ft = Fd';
+        lx = find(Ft(:));
+        M =  zeros(Dim);
+        M(yrange, xrange) = Fd;
+        Mt = logical(M');%transposed
+        Sig = sbxt.Data.y(:,Mt(:));
+        [W, H] = runnmf(Sig, lx, size(V));
+        figure(4), plot(W(:,1)/7 + 4500, 'm'), hold off 
+%     end
+     pause
 end
     
