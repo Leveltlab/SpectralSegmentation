@@ -42,20 +42,7 @@ Lines = dim(3)-2; %number of lines to process = height - 2
 BytesA = 8 * 4 * Wdth * Lng;%(width of line, length of trace * 4 * 8 bytes)
 BytperLine = BytesA * (NumWorkers + 1);
 
-archstr = computer('arch');
-%only for fwindows available
-if strcmp(archstr, 'win64')
-    usr = memory();
-    SysMem = usr.MemAvailableAllArrays;
-    
-elseif strcmp(archstr, 'glnxa64') 
-     [~, Memstr] = system( "free -b | awk '/^Mem/ {print $4}'");
-     SysMem = str2num(Memstr);
-    
-elseif strcmp(archstr, 'maci64')
-    
-end
-
+SysMem = getSystemMem();
 
 %number of lines to process given amount(0.5) of available memory and estimated memory
 %usage per line.
