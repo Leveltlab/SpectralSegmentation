@@ -4,7 +4,7 @@
 % for ROI selection and matching can be executed.
 % All of the functions can be called without input, the functions will
 % ask which file to analyse.
-%
+% Be aware that your image sequence needs to be aligned in advance!
 
 % sbx data is required. TIFF can be converted to sbx
 %% Convert (multiple) tiff files that have multiple frames (full movie) to as many sbxfiles

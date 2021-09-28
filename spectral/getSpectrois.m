@@ -151,7 +151,7 @@ for i = 1:dim(3)
         for k = 1:PP.Cnt
             plot(Con(k).x, Con(k).y, 'r')
         end
-        title(str)
+        title(str,'FontSize',10, 'FontWeight', 'normal')
         pause(0.05)
     end
 end

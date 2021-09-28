@@ -11,7 +11,7 @@ function pnt = localmax(IM, edge, vox)
     
     % median filter
     J = ordfilt2(IM, vox^2/2, ones(vox));
-    I = IM - J + mean(J(:));
+    I = IM - J + mean(J(:), 'omitnan');
     
     %remove border
     dsz = size(I);

@@ -37,7 +37,10 @@ end
 
 %set nchan = 1 only green channel; nchan = 2 ; both green and red channel
 %nchan = 1;
-basefilepath = info.strfp; 
+basefilepath = info.strfp;
+[basepath, basename] = fileparts(basefilepath);
+basepath = uigetdir(basepath, 'Save aligned file to ');
+basefilepath = fullfile(basepath, basename);
 
 % set parameters (first try out rigid motion correction)
 options_rigid = NoRMCorreSetParms('d1',info.d1,'d2',info.d2*nchan, 'd3', 1, 'output_type', 'dat', ...

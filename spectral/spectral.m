@@ -33,7 +33,7 @@ NumWorkers = P.NumWorkers;
 si = find(round(freq * 64) < 2.^(5:10) + 2.^(4:9), 1, 'first');
 Segm = 2.^(si+4);
 sampd2 = Segm/2;
-sampdd = 32;
+if sampd2 > 32, sampdd = 32; else, sampdd = 31; end
 
 Lng = dim(1); %length of image stack
 Wdth = dim(2);%horizontal orientation
@@ -127,7 +127,7 @@ for r = 1:steps
     
     CSpect = zeros(sampdd+1, Wdth-2, W, 8);
     ASpect = zeros(sampdd+1, Wdth, BW);
-    p = 0;  
+    p = 0;  Tmp = []; j = 1;
     parfor j = 1:cnt
         Tmp = squeeze(Dc(:,j,:,:));
         Tmp = reshape(Tmp, Segm, Wdth * BW);
