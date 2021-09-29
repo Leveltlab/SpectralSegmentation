@@ -60,6 +60,7 @@ MLpar = repmat(MLspike_params, nrois, 1);
 decon  = zeros(size(sig));
 den    = zeros(size(sig));
 spikes = cell(nrois,1);
+drift  = zeros(size(sig));
 if doSigCorrected
     deconCorrected  = zeros(size(sig));
     denCorrected    = zeros(size(sig));
@@ -80,7 +81,7 @@ if parallel_process
         N = nrois;
         p = 1;
         parfor roi = 1:N % parallel processing should be possible, only the waitbar won't make much sense.
-            [spikes{roi},den(:,roi),~] = spk_est(sig(:,roi), MLpar(roi));
+            [spikes{roi}, den(:,roi), drift(:,roi)] = spk_est(sig(:,roi), MLpar(roi));
             send(D,roi)
         end
         close(hWb)
@@ -91,7 +92,7 @@ if parallel_process
                                     'Name','Deconvolution');
             h = hWb;
             parfor roi = 1:N % parallel processing should be possible, only the waitbar won't make much sense.
-                [spikesCorrected{roi},denCorrected(:,roi),~] = spk_est(sigCorrected(:,roi), MLpar(roi));
+                [spikesCorrected{roi}, denCorrected(:,roi)] = spk_est(sigCorrected(:,roi), MLpar(roi));
                 send(D,roi)
             end
             close(hWb)
@@ -103,11 +104,11 @@ if parallel_process
         
         N = nrois;
         parfor roi = 1:N % parallel processing should be possible, only the waitbar won't make much sense.           
-            [spikes{roi},den(:,roi),~] = spk_est(sig(:,roi),MLpar(roi));
+            [spikes{roi}, den(:,roi), drift(:,roi)] = spk_est(sig(:,roi),MLpar(roi));
         end
         if doSigCorrected
             parfor roi = 1:N % parallel processing should be possible, only the waitbar won't make much sense.           
-                [spikesCorrected{roi},denCorrected(:,roi),~] = spk_est(sigCorrected(:,roi),MLpar(roi));
+                [spikesCorrected{roi}, denCorrected(:,roi)] = spk_est(sigCorrected(:,roi),MLpar(roi));
             end
         else
             fprintf('no sigCorrected present. skipping sigCorrected\n')
@@ -117,14 +118,14 @@ else % Not parallel process
     
     fprintf('deconvolution at ROI: ')
     for roi = 1:nrois % parallel processing should be possible, only the waitbar won't make much sense.
-        [spikes{roi},den(:,roi),~] = spk_est(sig(:,roi), MLpar(roi));
+        [spikes{roi},den(:,roi), drift(:,roi)] = spk_est(sig(:,roi), MLpar(roi));
         fprintf('%d ', roi)
     end
     fprintf('\n')
     if doSigCorrected
         fprintf('neuropil corrected deconvolution at ROI: ')
         for roi = 1:nrois % parallel processing should be possible, only the waitbar won't make much sense.
-            [spikesCorrected{roi},denCorrected(:,roi),~] = spk_est(sigCorrected(:,roi), MLpar(roi));
+            [spikesCorrected{roi}, denCorrected(:,roi)] = spk_est(sigCorrected(:,roi), MLpar(roi));
             fprintf('%d ', roi)
         end    
         fprintf('\n')
@@ -196,9 +197,9 @@ infoSigPar.deconv = 'MLspike';
 infoSigPar.decon  = MLspike_params;
 
 if doSigCorrected
-    save(filename, 'den', 'decon', 'infoSigPar', 'denCorrected', 'deconCorrected', '-append')
+    save(filename, 'den', 'decon', 'infoSigPar', 'denCorrected', 'deconCorrected', 'drift', '-append')
 else
-    save(filename, 'den', 'decon', 'infoSigPar', '-append')
+    save(filename, 'den', 'decon', 'infoSigPar', 'drift', '-append')
 end
 
 % Plot deconvoluted data, yellow for non-neuropil corrected, blue for neuropil corrected 
