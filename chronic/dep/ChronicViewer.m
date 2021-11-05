@@ -406,10 +406,12 @@ function UpdateView
                 hImg.CData = CreateRGB2(BImgs(sShow2), colors2);
             else % Mask view!
                 MasksShow = Masks;
-                for x = sShow2(:)' % ROI selection
-                    idx = linkMat(rShow, x+1);
-                    MasksShow{x}(~ismember(MasksShow{x},idx)) = 0;
-                    MasksShow{x}(MasksShow{x}>0) = 1;
+                if rShow>1
+                    for x = sShow2(:)' % ROI selection
+                        idx = linkMat(rShow, x+1);
+                        MasksShow{x}(~ismember(MasksShow{x},idx)) = 0;
+                        MasksShow{x}(MasksShow{x}>0) = 1;
+                    end
                 end
                 hImg.CData = CreateRGB2(MasksShow(sShow2), colors2);
             end
@@ -477,8 +479,6 @@ end
 
 function hImgDown(~,event)
     % Highlights ROI in the table and main image after clicking on main image
-%     source
-%     event
     point = round(event.IntersectionPoint);
     hClickedTable.Data = num2cell(zeros(4,nfiles));
     for i = 1:nfiles
@@ -491,7 +491,7 @@ function hImgDown(~,event)
     %             fprintf('recording %d, roi %d, row %d\n', i, roi, row)
                 hClickedTable.Data{2,i} = row;
                 hClickedTable.Data{3,i} = hRoisTable.Data{row,1}; % number of links
-                hClickedTable.Data{4,i} = round(hRoisTable.Data{row,nfiles+2},1); % score
+                hClickedTable.Data{4,i} = round(hRoisTable.Data{row,nfiles+2},3); % score
             end
     	end
     end

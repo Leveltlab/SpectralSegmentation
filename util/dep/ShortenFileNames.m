@@ -3,7 +3,7 @@ function filenamesShort = ShortenFileNames(filenames, parts, varargin)
 % 
 % Input: 
 %   filenames: [n x 1] cell array with strings
-%   parts: 1D double, saying which parts of the filename to take
+%   parts:  [n x 1] double, saying which parts of the filename to take
 % Optional: [n x 1] datetime array. Last part of filename will be the date
 % in yyyy-mm-dd format
 % 

@@ -8,7 +8,7 @@
 % 2018-2-2
 % Last edit: 2020-2-24
 
-
+clc
 %% Load SPSIG data
 % load multiple files, ordered on recording time. Press cancel when done
 
@@ -33,7 +33,6 @@ while selecting
         filepaths(i) = [];
         selecting = false;
     else
-        
         pos = regexp(filepaths{i}, '\');
         
         % Try to extract the date from after the first _ in the filename
@@ -68,13 +67,16 @@ filenames = filenames';
 filepaths = filepaths';
 filedates = filedates';
 nfiles = length(filenames); % The number of files that have been selected
-
+%% Load the data of the selected files
 tic
+
+filenamesShort = ShortenFileNames(filenames, 1, filedates);
+
 clearvars data
 fprintf('\nloading in %d files:\n', nfiles)
 for i = 1:nfiles
     fprintf('\nloading file %d...',i)
-    data(i) = load([filepaths{i} filenames{i}], 'SPic', 'Mask', 'PP');
+    data(i) = load([filepaths{i} filenames{i}], 'SPic', 'Mask', 'PP', 'BImg');
     fprintf('\nloaded "%s"\n', filenames{i})
     
 end
@@ -89,16 +91,20 @@ data2 = data;
 
 data = data2;
 
-rec = [2,3,4];
+rec = [1,2,3,4,5]; % Which recordings to resize
 
-% scalefac = [0 0]; % x stretch y stretch
-% xc = 259; % x Position of correctly registered cells
-% x1 = 58; % x position of neuron that is shifted in recording that will be resized 
-% x2 = 81;%  x position same cell as other in other recording
-% scalefac(1) = 1 + (x1-x2)/(xc-x2);
-% yc = 151; y1 = 470; y2 = 442;
-% scalefac(2) = 1 + (y1-y2)/(yc-y2);
-scalefac = [0.9125, 0.88];
+scalefac = [0 0]; % x stretch y stretch
+xc = 313; % x Position of correctly registered cells
+x1 = 351; % x position of neuron that is shifted in recording that will be resized 
+x2 = 348;%  x position same cell as other in other recording
+scalefac(1) = 1 + (x1-x2)/(xc-x2);
+% % yc = 276; y1 = 422; y2 = 405;
+% xc = 313; % x Position of correctly registered cells
+% x1 = 353; % x position of neuron that is shifted in recording that will be resized 
+% x2 = 348;% 
+yc = 276; y1 = 422; y2 = 407;
+scalefac(2) = 1 + (y1-y2)/(yc-y2);
+% scalefac = [0.9125, 0.88];
 % scalefac = [1.0075,1.0075];
 
 % scalefac = [1.0725 1.1125]; % x stretch y stretch
@@ -113,7 +119,7 @@ for i = 1:length(rec)
     end
     data(rec(i)).PP.P(1,:) = data(rec(i)).PP.P(1,:) .* scalefac(1);
     data(rec(i)).PP.P(2,:) = data(rec(i)).PP.P(2,:) .* scalefac(2);
-    fprintf('recording %d: %s resized!\n', rec(i), datestr(filedates{rec(i)}))
+    fprintf('recording %d: %s resized!\n', rec(i), filenamesShort{rec(i)})
 end
 
 
@@ -127,19 +133,19 @@ maxi = zeros(1,nfiles);
 
 for i = 1:nfiles
     %obtain highest contrasted spectral density
-    Img = max(real(log(data(i).SPic)),[],3);
-%     Img = data(i).BImgA;
-%     Img = data(i).BImg;
+%     img = max(real(log(data(i).SPic)),[],3);
+%     img = data(i).BImgA;
+    img = data(i).BImg';
 
     % Normalize and remove -infs
-    vals = unique(Img);
+    vals = unique(img);
     mini(i) = vals(2); % second smallest value (not -inf)
     maxi(i) = vals(end);
-    Img(Img < mini(i)) = mini(i);
-    Img = (Img - mini(i)) ./ range([mini(i), maxi(i)]);
+    img(img < mini(i)) = mini(i);
+    img = (img - mini(i)) ./ range([mini(i), maxi(i)]);
     
     % Save mask and background image
-    BImg{i} = Img;
+    BImg{i} = img;
     Masks{i} = data(i).Mask';
 end
 
@@ -153,18 +159,18 @@ subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0 0], [0 0]);
 toplot = 1:nfiles; % sessions to plot
 
 % Create Rainbowy color channel allocations for nfiles, with bias to blue,
-colors = flipud(cmapL([0 0 1; 0 1 1; 0 1 0; 1 0.7 0; 1 0 0; 0.7 0 1], length(toplot)));
-if length(toplot)==3
+colors = flipud(cmapL([0 0 1; 0 1 1; 0 1 0; 1 0.7 0; 1 0 0; 0.7 0 1], nfiles));
+if size(colors,1)==3
     colors = [1 0 0; 0 1 0; 0.3 0.3 1];
-elseif length(toplot)==2
+elseif size(colors,1)==2
     colors = [1 0 0; 0 1 0.5];
 end
-RGB = CreateRGB2(BImg(toplot), colors);
+RGB = permute(CreateRGB2(BImg(toplot), colors(toplot,:)), [2 1 3]);
 
 figure; subplot(1,1,1)
 imagesc(RGB)
-for i = toplot
-    text(20, 20+i*17, datestr(filedates(i)),'color',colors(i,:),...
+for i = 1:length(toplot)
+    text(20, 20+i*17, datestr(filedates(toplot(i))),'color',colors(toplot(i),:),...
         'fontweight','bold','fontsize',12)
 end
 title('non-registered masks')
@@ -198,19 +204,35 @@ corrScoreMean = [];
 corrScore = BImgOverlapScore(BImg);
 corrScoreMean(:,end+1) = [sum(corrScore)./(nfiles-1)]'; %#ok<NBRAK>
 
-%% Register images with GUI
-filenamesShort = filenames;
-for i = 1:nfiles
-    filenamesShort{i} = filenamesShort{i}([1:5 10:19]);
-end
+%% Register images with manual GUI.
+
+BImg = BImg2;
+Masks = Masks2;
 imgs.BImg = BImg;
 imgs.Masks = Masks;
-interpol = {'linear', 'nearest'}; % How to interpolate each image?
+interpol = {'bilinear', 'nearest'}; % How to interpolate each image for rotation?
+ManualRegistrationv3(imgs, PP, filenamesShort, interpol)
+
+%% Register images with manual ctrl point WARPING GUI.
+
+BImg = BImg2;
+Masks = Masks2;
+filenamesShort = ShortenFileNames(filenames, 1, filedates);
+imgs.BImg = BImg;
+imgs.Masks = Masks;
+interpol = {'bilinear', 'nearest'}; % How to interpolate each image for rotation?
 ManualRegistration(imgs, PP, filenamesShort, interpol)
 
+
+
 %% Register images automatically
-referenceNum = 4; % which background image to take as reference
-buf = 16; % Buffer to remove around the to-register image
+referenceNum = 2; % which background image to take as reference
+lockRecs = 1:3; % Lock certain recordings, do not move them
+buf = 40; % Buffer to remove around the to-register image
+
+
+moveRecs = 1:nfiles;
+moveRecs(lockRecs) = [];
 
 if referenceNum>nfiles
     error('Select a lower reference recording number! referenceNum exceeds number of files')
@@ -241,17 +263,22 @@ BImgRef = BImgRef - mean(BImgRef(:));
 
 % Do cross correlations with the base image
 for i = 1:nfiles
-    section = BImg2{i}(buf:w, buf:h); % take smaller part of image
-    
-    % normalize images
-    section = section - mean(section(:));
-    
-    % Get x and y offset based on 2D fft cross corelation
-    correl = xcorr2_fft(BImgRef,section);
-    [ssr,snd] = max(correl(:));
-    [ij, ji] = ind2sub(size(correl),snd);
-    x(i) = -(size(BImgRef,1) - ij - buf);
-    y(i) = -(size(BImgRef,2) - ji - buf);
+    if ismember(i, moveRecs)
+        section = BImg2{i}(buf:w, buf:h); % take smaller part of image
+
+        % normalize images
+        section = section - mean(section(:));
+
+        % Get x and y offset based on 2D fft cross corelation
+        correl = xcorr2_fft(BImgRef,section);
+        [ssr,snd] = max(correl(:));
+        [ij, ji] = ind2sub(size(correl),snd);
+        x(i) = -(size(BImgRef,1) - ij - buf);
+        y(i) = -(size(BImgRef,2) - ji - buf);
+    else
+        x(i) = 0;
+        y(i) = 0;
+    end
 end
 
 % Calculate how much bigger the corrected image needs to be
@@ -293,95 +320,7 @@ transformed.xoff{end+1} = xoff;
 transformed.yoff{end+1} = yoff;
 
 % Cut empty edges away
-BImgMat = cat(3, BImg2{:});
-BImgMat = max(BImgMat,[],3);
-zeroCols = find(all(BImgMat'==0));
-zeroRows = find(all(BImgMat==0));
-if ~isempty(zeroCols)
-    % Cut at the end (bottom)
-    if ismember(size(BImgMat,1), zeroCols) % Does the end have columns with only zeros?
-        skipper = find(diff(zeroCols)>1);
-        if ~isempty(skipper)
-            % Black columns at multiple different places in the BImgMat?!
-            if length(skipper)>2
-                warning('contact Leander'); 
-                skipper = skipper(end); 
-            end
-            skipper = skipper + 1;
-        else
-            skipper = 1;
-        end
-        for i = 1:nfiles
-            BImg2{i}(zeroCols(skipper):end,:) = [];
-            Masks2{i}(zeroCols(skipper):end,:) = [];
-        end
-    end
-    % Cut at the beginning (top) (also change PP)
-    if ismember(1, zeroCols)
-        skipper = find(diff(zeroCols)>1);
-        if ~isempty(skipper)
-            % Black columns at multiple different places in the BImgMat?!
-            if length(skipper)>2
-                warning('contact Leander');
-                skipper = skipper(1); % Only delete until the first non-zero row
-            end
-        else
-            skipper = length(zeroCols); 
-        end
-        for i = 1:nfiles
-            BImg2{i}(1:zeroCols(skipper),:) = [];
-            Masks2{i}(1:zeroCols(skipper),:) = [];
-            PP(i).P(1,:) = PP(i).P(1,:) - skipper;
-            for j = 1:PP(i).Cnt
-                PP(i).Con(j).x = PP(i).Con(j).x - skipper;
-            end
-        end
-    end
-end
-if ~isempty(zeroRows)
-    % Cut at the end (right)
-    if ismember(size(BImgMat,2), zeroRows) % Does the end have rows with only zeros?
-        skipper = find(diff(zeroRows)>1);
-        if ~isempty(skipper)
-            % Black rows at multiple different places in the BImgMat?!
-            if length(skipper)>2
-                warning('contact Leander'); 
-                skipper = skipper(end); 
-            end
-            skipper = skipper + 1;
-        else
-            skipper = 1;
-        end
-        for i = 1:nfiles
-            BImg2{i}(:,zeroRows(skipper):end) = [];
-            Masks2{i}(:,zeroRows(skipper):end) = [];
-        end
-    end
-    % Cut at the beginning (left) (also change PP)
-    if ismember(1, zeroRows)
-        skipper = find(diff(zeroRows)>1);
-        if ~isempty(skipper)
-            % Black columns at multiple different places in the BImgMat?!
-            if length(skipper)>2
-                warning('contact Leander'); 
-                skipper = skipper(1); % Only delete until the first non-zero row
-            end
-        else
-            skipper = length(zeroRows); 
-        end
-        for i = 1:nfiles
-            BImg2{i}(:,1:zeroRows(skipper)) = [];
-            Masks2{i}(:,1:zeroRows(skipper)) = [];
-            PP(i).P(2,:) = PP(i).P(2,:) - skipper;
-            for j = 1:PP(i).Cnt
-                PP(i).Con(j).y = PP(i).Con(j).y - skipper;
-            end
-        end
-    end
-end
-
-clearvars h w i ij skipper ji correl x y ymax ymin xmin xmax ssr snd extra
-
+[BImg2, Masks2, PP] = CutEmptyEdges(BImg2, Masks2, PP, nfiles);
 
 
 % Calculate correlation between the images
@@ -404,11 +343,8 @@ for i = 1:nfiles
         BImgRot = BImgRot(buf:end-buf, buf:end-buf);
         
         rotCorrel(i,j)= corr2(BImgRot, BImgRef);
-%         imagesc(permute(CreateRGB({BImgRef, BImgRot},'r g'),[2 1 3]));
-%         subplot(1,1,1); imagesc(simmap)
-%         title(sprintf('session %d. rotation %d: %.1fdeg. simil=%.3f',...
-%                         i,j,rotation(j),simil(i,j)))
-%         pause(0.01)
+%       imagesc(permute(CreateRGB({BImgRef, BImgRot},'r g'),[2 1 3]));
+%       title(sprintf('session %d. rotation %d: %.1fdeg. simil=%.3f',i,j,rotation(j),simil(i,j)))
     end
 end
 toc
@@ -421,16 +357,16 @@ rotDiff = rotBest - rotCorrel(:,rotation==0);
 
 figure
 % subplot(2,1,1)
-% plot(rotation, simil', '.-')
-for i = 1:size(rotCorrel(:,1))
-    plot(rotation, rotCorrel(i,:),'.-','color',colors(i,:))
+for i = 1:length(toplot)
+    plot(rotation, rotCorrel(toplot(i),:),'.-','color',colors(toplot(i),:))
     hold on
 end
 plot(rotAng,rotBest,'xk')
-title(sprintf('image similarity with recording 1 after different rotations buffer %d',buf))
+title(sprintf('image correlation with recording %d after different rotations buffer %d',...
+                referenceNum, buf))
 ylabel('correlation coefficient r')
 xlabel('rotation (degrees)'), xlim([min(rotation),max(rotation)])
-legend(datestr(filedates,'yyyy-mm-dd'))
+legend(filenamesShort)
 
 % Apply rotations__________________________________________________________
 % If difference between best and 0 is smaller than 0.01, don't bother
@@ -438,6 +374,7 @@ legend(datestr(filedates,'yyyy-mm-dd'))
 thres = 0.0005;
 rotAng(rotDiff<thres) = 0;
 rotAng(abs(rotAng)<0.03) = 0;
+rotAng(lockRecs) = []; % Do not rotate the recordings that shouldn't move
 
 for i = find(abs(rotAng)>0.03) % If rotation angle < 0.03, don't rotate
     
@@ -456,8 +393,8 @@ RGB = CreateRGB2(BImg2(toplot), colors);
 figure; subplot(1,1,1)
 imagesc(permute(RGB, [2,1,3]));
 title('registered background rotation corrected')
-for i = 1:nfiles
-    text(20, 20+i*17, datestr(filedates(i), 'yyyy-mm-dd'),'color',colors(i,:),...
+for i = 1:length(toplot)
+    text(20, 20+i*17, filenamesShort{toplot(i)},'color',colors(toplot(i),:),...
         'fontweight','bold','fontsize',12)
 end
 
@@ -477,21 +414,17 @@ clearvars subplot
 figure('units', 'normalized', 'OuterPosition', [0.4 0.3 0.3 0.5])
 h = subplot(1,1,1);
 step = (1:size(corrScoreMean,2))-1;
-for i = 1:nfiles
-    plot(step, corrScoreMean(i,:)', '-o', 'color', colors(i,:))
-    hold on
+for i = 1:length(toplot)
+    plot(step, corrScoreMean(toplot(i),:)', '-o', 'color', colors(toplot(i),:)); hold on
 end
 xlabel('transformation i')
 ylabel('correlation coefficient')
-legend(datestr(filedates, 'yyyy-mm-dd'),'location', 'southeastoutside')
+legend(filenamesShort,'location', 'southeastoutside')
 h.XTick = 1:size(corrScoreMean,2);
 xLabels = cell(size(corrScoreMean,2),1);
 for j = 1:size(corrScoreMean,2)
-    if mod(j,2)==1
-        xLabels{j} = sprintf('trans. %d', floor(j/2)+1);
-    else
-        xLabels{j} = sprintf('rot. %d', floor(j/2));
-    end
+    if mod(j,2)==1; xLabels{j} = sprintf('trans. %d', floor(j/2)+1);
+    else;           xLabels{j} = sprintf('rot. %d', floor(j/2)); end
 end
 h.XTickLabel = xLabels;
 h.XTickLabelRotation = 45;
@@ -503,24 +436,24 @@ imagesc(corrScore);
 caxis([0 1]); colorbar
 h.XTick = 1:nfiles;
 h.YTick = 1:nfiles;
-h.XTickLabel = datestr(filedates, 'yyyy-mm-dd');
-h.YTickLabel = datestr(filedates, 'yyyy-mm-dd');
+h.XTickLabel = filenamesShort;
+h.YTickLabel = filenamesShort;
 h.XTickLabelRotation = 45;
 title('correlation coefficients')
 
 
 %% Checking how ROIs overlap. % % % % % % % %  MATCHING ROIS
 
-% Linking ROIs with each other, by just checking if there is a certain % 
+% Linking ROIs with each other, by checking if there is a certain percentage 
 % overlap between them
-thres = 0.6; % OVERLAP THRESHOLD range [0.5, 1] = 50% overlap - 100%
+thres = 0.525; % OVERLAP THRESHOLD range (0.5, 1) = 50% overlap - 100%
 
 if thres > 1
     warning('thres should be equal or smaller then 1')
 end
 if thres <= 0
     warning('trheshold has to be above 0, and lower then 1 (100 %)')
-elseif thres < 0.1
+elseif thres < 0.3
     warning('low threshold may introduce errors in the linked ROIs')
 end
 
@@ -617,7 +550,7 @@ for c = nmasks
         end
     end
 end
-clearvars found check overlap overlap1 overlap2 toSave otherMasks i c r m
+clearvars found check overlap overlap1 overlap2 otherMasks i c r m
 
 % all links in a matrix
 fprintf('Compressing link data into match matrix...\n')
@@ -743,7 +676,7 @@ score2(end+1:length(linkMat3)) = 0;
 % calculate number of links and plot histogram
 nLinks = sum(linkMat3~=0, 2); % number of roi links in each row
 
-figure
+figure('Position', [105 755 560 222])
 h = histogram(nLinks);
 % h.BinCounts = h.BinCounts.*(1:nfiles);
 title(sprintf('number of roi links in each row thres = %.2f, actual neuron count',... 
@@ -755,19 +688,14 @@ xlabel('found back')
 % TABLE
 % Find the number- and % of neurons in each recording that were found back
 nFoundBackMat = zeros(nfiles+1);
-nameCol = cell(1,nfiles+1);
-nameRow = cell(1,nfiles+1);
+nameCol = cell(1,nfiles);
 for i = 1:nfiles
     present = nLinks(linkMat3(:,i)>0);
     % Count how many neurons with 1:nfiles matches recording i has
     nFoundBackMat(i,1:nfiles) = histc(present, 1:nfiles);
-    spaces = regexp(filenames{i}, '_');
-    nameRow{i} = [filenames{i}(1:spaces(1)-1), ' ', filenames{i}(spaces(1)+1:spaces(2)-1)];
     nameCol{i} = sprintf('%d links',i);
 end
 nameCol{1} = 'single';
-nameCol{end} = 'summed ROIs';
-nameRow{end} = 'summed ROIs';
 nFoundBackMat(nfiles+1,:) = sum(nFoundBackMat, 1);
 nFoundBackMat(:,nfiles+1) = sum(nFoundBackMat, 2);
 
@@ -778,13 +706,13 @@ n = [n, repmat(n(nfiles+1,1),[nfiles+1,1])];
 nFoundBackPercMat = round(nFoundBackMat ./ n .* 100);
 
 figure('name','number of ROIs matched per recording')
-h = uitable('Data',nFoundBackMat,'Units', 'Normalized', 'Position',[0, 0.5, 1, 0.5]);
-h.ColumnName = nameCol;
-h.RowName = nameRow;
+h = uitable('Data',nFoundBackMat,'Units', 'Normalized', 'Position', [0, 0.6, 1, 0.3]);
+h.ColumnName = [nameCol 'summed ROIs'];
+h.RowName = [filenamesShort; {'summed ROIs'}];
 
-h = uitable('Data',round(nFoundBackPercMat,1), 'Units','Normalized', 'Position',[0, 0, 1, 0.5]);
-h.ColumnName = nameCol;
-h.RowName = nameRow;
+h = uitable('Data',round(nFoundBackPercMat,1), 'Units','Normalized', 'Position', [0, 0.3, 1, 0.3]);
+h.ColumnName = [nameCol, {'mean'}];
+h.RowName = [filenamesShort; {'mean'}];
 
 
 %
@@ -799,6 +727,10 @@ for i = 1:nfiles
 end
 confusionFoundMat(nfiles+1,1:end-1) = round(mean(confusionFoundMat(1:end-1,1:end-1),1));
 confusionFoundMat(1:end-1,nfiles+1) = round(mean(confusionFoundMat(1:end-1,1:end-1),2));
+
+h = uitable('Data', confusionFoundMat, 'Units', 'Normalized', 'Position', [0, 0, 1, 0.3]);
+h.ColumnName = [filenamesShort; {'mean'}];
+h.RowName = [filenamesShort; {'mean'}];
 
 % 
 %__________________________________________________________________________
@@ -848,7 +780,8 @@ clearvars keep idx i j n matchedMasks h h1 RGB rois spaces
 filenamesShort = ShortenFileNames(filenames, 1, filedates);
 
 ChronicViewer(BImg2, Masks2, filenamesShort, nLinksMask, linkMat2, PP, score, inRoi)
-
+% If you saved changes in linkMat with the ChronicViewer, rerun previous
+% section to recalculate statistics!!!!
 
 %% Save chronic info
 % Important chronic information gets saved
