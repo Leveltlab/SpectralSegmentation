@@ -49,6 +49,7 @@ y = 25:512;  % VERTICAL CROP
 
 % Run motion normcorre correction? % % % % % % % % % % % % %
 doNoRMCorre = true; % (if false, cropping settings aren't used)
+alignMethod = 'Rigid'; % options: 'Nonrigid' | 'Rigid'
 
 % Convert *_eye.mat file into .mp4 file?
 doEyeConvert = true;
@@ -105,8 +106,8 @@ else
     fprintf('canceled selecting settings\n')
     return
 end
-% Get crop for NoRMCorre
 if doNoRMCorre
+    % Get crop for NoRMCorre
     if exist('filepaths', 'var')
         load([filepaths{1} filenames{1}(1:end-4) '.mat'], 'info');
         definput = {sprintf('1:%d', info.sz(2)), sprintf('1:%d', info.sz(1))};
@@ -125,6 +126,11 @@ if doNoRMCorre
     end
     x = str2num(answer{1});
     y = str2num(answer{2});
+    
+    % Set rigid or non rigid
+    alignMethod = questdlg('Which registration method to use? (rigid = default)',...
+                           'NoRMCorre registration method',...
+                           'Rigid','Nonrigid','Rigid');
 end
 
 % Do eye file format conversion? (keeps the original)
@@ -161,7 +167,7 @@ elseif strcmp(doBackgroundSubtract, 'no'); doBackgroundSubtract = false;
 else; fprintf('Cancelling selecting settings\n'); return
 end
 % Get the specific background subtraction settings
-if doBackgroundSubtract 
+if doBackgroundSubtract
     prompt = {'filterRadius (actual size of filter = [radius*2, radius*2])', ...
         ['shift data to prevent underexposure/ over correction\n'...
         '(only change if BackgroundSubtract gives exposure warnings)'],...
@@ -242,7 +248,7 @@ else
 end
 if timed
     % File in which timing info is stored
-    timedFile = 'D:\nonexistent.mat'; % Default timedFile name! % % % 
+    timedFile = 'E:\data\Huub\Epsilon\spectralTimed.mat'; % Default timedFile name! % % % 
     if ~isfile(timedFile) % Creating new file for timing data
         warning('%s does not exist! please say which file to add the timing data to!', timedFile)
         [timedFile, timedFilePath] = uiputfile('*.mat', 'Where to save timing file', 'spectralTimed.mat');
@@ -254,7 +260,7 @@ if timed
             timedData = struct('computerName',{},'fileSize',[],'filePath', [], 'fileName',{},...
                          'nSplits', [], 'normcorrT',[],'transposeT',[],'decimatT',[],...
                          'spectralT',[],'fluorescenceT',[], 'backSubT', [], 'getRoisT', [],...
-                         'nRois', [], 'date', {});
+                         'nRois', [], 'date', {}, 'alignMethod', {});
             save(timedFile, 'timedData')
         end
     end
@@ -352,12 +358,7 @@ for i = 1:nfiles
         title(sprintf('slice %d',j))
     end
     linkaxes(handles, 'xy')
-    colormap(cmapL([1     1    1;...
-                    1     1    0.75;...
-                    0.75  1    0.5;...
-                    0.25  0.75 0.5;...
-                    0     0.25 0.5;...
-                    0     0    0], 256))
+    colormap(cmapL('greenFancy', 256))
     drawnow
     
     if doNoRMCorre
@@ -369,10 +370,11 @@ for i = 1:nfiles
         % info.skipFrame = 65537; % Skip frame 65537 (for old recordings which
         % have a bug that repeats a frame after 65537 (2^16) frames)
         info.Skipframe = -1; % Don't skip any frames
+        info.AlignMethod = alignMethod;
         
         % START NORMCORR REGISTRATION % % % % %
         normcorrTic = tic;
-        simonalign3;
+        simonalign3([]);
         normcorrtoc = toc(normcorrTic);
         
         filenameNormcorr = cell(nSlices,1);
@@ -503,6 +505,7 @@ for i = 1:nfiles
         timedData(end).fileName   = fn;
         timedData(end).filePath   = pn;
         timedData(end).date       = datetime;
+        timedData(end).alignMethod= alignMethod;
         save(timedFile, 'timedData')
         fprintf('saved timeddata for file %d\n', i)
     end
