@@ -84,7 +84,7 @@ function varargout = RoiManagerGUI(varargin)
 % Made by: Leander de Kraker
 % 2018-2020
 
-% Last Modified by GUIDE v2.5 09-Sep-2021 16:18:30
+% Last Modified by GUIDE v2.5 30-Nov-2021 18:04:39
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -250,8 +250,9 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     switches.creationThres = 80; % threshold for percentile pixelvalue new ROI inclusion
     switches.chronic = false; % Has a chronic image been calculated already?
     switches.backgrdCLim = [0 1]; % color axis limits of the background image in mainAx
-    switches.activeSignalAx = 2;
+    switches.backgrdDLim = [1 length(Sax)]; % Which spectral images to show in Spectral color bckgrd image
     
+    switches.activeSignalAx = 2;
     
     % Setting more useful limits for the  'minimum size rejection' slider
     h.minSizeSlider.Min = switches.minSize; % minimum value
@@ -381,6 +382,10 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
         return
     end
     
+    
+    h.backgrdDLimAx.Toolbar.Visible = 'off';
+    pos.IntersectionPoint = 1;
+    
     backGrdView(1, h);
     h.mainAx.XLim = [1 size(h.im.CData,2)];
     h.mainAx.YLim = [1 size(h.im.CData,1)];
@@ -452,7 +457,7 @@ function backGrdView_CreateFcn(hObject, ~, ~) %#ok<DEFNU>
     % hObject    handle to backGrdView (see GCBO)
     % handles    empty - handles not created until after all CreateFcns called
 
-    hObject.String = {'Spectral', 'Spectral color', 'SpatialCorr', 'ROI corr',...
+    hObject.String = {'Spectral color', 'Spectral BW', 'SpatialCorr', 'ROI corr',...
                       'Mask', 'Chronic (red) & spectral (green)',...
                       'Chronic', 'peak frequency', 'workspace variable'};
     
@@ -1145,7 +1150,7 @@ end
 
 
 % --- Executes on button press in applyNewRoi.
-function applyNewRoi_Callback(~, ~, h) %#ok<DEFNU>
+function applyNewRoi_Callback(~, ~, h)
     % Apply the new ROI
     switches = getappdata(h.hGUI, 'switches');
     
@@ -1336,7 +1341,7 @@ function ManualRoi(pos, button, h)
 end
 
 % --- Executes on button press in applyManRoi.
-function applyManRoi_Callback(~, ~, h) %#ok<DEFNU>
+function applyManRoi_Callback(~, ~, h)
     switches = getappdata(h.hGUI, 'switches');
     data = getappdata(h.hGUI, 'data');
     idx = getappdata(h.hGUI, 'idx');
@@ -1600,7 +1605,7 @@ end
 
 
 % --- Executeson button press in applyClustering.
-function applyClustering_Callback(~, ~, h) %#ok
+function applyClustering_Callback(~, ~, h)
     idx = getappdata(h.hGUI, 'idx');
     data = getappdata(h.hGUI, 'data');
     sbxt = getappdata(h.hGUI, 'sbxt'); % load the raw data
@@ -1732,15 +1737,15 @@ function numSelectSlider_Callback(hObject, ~, h)
         delete(h.signalPlt) % delete the lines
         delete(h.selectedPlt) % delete the boxes
     end
-
+    
     % Create handles for the data lines
     h.signalPlt = plot(zeros(2, hObject.Value), zeros(2, hObject.Value),...
         'Parent', h.signalAx1); % replace or create handles and lines
-        
+    
     % Create handles for the selection boxes
     h.selectedPlt = plot(zeros(2, hObject.Value), zeros(2, hObject.Value),...
         'Parent', h.mainAx);
-        
+    
     switches.selNumMax = hObject.Value;
     
     colors.summer = summer(switches.selNumMax+1);
@@ -1885,51 +1890,21 @@ function backGrdView(selected, h)
         switches.viewToggle = selected;
         data = getappdata(h.hGUI, 'data');
         h.mainAx.NextPlot = 'add';
-    
+        h.backgrdDLimAx.Visible = 'off';
+        set(get(h.backgrdDLimAx, 'children'),'Visible','off') %hide the current axes contents
+
+        
         switch selected
             case 1 % Spectral image
+                switches.viewToggle = 999;
+                [colors, stoselect] = backgrdDLim_Update(h, data.Sax);
+                
+                h.im.CData = CreateRGB2_mat(data.imgStackT(:,:,stoselect), colors, true, true);
+                
+    
+            case 2 % Spectral image, colored by frequency
                 h.im.CData = data.BImg;
                 colormap(gray)
-                
-            case 2 % Spectral image, colored by frequency
-                
-                % Cheat view toggle so you don't have to switch to other
-                % view before you can select view 2 again
-                switches.viewToggle = 999; 
-                
-                s = data.Sax; % spectral frequency axis
-                % Get which frequencies to show
-                question = [sprintf('which frequency (range) to select? min=%.2fHz, max=%.2fHz\n',...
-                                    s(1), s(end)),...
-                            'If you enter nothing all frequencies will be selected',...
-                            sprintf('\nlowest selected frequency will be red, highest will be blue\n'),...
-                            'colormap will be jet'];
-                answer = inputdlg(question, 'spectral colored by intensity at different frequencies');
-                if isempty(answer)  % cancel was pressed
-                    sselect = 1:length(s); % spectral frequency selection
-                elseif isempty(answer{:}) % ok was pressed without input
-                    sselect = 1:length(s);
-                else
-                    stoselect = sort(str2num(answer{:})); % which frequency range to select
-                    if isempty(stoselect) % letters were given so now stoselect is empty
-                        stoselect = s([1 end]); % select all frequencies
-                    elseif length(stoselect) == 1
-                        % If only one frequency was given, make sure that a
-                        % frequency can be used by using a range around the given frequency
-                        fstep = mean(diff(s)); % difference in frequencies
-                        stoselect = [stoselect(1)-fstep*2, stoselect(1)+fstep*2];
-                    end
-                    sselect = find(s>=stoselect(1) & s<=stoselect(2));
-                end
-                
-                nsselect = length(sselect);
-                if nsselect == 0 % no frequency was selected because of bad input range, select lowest frequency
-                    sselect  = 1:length(s);
-                    nsselect = length(sselect);
-                end
-                colors = flipud(jet(nsselect));
-                
-                h.im.CData = CreateRGB2_mat(data.imgStackT(:,:,sselect), colors, true, true);
                 
             case 3 % SpatialCorr
                 h.im.CData = data.SpatialCorr;
@@ -2369,6 +2344,109 @@ function backgrdCLim_Apply(x, h)
     setappdata(h.hGUI, 'switches', switches)
 end
 
+
+% --- Executes on mouse press over axes background.
+function backgrdDLimAx_ButtonDownFcn(~, eventData, h) %#ok<DEFNU>
+    % The plot in the showdata tab uses this axes to set which of a 3D
+    % background image to show
+    x = ceil(eventData.IntersectionPoint(1));
+    
+    backgrdDLim_Lims(x, h)
+end
+
+
+function [colors, stoselect] = backgrdDLim_Update(h, sax)
+    
+    % Make DLim axes visible
+    if strcmp(h.backgrdDLimAx.Visible, 'off')
+        h.backgrdDLimAx.Visible = 'on';      
+        set(get(h.backgrdDLimAx, 'children'),'Visible','on')
+    end
+    
+    switches = getappdata(h.hGUI, 'switches');    
+    
+    % Get the correct DLim limits/ which frequencies to show
+    stoselect = unique(switches.backgrdDLim);
+    stoselect(stoselect < 1) = 1;
+    stoselect(stoselect > length(sax)) = length(sax);
+    if stoselect(2)-stoselect(1) <= 1
+        stoselect = [stoselect(1)-1, stoselect(2)+1];
+    end
+    backgrdDLim = stoselect;
+    stoselect = stoselect(1):stoselect(2);
+    nsselect = length(stoselect);
+    colors = flipud(jet(nsselect));
+    
+    % Create the colorbar
+    colorbarData = zeros(1, length(sax), 3);
+    colorbarData(1,stoselect,:) = colors;
+    buf = ceil(length(sax)/2.5);
+    colorbarData = [zeros(1, buf, 3), colorbarData, zeros(1, buf, 3)];
+    colorbarData(1, [buf end-buf], :) = 0.25; % gray lines to denote data limits
+    
+    % Plot the lines and text
+    lineW = 1;
+    lineC = 'w';
+    lineVis = '-';
+    
+    h.backgrdDLimAx.NextPlot = 'replacechildren';
+    if isfield(h, 'backgrdDLimIm') && isgraphics(h.backgrdDLimIm)
+        delete h.backgrdDLimIm
+    end
+    x = -buf:length(sax)+buf;
+    h.backgrdDLimIm = imagesc(x, [0 1], colorbarData,...
+                'Parent', h.backgrdDLimAx, 'HitTest', 'off');
+    h.backgrdDLimAx.NextPlot = 'add';
+    
+    if isfield(h, 'backgrdDLimLine1')
+        delete(h.backgrdDLimLine1)
+        delete(h.backgrdDLimLine2)
+        delete(h.backgrdDLimText1)
+        delete(h.backgrdDLimText2)
+    end
+    h.backgrdDLimLine1 = plot(backgrdDLim([1 1])-1, [0 1],...
+        'linewidth',lineW, 'color', lineC, 'linestyle', lineVis,...
+        'Parent', h.backgrdDLimAx, 'HitTest','off');
+    h.backgrdDLimLine2 = plot(backgrdDLim([2 2]), [0 1],...
+        'linewidth',lineW, 'color', lineC, 'linestyle', lineVis,...
+        'Parent', h.backgrdDLimAx, 'HitTest','off');
+    h.backgrdDLimText1 = text(backgrdDLim(1), 1, sprintf('%.2fHz',sax(backgrdDLim(1))),...
+        'color', lineC, 'Parent', h.backgrdDLimAx, 'HitTest','off',...
+        'VerticalAlignment', 'top', 'HorizontalAlignment', 'right','FontSize',9);
+    h.backgrdDLimText2 = text(backgrdDLim(2), 1, sprintf('%.2fHz',sax(backgrdDLim(2))),...
+        'color', lineC, 'Parent', h.backgrdDLimAx, 'HitTest','off',...
+        'VerticalAlignment', 'top','FontSize',9);
+    h.backgrdDLimAx.YLim = [0, 1];
+    h.backgrdDLimAx.XLim = x([1 end]);
+    h.backgrdDLimAx.YTick = []; % Turn off y axis ticks
+    h.backgrdDLimAx.XTick = []; % Turn off x ticks
+    
+    
+end
+
+
+function backgrdDLim_Lims(x, h)
+    
+    switches = getappdata(h.hGUI, 'switches');
+        
+    xMin = switches.backgrdDLim(1);
+    xMax = switches.backgrdDLim(2);
+    
+    % Calculate to which line the click was closest
+    difference = abs([xMin-x, xMax-x]);
+    [~, idx] = min(difference);
+    
+    % Edit the line that was closest to the click
+    switches.backgrdDLim(idx) = x;
+    
+    % Save the edited data
+    setappdata(h.hGUI, 'switches', switches)
+    guidata(h.hGUI, h)
+    
+    backGrdView(1, h)
+end
+
+
 %% Help call function
 % --- Executes on button press in any of the '?' help buttons
 function Help_Callback(~, eventdata, h) %#ok<DEFNU>
@@ -2407,9 +2485,9 @@ function Help_Callback(~, eventdata, h) %#ok<DEFNU>
                     'be changed by clicking in the histogram. The limit closest to the click will '...
                     'be moved to the clicked point.'];
             str{5} = 'Different backgrounds can be selected with the dropdown menu:';
-            str{7} = 'Spectral: maximum projection of spectral density 0 - 0.4Hz';
-            str{9} = ['Spectral color: Select frequencies from spectral density, '...
-                    'multiple frequencies shown with multiple colors'];
+            str{7} = ['Spectral color: Select frequencies from spectral density, '...
+                    'multiple frequencies shown with multiple colors. Use the bottom limit plot to select different frequencies'];
+            str{9} = 'Spectral: maximum projection of spectral density 0 - 0.4Hz';
             str{11} = 'SpatialCor: correlation values from inside ROIs, from 9 ROI seed pixels to all other pixels';
             str{13} = ['ROI corr: correlation values from inside ROIs, from the 4 corners, each consisting of ~9 pixels '...
                       'to all other pixels. So 4 correlation values per pixel of the ROI, each shown in a different color.'...
@@ -2431,7 +2509,7 @@ function Help_Callback(~, eventdata, h) %#ok<DEFNU>
                       'line segments/ corner points remain.'];
             str{3} = ['If you would completely overwrite an existing ROI, the RoiRejecterGUI '...
                        'will refuse to create your requested ROI.'];
-            str{4} = ['Large ROIs can be slow to edit because a lot of signal has to be retrieved.'];
+            str{4} = 'Large ROIs can be slow to edit because a lot of signal has to be retrieved.';
             
         case 'createRoiHelp' % in tab Create ROI
             strTitle = 'auto ROI creation help';
@@ -2441,7 +2519,7 @@ function Help_Callback(~, eventdata, h) %#ok<DEFNU>
             str{2} = 'Decrease the threshold to include more pixels into the new ROI.';
             str{4} = ['If the search field is not large enough, go into the RoiManagerGUI.m code '...
                    'and edit the variable "voxelSz" in function "CreateROI". No restart of GUI required after edit.'];
-            str{6} = 'Do not forget to press apply when you want to save the new ROI.';
+            str{6} = 'Do not forget to press apply, or enter on your keyboard, when you want to save the new ROI.';
             
         case 'roiSelectHelp' % in tab Reject ROIs
             strTitle = 'ROI selection/ rejection help';
@@ -2479,7 +2557,7 @@ function Help_Callback(~, eventdata, h) %#ok<DEFNU>
             str{9} = ['When adding more reference points, only four references will be visible in the correlation visualisation'...
                       ', otherwise the colors become too ambiguous.'];
             str{10} = 'Toggle "Delete cluster" to remove one or more clusters.';
-            str{12}= 'Do not forget to press "apply" when you are happy with the clustering.';
+            str{12}= 'Do not forget to press "apply", or "enter" on your keyboard, when you are happy with the clustering.';
             
         case 'saveHelp' % Main Save button
             strTitle = 'Save info';
