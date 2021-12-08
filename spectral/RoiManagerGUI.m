@@ -2367,11 +2367,11 @@ function [colors, stoselect] = backgrdDLim_Update(h, sax)
     
     % Get the correct DLim limits/ which frequencies to show
     stoselect = unique(switches.backgrdDLim);
-    stoselect(stoselect < 1) = 1;
-    stoselect(stoselect > length(sax)) = length(sax);
     if stoselect(2)-stoselect(1) <= 1
         stoselect = [stoselect(1)-1, stoselect(2)+1];
     end
+    stoselect(stoselect < 1) = 1;
+    stoselect(stoselect > length(sax)) = length(sax);
     backgrdDLim = stoselect;
     stoselect = stoselect(1):stoselect(2);
     nsselect = length(stoselect);
@@ -2382,7 +2382,7 @@ function [colors, stoselect] = backgrdDLim_Update(h, sax)
     colorbarData(1,stoselect,:) = colors;
     buf = ceil(length(sax)/2.5);
     colorbarData = [zeros(1, buf, 3), colorbarData, zeros(1, buf, 3)];
-    colorbarData(1, [buf end-buf], :) = 0.25; % gray lines to denote data limits
+    colorbarData(1, [buf end-(buf-1)], :) = 0.25; % gray lines to denote data limits
     
     % Plot the lines and text
     lineW = 1;
