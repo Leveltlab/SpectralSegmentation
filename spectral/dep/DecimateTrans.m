@@ -35,7 +35,7 @@ if ~exist(strfp, 'file')
     [filenameTrans, filePath] = uigetfile('*_Trans.dat', 'select transposed data');   
     strfp = [filePath filenameTrans];
 end
-filenameBase = split(filenameTrans, '_Trans');
+strfpBase = split(strfp, '_Trans');
 
 gcp
 
@@ -43,7 +43,7 @@ gcp
 
 sbxt = memmapfile(strfp, 'Format', 'uint16', 'Offset', 500);
 
-fileDecimated = fopen([filePath filenameBase{1} '_DecTrans.dat'],'w');
+fileDecimated = fopen([strfpBase{1} '_DecTrans.dat'],'w');
 
 Lng = dim(1); % length of image stack
 width = dim(2) * dim(3); % length * height
