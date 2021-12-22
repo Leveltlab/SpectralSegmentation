@@ -48,7 +48,7 @@ imgStackT = permute(imgStack,[2 1 3]); % transpose the SPic variable so it's sam
 calcSpecProfile = false;
 if isfield(PP,'SpecProfile')
     fprintf('SpecProfile present\n')
-    if size(PP.SpecProfile) ~= PP.Cnt
+    if size(PP.SpecProfile, 2) ~= PP.Cnt | length(PP.peakFreq) ~= PP.Cnt
         fprintf('But SpecProfile does not have correct number of ROIs\n')
         calcSpecProfile = true;
     end
@@ -65,7 +65,7 @@ end
 
 %% Calcualte A (Area) (and replace old)
 
-Anew = zeros(PP.Cnt, 1);
+Anew = zeros(1, PP.Cnt);
 for i = 1:PP.Cnt
     Anew(i) = sum(Mask(:)==i);
 end
@@ -89,19 +89,23 @@ if isfield(PP, 'Rvar')
         calcRvar = true;
         fprintf('But Rvar has different amount of ROIs then PP.Cnt, so calculating new\n')
     end
+    if size(PP.Rvar, 1) > size(PP.Rvar, 2)
+        % Transpose PP.Rvar
+        PP.Rvar = PP.Rvar';
+    end
 else
     calcRvar = true;
     fprintf('Going to calculate Rvar and spatialcorr\n')
 end
 
-if true
+if calcRvar
     % Load transposed sbx data
     pnSbx = pn;
     fnSbx = [fn(1:end-10), '_DecTrans.dat']; % Search for decimated trans file first
     if ~exist([pnSbx fnSbx], 'file') % decimated not found -> Search for regular transposed file
         fnSbx = [fn(1:end-10), '_Trans.dat'];
         if ~exist([pnSbx fnSbx], 'file')   % regular transposed not found -> ask user
-            [fnSbx, pnSbx] = uigetfile('*TRANS.dat', 'load raw data (Trans.dat file)');
+            [fnSbx, pnSbx] = uigetfile('*TRANS.dat', 'load raw data (_DecTrans.dat file preferred)');
             if isempty(fnSbx)
                 warning('cannot calculate ROI signal correlations without transposed data, quiting')
                 return
@@ -177,7 +181,7 @@ if size(PP.P,2) ~= PP.Cnt
     fprintf('catastrophic looking errors in PP.P,')
     fprintf(' incorrect number of coordinates for amount of ROIs according to PP.Cnt\n')
     if max(Mask(:)) ~= PP.Cnt
-        fprintf('PP.Cnt has different number then the amount of ROIs present in the mask\n')
+        fprintf('PP.Cnt has different number than the amount of ROIs present in the mask\n')
     end
 end
 

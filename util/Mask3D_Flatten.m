@@ -19,15 +19,16 @@ nrois = size(mask3d, 3);
 
 %% Flatten the mask
 
-threshold = 4; % Weights lower than this get exluded from ROI mask.
+threshold = 0.03; % Weights lower than this get exluded from ROI mask.
+
 mask3d_firstadded = cat(3, ones(d1, d2).*threshold, mask3d);
 [BImg, Mask] = max(mask3d_firstadded, [], 3);
 Mask = Mask - 1;
 
 nroisNew = length(unique(Mask(:)))-1;
 nroisMax = max(Mask(:));
-missingRois = find(diff(unique([Mask(:); 0]))>1);
-fprintf('%d ROIs are now gone because flattening\n', length(missingRois));
+missingRoisByMaskFlattening = find(diff(unique([Mask(:); 0]))>1);
+fprintf('%d ROIs are now gone because flattening\n', length(missingRoisByMaskFlattening));
 while nroisNew ~= nroisMax
     missingRoi = find(diff(unique([Mask(:); 0]))>1);
     Mask(Mask>missingRoi(1)) = Mask(Mask>missingRoi(1))-1;
@@ -37,7 +38,7 @@ end
 
 %% If you have signals and ROIs were deleted! Update sig.
 % sig = [oldnrois x time] -> [newnrois x time]
-sig(missingRois, :) = [];
+sig(missingRoisByMaskFlattening, :) = [];
 
 %% Plot
 figure
@@ -50,6 +51,11 @@ figure
 imagesc(BImg)
 title('Representative image (weights of the masks): BImg')
 
+%% Save mask to file
+
+[filename, filepath] = uigetfile('*.mat','save the mask to a mat file');
+save([filepath, filename], 'Mask','BImg','missingRoisByMaskFlattening', '-append')
+fprintf('\nsaved Mask to %s\n\n', filename)
 
 %% Get PP and stuff from Mask
 
