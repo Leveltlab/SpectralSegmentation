@@ -18,7 +18,8 @@ function SaveImg(requested, varargin)
 % 2019-9-12
 %
 
-figure(gcf) % bring the figure that is about to be saved to the top
+h = gcf;
+figure(h) % bring the figure that is about to be saved to the top
 
 if nargin == 2 % Use 4th input as savename
     savename = varargin{1};
@@ -41,7 +42,8 @@ nr = get(gcf, 'Number');
 fprintf('\n')
 % Save the current figure
 if any(strcmp(requested, 'png')) % Save the current figure as a png with a resolution of 400
-    print(gcf, '-dpng',[savename '.png'], '-r450')
+    h.Renderer = 'painters'; % painters renderer does anti-aliasing
+    print(h, '-dpng',[savename '.png'], '-r450')
     fprintf('saved current figure (%d) as HQ png\nin: %s\n\n', nr, savename)
 end
 if any(strcmp(requested, 'fig'))
@@ -49,19 +51,23 @@ if any(strcmp(requested, 'fig'))
     fprintf('saved current figure (%d) as matlab figure\nin: %s\n\n', nr, savename)
 end
 if any(strcmp(requested, 'epsc'))
-    saveas(gcf, savename, 'epsc')
+    h.Renderer = 'opengl';
+    saveas(h, savename, 'epsc')
     fprintf('saved current figure (%d) as colored vector graphics epsc\nin: %s\n\n', nr, savename)
 end
 if any(strcmp(requested, 'eps'))
-    saveas(gcf, savename, 'eps')
+    h.Renderer = 'opengl';
+    saveas(h, savename, 'eps')
     fprintf('saved current figure (%d) as grayscale vector graphics eps\nin: %s\n\n', nr, savename)
 end
 if any(strcmp(requested, 'svg'))
-    saveas(gcf, savename, 'svg')
+    h.Renderer = 'painters';
+    saveas(h, savename, 'svg')
     fprintf('saved current figure (%d) as Scalable Vector Graphics SVG\nin: %s\n\n', nr, savename)
 end
 if any(strcmp(requested, 'pdf'))
-    saveas(gcf, savename, 'pdf')
+    h.Renderer = 'opengl';
+    saveas(h, savename, 'pdf')
     fprintf('saved current figure (%d) as PDF\nin: %s\n\n', nr, savename)
 end
 
