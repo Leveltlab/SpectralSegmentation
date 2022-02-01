@@ -226,8 +226,8 @@ ManualRegistration(imgs, PP, filenamesShort, interpol)
 
 
 %% Register images automatically
-referenceNum = 2; % which background image to take as reference
-lockRecs = 1:3; % Lock certain recordings, do not move them
+referenceNum = 1; % which background image to take as reference
+lockRecs = []; % Lock certain recordings, do not move them
 buf = 40; % Buffer to remove around the to-register image
 
 
@@ -339,7 +339,7 @@ BImgRef = BImg2{referenceNum}(buf:end-buf,buf:end-buf);
 
 for i = 1:nfiles
     for j = 1:length(rotation)
-        BImgRot = imrotate(BImg2{i}, rotation(j),'bicubic','crop');
+        BImgRot = imrotate(BImg2{i}, rotation(j),'nearest','crop');
         BImgRot = BImgRot(buf:end-buf, buf:end-buf);
         
         rotCorrel(i,j)= corr2(BImgRot, BImgRef);

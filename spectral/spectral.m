@@ -23,11 +23,19 @@ else
 end
 mfn = strsplit(fn, '_DecTrans');
 
-[dim, freq] = Zgetinfo(strfp);
+[dim, freq, strType] = Zgetinfo(strfp);
 
 P = gcp;
 NumWorkers = P.NumWorkers;
 
+if strcmp(strType, 'single')
+    Type = 4;
+elseif strcmp(strType, 'int16')
+    Type = 2;
+else
+    strType = 'double';
+    Type = 8; %double
+end
 %Segm = 32; %fft window length for 0.5 Hz sampling rate
 %0.5Hz => 32, 1Hz => 64, 2 Hz => 128, etc
 si = find(round(freq * 64) < 2.^(5:10) + 2.^(4:9), 1, 'first');
@@ -39,7 +47,7 @@ Lng = dim(1); %length of image stack
 Wdth = dim(2);%horizontal orientation
 Lines = dim(3)-2; %number of lines to process = height - 2
 
-BytesA = 8 * 4 * Wdth * Lng;%(width of line, length of trace * 4 * 8 bytes)
+BytesA = 4 * Type^2 * Wdth * Lng;%(width of line, length of trace * 4 * 8 bytes)
 BytperLine = BytesA * (NumWorkers + 1);
 
 SysMem = getSystemMem();
@@ -70,8 +78,8 @@ nwLines = steps*W;
 
 %% SPECTRAL POWER OF SURROUNDING 8 PIXELS
 
-%now open as memory mapped file, Decimated file contains doubles!!
-sbxt = memmapfile(strfp, 'Format', 'double', 'Offset', 500);
+%now open as memory mapped file
+sbxt = memmapfile(strfp, 'Format', strType, 'Offset', 500);
 
 Sax = (0:sampdd)/Segm*freq;
 
