@@ -43,11 +43,12 @@ clearvars info
 clearvars -global info
 
 
-fRadius = 55;
+fRadius = [2, 25];
 shift = 10000; % Shift background prevents underexposure
-method = 'Circular Average'; % possiblities 'Gaussian Average' | 'Circular Average'
+method = 'Donut Average'; % possiblities 'Gaussian Average' | 'Circular Average' | 'Donut Average'
+subsample = 4;  % rescaling the data images for faster processing
 smoothDim = 0;
-smoothSe = 1.85;
+smoothSe = 1.75;
 plotter = false;
 
 % How deep into the img edge to take data to average for padding values
@@ -111,6 +112,19 @@ switch method
         sigma = fRadius/3;
         filt = fspecial('gaussian', fRadius*2+1, sigma);
         
+    case 'Donut Average'
+        filtInner = fspecial('disk', fRadius(1));
+        filt = fspecial('disk', fRadius(2));
+        filtInner = filtInner ./ ...
+            (filtInner(fRadius(1)+1, fRadius(1)+1) ./ filt(fRadius(2), fRadius(2)));
+        filtSize = size(filt, 1);
+        fBuf = fRadius(2)-fRadius(1);
+        idx =fBuf+1:filtSize-fBuf;
+        filt(idx, idx) = filt(idx,idx)-filtInner;
+        filt = filt ./ sum(filt(:));
+        fRadiusInner = fRadius(1);
+        fRadius = fRadius(2);
+        
     otherwise
         warning('no valid method')
         return
@@ -123,14 +137,20 @@ fileID = fopen([fileOut '.sbx'], 'w'); % open sbx file
 clearvars -global info
 clearvars info
 
-img = sbxread(fileIn, 0, 1);
+imgOri = sbxread(fileIn, 0, 1);
 global info
-imDim = size(img);
-imgPadded = zeros(imDim+fRadius*2);
+imgOriDim = size(imgOri);
+img = imresize(imgOri, 1/subsample);
+imgDim = size(img);
+imgPadded = zeros(imgDim+fRadius*2);
+
+imgOriginalMax = zeros(imgOriDim);
+backgroundMax = zeros(imgOriDim);
 
 tic
 for i = 0:info.max_idx-1
-    img = sbxread(fileIn, i, 1);
+    imgOri = sbxread(fileIn, i, 1);
+    img = imresize(imgOri, 1/subsample);
 %     imgPadded = padarray(img, [fRadius fRadius], 'replicate');
     
     % Creating nice padding that has averaged values of the outer edges of img, not only the most outer value
@@ -146,8 +166,11 @@ for i = 0:info.max_idx-1
     
     background = conv2(imgPadded, filt, 'same');
     background = background(fRadius+1:end-fRadius, fRadius+1:end-fRadius);
+    background = imresize(background, imgOriDim);
+    imgCorrected = uint16(double(imgOri) - (background - shift));
     
-    imgCorrected = uint16(double(img) - (background - shift));
+    backgroundMax = max(backgroundMax, background);
+    imgOriginalMax = max(imgOriginalMax, double(imgOri));
     
     % Report status and check for over/under exposure
     if mod(i+1,1000)==0
@@ -157,7 +180,7 @@ for i = 0:info.max_idx-1
         % warning if more than 1% of pixels are 0 / underexposed
         if sum(imgCorrected(:) == 0) > (numel(imgCorrected)/100) 
             warning('%.1f%% of pixels underexposured, increase the variable shift',...
-                imgCorrected == 0 ./ numel(imCorrected) * 100)
+                imgCorrected == 0 ./ numel(imgCorrected) * 100)
         end
         % Warning if more than 0.5% of pixels are 65536, 2^16, overexposed
         if sum(imgCorrected(:) >= 2^16 - 1) > (numel(imgCorrected) / 200)
@@ -173,9 +196,9 @@ for i = 0:info.max_idx-1
     elseif smoothDim == 2 % vertical smoothing
         % Simple smoothing to reduce CMOS sensor horizontal banding noise
         imgCorrected = smoothG(imgCorrected, smoothSe);
-%     elseif smoothDim == 3
-%         % Simple smoothing in both directions to reduce noise
-%         imgCorrected = smoothG(smoothG(imgCorrected, smoothSe)', smoothSe)';
+    elseif smoothDim == 3
+        % Simple smoothing in both directions to reduce noise
+        imgCorrected = smoothG(smoothG(imgCorrected, smoothSe)', smoothSe)';
     end
     
     fwrite(fileID, imgCorrected', 'uint16');
@@ -186,13 +209,17 @@ fclose(fileID);
 % Save .mat file for .sbx file, with info about background subtraction
 info.filtered.method = method;
 info.filtered.size = fRadius;
-info.filtered.resized = 1;
+if strcmp(method, 'Donut Average')
+    info.filtered.sizeGap = fRadiusInner;
+end
+info.filtered.resized = 1/subsample;
 info.filtered.ValueShift = shift;
 info.filtered.filt = filt;
 info.filtered.padTaker = padTaker;
 info.filtered.smoothSe = smoothSe;
 info.filtered.smoothDim = smoothDim;
-
+info.filtered.backgroundMax = backgroundMax;
+info.filtered.dataMax = imgOriginalMax;
 save([fileOut '.mat'], 'info');
 
 % Plot last frame

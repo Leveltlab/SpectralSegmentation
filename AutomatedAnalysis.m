@@ -271,7 +271,7 @@ clearvars answer prompt dlgtitle dlgdims definput
 %% 
 % Set the i if you want to run a specific section of the analysis for a
 % specific file (after things crash or are unsatisfactory for example)
-i = 1; 
+i = 1;
 
 %% Process all the files
 
@@ -331,7 +331,7 @@ for i = 1:nfiles
     
     %% Normcorr    
     % Download normcorre code from flatironinstitute from github.
-    % Place normcorre folder in Matlab path BELOW SpectralSegmentation
+    % Place normcorre folder in Matlab path
     
     % Show the data before committing the analysis
     Img = sbxread(pnfn, 0,100*nSlices);
@@ -368,7 +368,7 @@ for i = 1:nfiles
         info.d1 = length(info.crop.x);
         info.d2 = length(info.crop.y);
         % info.skipFrame = 65537; % Skip frame 65537 (for old recordings which
-        % have a bug that repeats a frame after 65537 (2^16) frames)
+                   % have a bug that repeats a frame after 65537 (2^16) frames)
         info.Skipframe = -1; % Don't skip any frames
         info.AlignMethod = alignMethod;
         
