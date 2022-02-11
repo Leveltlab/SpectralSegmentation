@@ -58,6 +58,10 @@ RoiManagerGUI
 % Signals get added to the _SPSIG file
 retrievesignals
 
+%% Create a fast Simple Estimate of Activity by Leander (SEAL)
+% Seal signal gets added to the _SPSIG file
+SealSignals
+
 %% deconvolve signals
 % MLspike spike estimation signals get added to the _SPSIG file
 DeconvolveSignals

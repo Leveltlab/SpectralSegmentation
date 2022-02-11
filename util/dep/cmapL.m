@@ -3,9 +3,15 @@ function colmap = cmapL(colors, n)
 % Create a custom colormap from multiple RGB triplets or a string
 % If only one RGB triplet is given, that color will be the maximum color, 
 % the minimum color will be black
-%
-%
+% 
 % colmap = cmapL(colors, n);
+%
+% Input:
+%   colors [y x 3] 2D double: the RGB triples that are the colormap
+%   n (scalar, or [1 x y]): how many colors to output. 
+%           In the case of vector input: how many colors for each given
+%           color.
+%
 %
 % EXAMPLES:
 % 
@@ -35,36 +41,36 @@ function colmap = cmapL(colors, n)
 % figure; surf(img,'edgecolor','none'); colormap(colmap); colorbar
 % title("cmapL('dutch',3)")
 %
-% n = 256; % 256 colors for the colormap
-% colors = 'italian'; % ask for italian flag color map
-% colmap = cmapL(colors, n);
+% n = [20, 236]; % Using 20 colors for red-white, 236 colors for white-blue
+% colmap = cmapL('dutch', n);
 % figure; surf(img,'edgecolor','none'); colormap(colmap); colorbar
-% title("cmapL('italian',256)")
+% title("cmapL('dutch', [20, 236]): 20 for red-white, 236 for white-blue")
 %
 %
 %
 % possible colors by string request:
-% w = white
-% r = red
-% g = green
-% b = blue, but extra light
-% y = yellow
-% c = cyan (blue and green)
-% m = magenta
-% dutch = official reddish, white, blueish
-% italian = official reddish, white, greenish
+% w  = white
+% r  = red
+% g  = green
+% b  = blue, but extra light
+% y  = yellow
+% c  = cyan (blue and green)
+% m  = magenta
+% dutch     = official reddish, white, blueish
+% italian   = official reddish, white, greenish
 % italian roast = from yellowwhite, red  , black, green, cyanwhite
 % blue roast = from red, black, blue(white) safer for colorblind
-% viridis = purplish to green to yellow, from matplotlib
-% pastel = pastelish reddish, to blueish
-% inferno = black to purple to yellow, standard matplotlib
+% viridis   = purplish to green to yellow, from matplotlib
+% pastel    = pastelish reddish, to blueish
+% inferno   = black to purple to yellow, standard matplotlib
 % greenFancy = from black to blue to green to white
 % greenFancyDark = darker version of greenFancy
-% painbow = worst color scale award: https://xkcd.com/2537/
-% safe = suitable for colorblind in 11 steps
+% painbow   = worst color scale award: https://xkcd.com/2537/
+% safe      = suitable for colorblind in 11 steps
 %
 % Leander de Kraker
 % 2018-10-22, edited 2020-5-1
+% 2022-2-11: added ability to use different amounts of colors per color
 %
 
 % Change string request to
@@ -154,12 +160,26 @@ if ischar(colors)
     end
 end
 
-colmap = zeros(n,3); % preallocate colormap
+colmap = zeros(sum(n),3); % preallocate colormap
 if size(colors, 1) == 1 % Add the standard black color if necessary
     colors(2,:) = [0 0 0];
 end
 ncolors = size(colors, 1); % The number of different RGB colors in the colormap
-lims = floor(linspace(1, n, ncolors));
+
+lims = floor(linspace(1, sum(n), ncolors));
+
+% Use a certain amount of colors between each two requested colors
+if length(n)>1
+    if length(n) == (ncolors-1) % Create the requested limits
+        lims = cumsum([1 n]);
+    elseif length(n) > (ncolors-1)
+        warning(sprintf('Remove %d number of colors to output numbers. Or use only 1 value',...
+                        length(n)-(ncolors-1)))
+    elseif (length(n)-1) < ncolors
+        warning(sprintf('Add %d number of colors to output numbers. Or use only 1 value',...
+                        (ncolors-1)-length(n)))
+    end
+end
 
 % Fill the colormap
 for i = (ncolors-1):-1:1

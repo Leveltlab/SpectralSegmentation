@@ -289,6 +289,7 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     data = struct();
     if exist('SPSIGfile','var')
         data.SPSIGfile = SPSIGfile; % filename to save data to
+        set(h.hGUI, 'name', sprintf('RoiManagerGUI: %s', SPSIGfile(1:end-4)))
     end
     data.xas = (1:dim(1))./freq;
     data.dim = dim;
