@@ -23,12 +23,23 @@ selecting = true;
 i = 0;
 while selecting
     i = i + 1;
-    [filenames{i}, filepaths{i}] = uigetfile('*sbx', sprintf('file %d',i));
+    if i > 1
+        prompt = sprintf('file %d. Previous file: %s',i, filenames{i-1});
+    else
+        prompt = sprintf('file %d. Press cancel when done.');
+    end
     
-    if filenames{i} == 0 % Cancel is pressed probably: stop with selecting
+    [filenames{i}, filepaths{i}] = uigetfile('*sbx', prompt, 'MultiSelect', 'on');
+    
+    if ~iscell(filenames{i}) & filenames{i} == 0 % Cancel is pressed probably: stop with selecting
         filenames(i) = [];
         filepaths(i) = [];
         selecting = false;
+    elseif iscell(filenames{i}) % multiple files have been selected at once
+        nselected = length(filenames{i});
+        filenames(i:i+nselected-1) = filenames{i};
+        filepaths(i:i+nselected-1) = filepaths(i);
+        i = i + nselected - 1;
     end
 end
 filenames = filenames';

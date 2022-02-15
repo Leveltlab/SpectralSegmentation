@@ -8,9 +8,9 @@ function colmap = cmapL(colors, n)
 %
 % Input:
 %   colors [y x 3] 2D double: the RGB triples that are the colormap
-%   n (scalar, or [1 x y]): how many colors to output. 
+%   n (scalar, or [1 x (y-1)]): how many colors to output. 
 %           In the case of vector input: how many colors for each given
-%           color.
+%           color transition.
 %
 %
 % EXAMPLES:
