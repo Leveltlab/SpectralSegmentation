@@ -1,4 +1,6 @@
 function WriteSbx(fileSbx, data, varargin)
+% WriteSbx(fileSbx, data)
+% WriteSbx(fileSbx, data, Hz)
 % Write sbx file from workspace variable
 % 
 % Input: 
@@ -11,11 +13,12 @@ function WriteSbx(fileSbx, data, varargin)
 % Step 2: Select filename and location to save sbx file.
 % Step 3: Set the correct sampling rate
 % Step 4: run the code
-%
+% 
 % 
 % 
 % Leander de Kraker
-% 2021-9-17. 2021-12-13 Turned into function
+% 2021-9-17. 
+% 2021-12-13 Turned into function
 % 
 
 if exist('varargin', 'var') && nargin == 3
