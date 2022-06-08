@@ -22,7 +22,7 @@ function DecimateTrans(varargin)
 
 %% Get the filename
 
-freqDec = 0.5;
+freqDec = 1;
 strfp = [];
 if exist('varargin', 'var') && nargin == 1
     strfp = varargin{1};

@@ -26,7 +26,7 @@ while selecting
     if i > 1
         prompt = sprintf('file %d. Previous file: %s',i, filenames{i-1});
     else
-        prompt = sprintf('file %d. Press cancel when done.');
+        prompt = sprintf('file %d. Press cancel when done.', i);
     end
     
     [filenames{i}, filepaths{i}] = uigetfile('*sbx', prompt, 'MultiSelect', 'on');

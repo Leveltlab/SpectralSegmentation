@@ -34,7 +34,11 @@ end
 
 dims = size(data);
 RGB = zeros(dims(1), dims(2), 3);
-nslices = dims(3);
+if length(dims)>2
+    nslices = dims(3);
+else
+    nslices = 1;
+end
 
 
 % Remove -inf and replace with lowest actual value
