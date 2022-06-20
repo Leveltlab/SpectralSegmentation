@@ -6,7 +6,16 @@
 % Leander de Kraker
 % 
 % 2018-2-2
-% Last edit: 2020-2-24
+% History:
+% 2020-2-24 
+% 2020-5-22 Memory and speed improvement in registration.
+% 2021-5-17 Big update to chronic viewer: Editing matches is now practical
+% 2021-11-5 Cleaned up code. Shortening filenames & cutting edges in functions
+% 2022-3-1  Rotation uses nearest neighbour interpolation to prevent noise
+%               reduction which causes higher correlation with more rotation
+% 2022-4-12 Improved figure spam.
+% 
+% 
 
 clc
 %% Load SPSIG data
@@ -67,6 +76,7 @@ filenames = filenames';
 filepaths = filepaths';
 filedates = filedates';
 nfiles = length(filenames); % The number of files that have been selected
+
 %% Load the data of the selected files
 tic
 
@@ -85,6 +95,7 @@ toc
 clearvars selecting str pos i questionStr answerStr strdate
 
 %% Backing up data variable WHEN GOING TO RESIZE SOME RECORDINGS
+% This of course only resizes the images that are loaded in. actual recordings will not be edited
 data2 = data;
 %% Resize some recordings? ONLY IF RESIZE IS NECESSARY! Manual parameters!
 % This step is only necessary when recordings are made with different zoom
@@ -149,12 +160,7 @@ for i = 1:nfiles
     Masks{i} = data(i).Mask';
 end
 
-clearvars mini maxi Img idx i vals channel Maskextra
-
-% PLOTTING 
-% Activate much tighter subplots
-% [subplot margin top&side],[figure bottomspace,topspace],[leftspace,rightspace]
-subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0 0], [0 0]);
+% clearvars mini maxi Img idx i vals channel Maskextra
 
 toplot = 1:nfiles; % sessions to plot
 
@@ -167,16 +173,16 @@ elseif size(colors,1)==2
 end
 RGB = permute(CreateRGB2(BImg(toplot), colors(toplot,:)), [2 1 3]);
 
-figure; subplot(1,1,1)
+figure; subplot('Position', [0 0 1 1])
 imagesc(RGB)
 for i = 1:length(toplot)
     text(20, 20+i*17, datestr(filedates(toplot(i))),'color',colors(toplot(i),:),...
         'fontweight','bold','fontsize',12)
 end
-title('non-registered masks')
+figtitle('non-registered masks', 'Color', 'w')
 
 
-%% On first run
+%% On first run: Prepare for registration.
 
 BImg2 = BImg;
 Masks2 = Masks;
@@ -203,25 +209,6 @@ corrScoreMean = [];
 % Calculate similarity between the images
 corrScore = BImgOverlapScore(BImg);
 corrScoreMean(:,end+1) = [sum(corrScore)./(nfiles-1)]'; %#ok<NBRAK>
-
-%% Register images with manual GUI.
-
-BImg = BImg2;
-Masks = Masks2;
-imgs.BImg = BImg;
-imgs.Masks = Masks;
-interpol = {'bilinear', 'nearest'}; % How to interpolate each image for rotation?
-ManualRegistrationv3(imgs, PP, filenamesShort, interpol)
-
-%% Register images with manual ctrl point WARPING GUI.
-
-BImg = BImg2;
-Masks = Masks2;
-filenamesShort = ShortenFileNames(filenames, 1, filedates);
-imgs.BImg = BImg;
-imgs.Masks = Masks;
-interpol = {'bilinear', 'nearest'}; % How to interpolate each image for rotation?
-ManualRegistration(imgs, PP, filenamesShort, interpol)
 
 
 
@@ -330,11 +317,11 @@ corrScoreMean(:,end+1) = [sum(corrScore)./(nfiles-1)]'; %#ok<NBRAK>
 
 % Automatic Rotation registration %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 fprintf('rotating registration...\n')
-
 rotation = -1.5:0.05:1.5; % rotations to apply: counterclockwise to clockwise degrees
-rotCorrel  = zeros(nfiles, length(rotation));
 buf = 10; % buffer image edges because rotation makes part fall off
 
+
+rotCorrel  = zeros(nfiles, length(rotation));
 BImgRef = BImg2{referenceNum}(buf:end-buf,buf:end-buf);
 
 for i = 1:nfiles
@@ -343,8 +330,6 @@ for i = 1:nfiles
         BImgRot = BImgRot(buf:end-buf, buf:end-buf);
         
         rotCorrel(i,j)= corr2(BImgRot, BImgRef);
-%       imagesc(permute(CreateRGB({BImgRef, BImgRot},'r g'),[2 1 3]));
-%       title(sprintf('session %d. rotation %d: %.1fdeg. simil=%.3f',i,j,rotation(j),simil(i,j)))
     end
 end
 toc
@@ -355,28 +340,12 @@ rotAng = rotation(rotIdx);
 % difference in similarity between 0 rotation and best rotation
 rotDiff = rotBest - rotCorrel(:,rotation==0);
 
-figure
-% subplot(2,1,1)
-for i = 1:length(toplot)
-    plot(rotation, rotCorrel(toplot(i),:),'.-','color',colors(toplot(i),:))
-    hold on
-end
-plot(rotAng,rotBest,'xk')
-title(sprintf('image correlation with recording %d after different rotations buffer %d',...
-                referenceNum, buf))
-ylabel('correlation coefficient r')
-xlabel('rotation (degrees)'), xlim([min(rotation),max(rotation)])
-legend(filenamesShort)
 
 % Apply rotations__________________________________________________________
-% If difference between best and 0 is smaller than 0.01, don't bother
-% If the difference is that small, it's probably because of the artifact
-thres = 0.0005;
-rotAng(rotDiff<thres) = 0;
-rotAng(abs(rotAng)<0.03) = 0;
+rotAng(abs(rotAng)<0.02) = 0;
 rotAng(lockRecs) = []; % Do not rotate the recordings that shouldn't move
 
-for i = find(abs(rotAng)>0.03) % If rotation angle < 0.03, don't rotate
+for i = find(abs(rotAng)>0.02) % If rotation angle < 0.02, don't rotate
     
     fprintf('rotating recording %d: %.2f degrees: %.3f better\n', i, rotAng(i), rotDiff(i))
     
@@ -388,16 +357,6 @@ for i = find(abs(rotAng)>0.03) % If rotation angle < 0.03, don't rotate
     PP(i) = RotatePPCoordinates(PP(i), rotAng(i), size(BImg2{1}));
 end
 
-% Show the rotated images
-RGB = CreateRGB2(BImg2(toplot), colors);
-figure; subplot(1,1,1)
-imagesc(permute(RGB, [2,1,3]));
-title('registered background rotation corrected')
-for i = 1:length(toplot)
-    text(20, 20+i*17, filenamesShort{toplot(i)},'color',colors(toplot(i),:),...
-        'fontweight','bold','fontsize',12)
-end
-
 transformed.rotation{end+1} =  rotAng;
 transformed.recordings{end+1} = 1:nfiles;
 
@@ -406,20 +365,27 @@ corrScore = BImgOverlapScore(BImg2);
 corrScoreMean(:,end+1) = [sum(corrScore)./(nfiles-1)]'; %#ok<NBRAK>
 
 
-% Plot how well the background images overlap % % % % % % % % % % % % % % %
-clearvars subplot
+
+% Show the result of registration
+figure('Units', 'normalized', 'Position',[0.15 0.1 0.65 0.75])
+% The registered images
+subplot('Position', [0.04 0.05 0.65 0.95])
+RGB = CreateRGB2(BImg2(toplot), colors);
+imagesc(permute(RGB, [2,1,3]));
+figtitle(sprintf('Registration iteration %d', length(transformed.xoff)))
+for i = 1:length(toplot)
+    text(20, 20+i*17, filenamesShort{toplot(i)},'color',colors(toplot(i),:),...
+        'fontweight','bold','fontsize',12)
+end
 
 % Plot the change of correlation of the images over multiple
 % registration steps
-figure('units', 'normalized', 'OuterPosition', [0.4 0.3 0.3 0.5])
-h = subplot(1,1,1);
+h = subplot('Position', [0.8 0.7 0.175 0.25]);
+% h.PositionConstraint = 'outerposition';
 step = (1:size(corrScoreMean,2))-1;
 for i = 1:length(toplot)
     plot(step, corrScoreMean(toplot(i),:)', '-o', 'color', colors(toplot(i),:)); hold on
 end
-xlabel('transformation i')
-ylabel('correlation coefficient')
-legend(filenamesShort,'location', 'southeastoutside')
 h.XTick = 1:size(corrScoreMean,2);
 xLabels = cell(size(corrScoreMean,2),1);
 for j = 1:size(corrScoreMean,2)
@@ -428,10 +394,12 @@ for j = 1:size(corrScoreMean,2)
 end
 h.XTickLabel = xLabels;
 h.XTickLabelRotation = 45;
+ylabel('correlation coefficient')
+title('Average image correlation')
+legend(filenamesShort, 'Location', 'southeast')
 
-% The correlation between all seperate background images
-figure('units', 'normalized', 'OuterPosition', [0 0.3 0.4 0.6]);
-h = subplot(1,1,1);
+% Plot the correlation between all seperate background images
+h = subplot('Position', [0.8 0.45 0.175 0.175]);
 imagesc(corrScore);
 caxis([0 1]); colorbar
 h.XTick = 1:nfiles;
@@ -439,7 +407,20 @@ h.YTick = 1:nfiles;
 h.XTickLabel = filenamesShort;
 h.YTickLabel = filenamesShort;
 h.XTickLabelRotation = 45;
-title('correlation coefficients')
+title('Image correlation coefficients')
+
+% Plot the correlation of different rotations
+subplot('Position', [0.8 0.1 0.175 0.175])
+% h.PositionConstraint = 'outerposition';
+for i = 1:length(toplot)
+    plot(rotation, rotCorrel(toplot(i),:),'.-','color',colors(toplot(i),:))
+    hold on
+end
+plot(rotAng,rotBest,'xk')
+title(sprintf('Image correlation with rec %d', referenceNum))
+ylabel('Correlation coefficient r')
+xlabel('Rotation (degrees)'), xlim([min(rotation),max(rotation)])
+
 
 
 %% Checking how ROIs overlap. % % % % % % % %  MATCHING ROIS
@@ -604,31 +585,8 @@ for i = 2:nfiles
     end
 end
 
-% clearvars i j c otherMasks own compared idx rois limits
-
-% Creating Mask with only linked ROIs
-
-matchedMasks = Masks2;
-for i = 1:nfiles
-    idx = ismember(matchedMasks{i},linkMat2(:,i));
-    matchedMasks{i}(~idx) = 0; 
-end
-% 
-% matchedMasksm = CreateRGB(matchedMasks, toplot, colors, 'binary');
-% matchedMasksm = permute(matchedMasksm, [2,1,3]);
-% figure
-% imagesc(matchedMasksm)
-% title(sprintf('linked masks, links=%d, threshold = %.2f',size(linkMat2,1),thres2))
-% 
 clearvars i j r c m dif vals idx thisLink limits rois own compared otherMasks
 fprintf('\ndone matching ROIs\n')
-%
-% figure
-% imagesc(permute(CreateRGB(matchedMasks([1 2 3]), 'r g b', 'binary'), [2 1 3]))
-% title('recordings 1 2 3')
-% figure
-% imagesc(permute(CreateRGB(matchedMasks([4 5 6]), 'r g b', 'binary'), [2 1 3]))
-% title('recordings 4 5 6')
 
 
 
@@ -765,19 +723,9 @@ linkMat2 = linkMat2(sorted,:);
 score = score(sorted);
 nLinks = nLinks(sorted);
 
-% %% histograms of percentage overlap
-% overlaps = {inRoi{1}{:,2}, inRoi{2}{:,1},inRoi{1}{:,3}, inRoi{2}{:,3}, inRoi{3}{:,1},inRoi{3}{:,2}}';
-% overlaps = cell2mat(overlaps);
-% overlaps = overlaps(:,3);
-% [b, a] = hist(overlaps, 25);
-% h1 = bar(a,b);
-% h1.FaceColor = [0 0 1];
-% h1.FaceAlpha = 0.8;
-
 clearvars keep idx i j n matchedMasks h h1 RGB rois spaces
 
 %% Chronic viewer checker UI
-filenamesShort = ShortenFileNames(filenames, 1, filedates);
 
 ChronicViewer(BImg2, Masks2, filenamesShort, nLinksMask, linkMat2, PP, score, inRoi)
 % If you saved changes in linkMat with the ChronicViewer, rerun previous
