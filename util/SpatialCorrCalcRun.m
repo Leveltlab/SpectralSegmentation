@@ -13,15 +13,15 @@
 % CALCULATE variance of correlation for PP update?? % % %
 calcRvar = true;
 
-% Load transposed sbx data
-[fnSbx, pnSbx] = uigetfile('*TRANS.dat', 'load raw data (sbx file)');
-nameSbx = [pnSbx, fnSbx];
-[sbxt, dim, freq] = transmemap(nameSbx);
-
 % Load the mask and contour data, and the old spatialcorr
 [fnSpsig, pnSpsig] = uigetfile('*SPSIG.mat','load mask data (SPSIG file)');
 nameSpsig = [pnSpsig, fnSpsig];
 load(nameSpsig, 'PP', 'Mask', 'SpatialCorr')
+
+% Load transposed sbx data
+[fnSbx, pnSbx] = uigetfile('*DECTRANS.dat', 'load raw data (sbx file)');
+nameSbx = [pnSbx, fnSbx];
+[sbxt, dim, freq] = transmemap(nameSbx);
 
 % % enlarge the ROI masks for extra viewing pleasure!
 % [~,~,maskExtra] = BufferMask(Mask, 2); 
@@ -76,7 +76,7 @@ end
 %% Save the new SpatialCorr
 SpatialCorr = SpatialCorrNew;
 
-fprintf('\nSaving the data to the SPSIG file!\n')
+fprintf('\nSaving the data to the SPSIG file\n')
 if calcRvar
     PP.Rvar = rvar;
     save(nameSpsig, 'SpatialCorr', 'PP', '-append')

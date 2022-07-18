@@ -7,7 +7,7 @@ function ChronicViewer(BImgs, Masks, names, nLinksMask, linkMat, contours, score
 % When editing the match matrix, duplicate ROI numbers will be removed 
 % automatically.
 % 
-% ChronicViewer2(BImg2, Masks2, names, nLinksMask, linkMat, contours, score, inRoi)
+% ChronicViewer2(BImgs, Maskss, names, nLinksMask, linkMat, contours, score, inRoi)
 % BImgs: [1 x n] cell array with 2D double. Registered spectral images.
 % Masks: [1 x n] cell array with 2D double. Registered ROI masks.
 % names: [1 x n] string names of the different recordings.
@@ -33,10 +33,6 @@ function ChronicViewer(BImgs, Masks, names, nLinksMask, linkMat, contours, score
 tableRowHeight =  17.8349; 
 
 nfiles = length(Masks);
-
-BImgs = cellfun(@transpose, BImgs, 'un',0);
-Masks = cellfun(@transpose, Masks, 'un',0);
-nLinksMask = cellfun(@transpose, nLinksMask, 'un',0); 
 
 dims = size(Masks{1});
 
@@ -446,7 +442,7 @@ function UpdateView
                 linkHeat{x}(~ismember(linkHeat{x},idx)) = 0;
             end
             linkHeat = cellfun(@logical, linkHeat(sShow2), 'UniformOutput', false);
-            linkHeat = reshape(cell2mat(linkHeat), [dims, nShow]);
+            linkHeat = cat(3, linkHeat{:});
             hImg.CData = sum(linkHeat,3);
             colormap hot
             

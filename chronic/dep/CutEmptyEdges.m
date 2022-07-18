@@ -1,4 +1,4 @@
-function [BImg2, Masks2, PP] = CutEmptyEdges(BImg2, Masks2, PP, nfiles)
+function [BImg2, Masks2, PP, cutting] = CutEmptyEdges(BImg2, Masks2, PP, nfiles)
 %  [BImg2, Masks2, PP] = CutEmptyEdges(BImg2, Masks2, PP)
 % Cuts away edges which only contain zeros in the BImg2 from the BImg and
 % corresponding Masks, and also edits the contour information accordingly.
@@ -14,6 +14,8 @@ BImgMat = max(BImgMat,[],3);
 zeroCols = find(all(BImgMat'==0));
 zeroRows = find(all(BImgMat==0));
 
+cutting = nan(4, 1);
+
 if ~isempty(zeroCols)
     % Cut at the end (bottom)
     if ismember(size(BImgMat,1), zeroCols) % Does the end have columns with only zeros?
@@ -28,6 +30,8 @@ if ~isempty(zeroCols)
         else
             skipper = 1;
         end
+        cutting(1) = zeroCols(skipper);
+        
         for i = 1:nfiles
             BImg2{i}(zeroCols(skipper):end,:) = [];
             Masks2{i}(zeroCols(skipper):end,:) = [];
@@ -45,6 +49,9 @@ if ~isempty(zeroCols)
         else
             skipper = length(zeroCols); 
         end
+        cutting(2) = zeroCols(skipper);
+
+        
         for i = 1:nfiles
             BImg2{i}(1:zeroCols(skipper),:) = [];
             Masks2{i}(1:zeroCols(skipper),:) = [];
@@ -69,6 +76,8 @@ if ~isempty(zeroRows)
         else
             skipper = 1;
         end
+        cutting(3) = zeroRows(skipper);
+        
         for i = 1:nfiles
             BImg2{i}(:,zeroRows(skipper):end) = [];
             Masks2{i}(:,zeroRows(skipper):end) = [];
@@ -86,6 +95,8 @@ if ~isempty(zeroRows)
         else
             skipper = length(zeroRows); 
         end
+        cutting(4) = zeroRows(skipper);
+
         for i = 1:nfiles
             BImg2{i}(:,1:zeroRows(skipper)) = [];
             Masks2{i}(:,1:zeroRows(skipper)) = [];

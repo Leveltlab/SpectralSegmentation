@@ -1896,14 +1896,14 @@ function backGrdView(selected, h)
 
         
         switch selected
-            case 1 % Spectral image
+            case 1 % Spectral image, colored by frequency
                 switches.viewToggle = 999;
                 [colors, stoselect] = backgrdDLim_Update(h, data.Sax);
                 
                 h.im.CData = CreateRGB2_mat(data.imgStackT(:,:,stoselect), colors, true, true);
                 
     
-            case 2 % Spectral image, colored by frequency
+            case 2 % Spectral image
                 h.im.CData = data.BImg;
                 colormap(gray)
                 

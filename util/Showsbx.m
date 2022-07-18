@@ -114,11 +114,9 @@ clim = prctile(unique(Img(:)), [2 99.8]);
 
 f  = figure('ToolBar','none');
 
-scrnSz = get(0,'ScreenSize');
-desiredSz = [min(725, scrnSz(3)), min(500, scrnSz(4))];
-p1 = round(scrnSz(3)/2)-round(desiredSz(1)/2); % Set figure around center of screen
-p2 = round(scrnSz(4)/2)-round(desiredSz(2)/2);
-set(f, 'Position', [p1 p2 desiredSz(1) desiredSz(2)-25]);
+
+pos = GetCenteredFigPos([725 500]);
+set(f, 'Position', pos);
 set(f, 'Name', filename{1});
 helpabout = findall(f, 'tag', 'figMenuHelp');
 
@@ -368,7 +366,7 @@ uimenu(cm,'Label','Save cropped sbx file','Callback', @cropfile);
 
     function BImgToWorkspace(~,~)
         % Save the Img to workspace
-        BImg = Img - double(clim(1));
+        BImg = double(Img) - double(clim(1));
         BImg = BImg./double(clim(2)-clim(1));
         assignin('base', 'BImg', BImg)
     end
