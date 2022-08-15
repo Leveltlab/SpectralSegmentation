@@ -19,6 +19,13 @@ Or via the script that runs the pipeline automatically for as many files as requ
 <img src="https://github.com/Leveltlab/SpectralSegmentation/blob/master/docs/Figure_Analysis_Pipeline.png" width="700" align="center">
 
 
+Readme's
+======
+[Pipeline manual](https://github.com/Leveltlab/SpectralSegmentation/blob/master/docs/Spectral-Segmentation_Manual.pdf)
+
+[RoiManagerGUI manual](https://github.com/Leveltlab/SpectralSegmentation/blob/master/docs/RoiManagerGUI_Manual_V4.pdf). User interface for data exploration and ROI editing
+
+
 Why use the spectral segmentation toolbox
 ===========
 - User-friendly.
@@ -61,12 +68,6 @@ To find a suitable compiler go to: https://www.mathworks.com/support/compilers.
 If you get the C++ compiler by installing Visual Studio, make sure to install:
  [*Desktop Development with C++*](https://www.mathworks.com/matlabcentral/answers/443349-how-do-i-install-visual-studio-2017-or-2019-for-use-with-matlab-simulink).
 
-Readme's
-======
-[Pipeline manual](https://github.com/Leveltlab/SpectralSegmentation/blob/master/docs/Spectral-Segmentation_Manual.pdf)
-
-[RoiManagerGUI manual](https://github.com/Leveltlab/SpectralSegmentation/blob/master/docs/RoiManagerGUI_Manual_V3.pdf)
-
 
 Paper
 ======
@@ -89,7 +90,7 @@ They are required for some of the functions and scripts in the toolbox.
 
 Troubleshooting/ questions
 ======
-For questions, troubleshooting or comments, 
+For any questions, troubleshooting or comments, 
 please contact Chris van der Togt (c.vandertogt@nin.knaw.nl) or Leander de Kraker (l.de.kraker@nin.knaw.nl).
 Or open an [issue](https://github.com/Leveltlab/SpectralSegmentation/issues) in this Git.
 	
@@ -112,7 +113,7 @@ Download the code from these toolboxes to be able to use them in the Spectral Se
 - Motion correction code [*NoRMCorre*](https://github.com/flatironinstitute/NoRMCorre) is adapted to process .sbx files. Place the NoRMCorre path below the SpectralSegmentation path in Matlab.
 - ROI calcium signal signal spike estimation with [*MLspike*](https://github.com/MLspike/spikes).
 
-The following 3rd party functions are used in the spectral segmentation toolbox, they are inside the dependency folders.
+The following 3rd party functions are used in the spectral segmentation toolbox, they are already present in the Spectral Segmentation toolbox.
 - [*subtightplot*](https://www.mathworks.com/matlabcentral/fileexchange/39664-subtightplot): 
 	Felipe G. Nievinski (2020).
 - [*xcorr2\_fft*](https://www.mathworks.com/matlabcentral/fileexchange/53570-xcorr2\_fft-a-b):

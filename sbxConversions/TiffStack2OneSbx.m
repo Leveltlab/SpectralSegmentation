@@ -1,13 +1,17 @@
-% Takes tiff file(s) which consists of multiple grayscale images
-%    and converts it to one 16 bit unsigned integer sbx format, with
-%    accompanying .mat info file
+% Takes multiple tiff file(s) which consists of multiple grayscale images
+%    and converts all of them to one 16 bit unsigned integer sbx format, 
+%    with accompanying .mat info file
+% 
 % This is to combine multiple tiff files of one long recording into one sbx
 % file.
 %
-% Pop up enables loading of as many tif files as you want. Press cancel
-% when done with selecting
+% Step 1. Select a tiff file and press ok. Repeat this.
+% Step 2. Press cancel when done with selecting all the tiff files. 
+% Step 3. Set filename and folder for the one sbx file to output. Press ok.
 %
 %
+% Script is only tested on grayscale data.
+% 
 % Leander de Kraker
 % 2021-6-9
 %

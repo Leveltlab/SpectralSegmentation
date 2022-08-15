@@ -1,9 +1,13 @@
 % Takes tiff file(s) which consists of multiple grayscale images
 %    and converts it to 16 bit unsigned integer sbx format, with
 %    accompanying .mat info file
-% Pop up enables loading of as many tif files as you want. Press cancel
-% when done with selecting
-%
+% Pop up enables loading of as many tif files as you want. Each selected
+% file will result in a seperate sbx file.
+% Press cancel when done with selecting.
+% 
+% 
+% Script is only tested on grayscale data.
+% 
 % Leander de Kraker
 % 2020-11-5
 %

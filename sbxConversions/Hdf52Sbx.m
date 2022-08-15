@@ -5,6 +5,8 @@
 % Step 4: Repeat step 1-3 for as many files as you want to convert. Press
 %         cancel when done selecting files.
 % 
+% Script is only tested on grayscale data.
+% 
 % Leander de Kraker
 % 2021-4-6
 % 

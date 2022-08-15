@@ -2561,10 +2561,10 @@ function Help_Callback(~, eventdata, h) %#ok<DEFNU>
             str{12}= 'Do not forget to press "apply", or "enter" on your keyboard, when you are happy with the clustering.';
             
         case 'saveHelp' % Main Save button
-            strTitle = 'Save info';
-            str = {['If the "RoiRejecter" was called with input, the save function will only save'...
+            strTitle = 'Save/ general info';
+            str = {['If the "RoiManagerGUI" was called with input, the save function will only save'...
             	' the PP, Mask and SpatialCorr variables to the workspace.']};
-            str{3} = [' If the "RoiRejecter" has loaded a SPSIG.mat file the save button will ALSO save'...
+            str{3} = [' If the "RoiManagerGUI" has loaded a SPSIG.mat file the save button will ALSO save'...
             	' the PP, Mask and SpatialCorr variables to the SPSIG, overwriting existing ones.'];
             
             % Also say which SPSIG file is loaded
@@ -2573,11 +2573,14 @@ function Help_Callback(~, eventdata, h) %#ok<DEFNU>
                 str{5} = ['loaded file: ' data.SPSIGfile];
             end
             
-            str{8}  = 'hotkeys can be used:';
-            str{9}  = 'z = toggle zoom (shift click to zoom out)';
-            str{10} = 'g = grab/pan image';
-            str{11} = 'd = datacursor (pretty useless)';
-            str{12} = '"enter"  can be used to apply ROI creation or splitting';
+            sbxt = getappdata(h.hGUI, 'sbxt');
+            str{7} = ['memorymapped transposed data file: ' sbxt.Filename]; 
+            
+            str{9}  = 'hotkeys can be used:';
+            str{10}  = 'z = toggle zoom (shift click to zoom out)';
+            str{11} = 'g = grab/pan image';
+            str{12} = 'd = datacursor (pretty useless)';
+            str{13} = '"enter"  can be used to apply ROI creation or splitting';
             
         otherwise
             strTitle = 'otherwise is an error';

@@ -1,12 +1,20 @@
 % Converts one folder full of tif files which each consist of one frame
 % and converts those to one sbx file
+% 
+% Step 1. Select the folder that contains all the tiff frames. press ok.
+% Step 2. Select the folder and filename for the output sbx file
+% 
 %
+% Script is only tested on grayscale data.
+% 
 % Chris v.d. Togt
+% 2022-8-15. Added info and better prompt names - Leander
+% 
 
-fp = uigetdir();
+fp = uigetdir('', 'Select folder that contains the tiff frames');
 files = dir([fp '/*.tif*']);
 [~, fn] = fileparts(files(1).name);  
-[Fn, strSavepath] = uiputfile([fn '.sbx']);
+[Fn, strSavepath] = uiputfile([fn '.sbx'], 'Select folder and filename of output sbx file');
 fileID = fopen([strSavepath Fn], 'w');
 
 hwb = waitbar(0, 'writing sbx file');

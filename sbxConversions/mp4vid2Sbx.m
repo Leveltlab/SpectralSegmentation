@@ -1,11 +1,15 @@
 % Convert MPEG-4 (MP4) files to sbx.
 % The three color channels will be averaged into one grayscale video
 % 
+% 
 % Step 1: Select mp4 file.
 % Step 2: Select filename and location to save sbx file.
 % Step 3: Type the data sampling rate in Hz
 % Step 4: Repeat step 1-3 for as many files as you want to convert. Press
 %         cancel when done selecting files.
+% 
+% In my experience mp4 video suffers from compression artifacts which do
+% degrade data quality. The 8 bit integers also do not offer much quality.
 % 
 % Leander de Kraker
 % 2022-4-19
