@@ -1,4 +1,5 @@
 SpecSeg: Cross spectral power-based segmentation of neurons and neurites in chronic calcium imaging datasets
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6993003.svg)](https://doi.org/10.5281/zenodo.6993003)
 ===========
 
 This Github contains 'SpecSeg', an open source calcium imaging processing toolbox to detect regions of interest (ROIs) in calcium imaging datasets.
@@ -97,6 +98,7 @@ Developers
 - Chris v.d. Togt.  **Netherlands Insititue of Neuroscience (NIN)**
 - Leander de Kraker.  **Netherlands Insititue of Neuroscience (NIN)**
 
+cite as: Leanderrr, & Chris van der Togt. (2022). Leveltlab/SpectralSegmentation: Public Release 1.0.1 (V1.01). Zenodo. https://doi.org/10.5281/zenodo.6993003
 
 License
 =======
