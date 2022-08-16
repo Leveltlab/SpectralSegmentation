@@ -99,7 +99,7 @@ Developers
 - Chris v.d. Togt.  **Netherlands Insititue of Neuroscience (NIN)**
 - Leander de Kraker.  **Netherlands Insititue of Neuroscience (NIN)**
 
-cite as: Leanderrr, & Chris van der Togt. (2022). Leveltlab/SpectralSegmentation: Public Release 1.0.1 (V1.01). Zenodo. https://doi.org/10.5281/zenodo.6993003
+cite as: Leander de Kraker, & Chris van der Togt. (2022). Leveltlab/SpectralSegmentation: Public Release 1.0.1 (V1.01). Zenodo. https://doi.org/10.5281/zenodo.6993003
 
 License
 =======
