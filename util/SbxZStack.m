@@ -244,13 +244,9 @@ linkaxes([handvatSub(2) handvatSub(3)], 'y')
 %% Save figure
 SaveImg('png')
 
-%% Remove bleedthrough from the 2 different color channels
-greXY2 = DeBleed(greXY, redXY, true);
-redXY2 = DeBleed(redXY, greXY, true);
-
 %% save the stack
 
-[saveName, saveFolder] = uiputfile('where to save stack data');
+[saveName, saveFolder] = uiputfile([fn(1:end-4), '_StackData.mat'], 'where to save stack data');
 save([saveFolder, saveName], 'dataGre', 'dataRed', 'greXY', 'redXY', 'RGBXY',...
                              'x', 'y', 'z', 'zoom', '')
 
@@ -318,13 +314,7 @@ clearvars imgDepth1 imgDepth2 imgDepth3 index  zLabels screenSize
 clearvars handvat hand handvatSub colorsDep depthmu depthQuest
 
 
-%% Walk through the Zstack
-% With the tool made by Tobias v.d. Bijl
-
-viewVolume(log1p(dataGre2))
-
-
-%% Slice up the Zstack with red and green images
+%% Slice up the Zstack with red and green images (choose one at a time)
 
 % Green green-channel, red red-channel
 ViewVolumeRGB1({dataRed2, dataGre2}, scalexy, z)
