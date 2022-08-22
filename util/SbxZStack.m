@@ -1,14 +1,27 @@
-% Visualize an sbx z stack recording
-% Run only one of the two reading options: OPTOTUNE or KNOBBY
+% For analysis of z-stacks
+% zstacks can be created in multiple ways, two ways are supported here:
+%
+% Optotune stacks are created by going through the different depths of the
+% stack multiple times.
+% Knobby stacks are created by staying at a certain spot for a while and
+% then moving on. This creates less nice data (because there is more time
+% before the next depth is imaged, the fluorescence can change between
+% depths, increasing likelyhood that cells are missed, at least in some
+% depths.)
+%
 %
 % Leander de Kraker
 % 2018-10-15
+%
+
+fov = 1000; % amount of um the microscope images with 1x zoom
+zoom = 1.6; % MICROSCOPE ZOOM LEVEL, FROM LOGBOOK
 
 [fn, pn] = uigetfile('%.mat', 'get info file of sbx z stack file');
 filename = [pn fn];
 load(filename)
 
-%% OPTOTUNE  COMPATIBLE
+%% OPTION 1: OPTOTUNE  COMPATIBLE % % % % % % %
 % Optotune stacks are created by going through the different depths of the
 % stack multiple times. 
 % 
@@ -33,46 +46,58 @@ end
 
 % Reading the file and seperating red and green
 data = sbxread(filename(1:end-4), 0, nframes);
-dataRed = squeeze(data(2,:,:,:));
-dataGre = squeeze(data(1,:,:,:));
+
+% Set max value to 
+data(data>65000) = mean(data(:));
+
+% dataRed = squeeze(data(2,:,:,:));
+% dataGre = squeeze(data(1,:,:,:));
+dataRed = squeeze(data(:,:,2,:));
+dataGre = squeeze(data(:,:,1,:));
 dims = size(dataGre);
 
 % Averaging the different frames with each other
 nFA = floor(dims(3)/ndepths); % number of Frames Actually possible
 if nFA*ndepths ~= nframes
-    fprintf('Ask Prem wtf\n')
+    fprintf('Some frames have not completed a stack\n')
 end
 % Averaging the depths by reshaping the data so each frame gets put in a
 % 4th dimension
 dataRed = mean(reshape(dataRed(:,:,1:nFA*ndepths), dims(1), dims(2),ndepths ,nFA),4);
 dataGre = mean(reshape(dataGre(:,:,1:nFA*ndepths), dims(1), dims(2),ndepths, nFA),4);
 
-dataRed2 = dataRed;
-lim1 = prctile(dataRed2(:),10);
-lim2 = 20534; % Set the maxed out lines to lowest value for visibility
-dataRed2(dataRed2<lim1 | dataRed2>lim2) = lim1;
-dataRed2 = (dataRed2-min(dataRed2(:)))/range(dataRed2(:));
-dataGre2 = dataGre;
-lim1 = prctile(dataGre2(:),10);
-lim2 = 20534;
-dataGre2(dataGre2<lim1 | dataGre2>lim2) = lim1;
-dataGre2 = (dataGre2-min(dataGre2(:)))/range(dataGre2(:));
+% ! IN SOME CASES ONLY THE FIRST DEPTH IS ACTUALLY THE LAST DEPTH !
+dataGre = cat(3, dataGre(:,:,2:end), dataGre(:,:,1));
+dataRed = cat(3, dataRed(:,:,2:end), dataRed(:,:,1));
 
-zoom = 1.6; % FROM LOGBOOK
-scalexy = (1000/zoom) / dims(2); % µm images / number of pixels DEPENDS ON ZOOM
+% Changing the brigtness a bit
+dataRed2 = dataRed;
+lim1 = prctile(dataRed2(:), 0.5);
+lim2 = prctile(dataRed2(:), 99.999);
+dataRed2(dataRed2<lim1) = lim1;
+dataRed2(dataRed2>lim2) = lim2;
+dataRed2 = dataRed2-min(dataRed2(:))/range(dataRed2(:));
+dataGre2 = dataGre;
+lim1 = prctile(dataGre2(:), 0.5);
+lim2 = prctile(dataRed2(:), 99.999);
+dataGre2(dataGre2<lim1) = lim1;
+dataGre2(dataGre2>lim2) = lim2;
+dataGre2 = dataGre2-min(dataGre2(:))/range(dataGre2(:));
+
+scalexy = (fov/zoom) / dims(2); % µm images / number of pixels DEPENDS ON ZOOM
 
 x = [1:dims(2)]*scalexy; % The position of pixels in um
 y = [1:dims(1)]*scalexy;
 z = info.otwave_um; % [1:dims(3)]*scalexz % scale 
 
 
-%% KNOBBY
+%% OPTION 2: KNOBBY STACK % % % % %% 
 % Knobby stacks are created by doing imaging the same depth x amount of
 % times and then going to the next depth.
 % 
 % As far as I know almost all the info in the info files is wrong
 
-nreps = 1000; % number of frames per depth (repetitions)
+nreps = 10; % number of frames per depth (repetitions)
 nframes = info.config.frames;
 ndepths = nframes/nreps;
 depthStart = 0:nreps:nframes-1;
@@ -81,8 +106,10 @@ fprintf('number of depths: %.1f\n',ndepths)
 exampleFrame = sbxread(filename(1:end-4), 0, 3);
 dims = size(exampleFrame);
 nchannels = dims(1);
-heig = dims(1);
-wid = dims(2);
+% heig = dims(1);
+% wid = dims(2);
+heig = dims(2);
+wid = dims(3);
 if nchannels ~= 2
     warning('There are %d color channels. This code would probably crash.', nchannels)
     error('There need to be 2 color channels')
@@ -98,29 +125,33 @@ for i = 1:ndepths
     dataBuffer = sbxread(filename(1:end-4), depthStart(i), nreps);
     dataGre(:,:,i) = squeeze(mean(dataBuffer(1, :, :, :),4));
     dataRed(:,:,i) = squeeze(mean(dataBuffer(2, :, :, :),4));
+%     dataGre(:,:,i) = squeeze(mean(dataBuffer(:, :, 1, :),4));
+%     dataRed(:,:,i) = squeeze(mean(dataBuffer(:, :, 2, :),4));
     if mod(i,5)==0
         fprintf('processing depth %d/%d, elapsed time %.1f minutes\n', i, ndepths, toc/60)
     end
 end
 
 dataRed2 = dataRed;
-lim1 = prctile(dataRed2(:),50);
-lim2 = 65534;
-dataRed2(dataRed2<lim1 | dataRed2>lim2) = lim1;
+lim1 = prctile(dataRed2(:), 1);
+lim2 = prctile(dataRed2(:), 99.99);
+dataRed2(dataRed2<lim1) = lim1;
+dataRed2(dataRed2>lim2) = lim2;
 dataRed2 = dataRed2-min(dataRed2(:))/range(dataRed2(:));
 dataGre2 = dataGre;
-lim1 = prctile(dataGre2(:),3);
-lim2 = 65534;
-dataGre2(dataGre2<lim1 | dataGre2>lim2) = lim1;
+lim1 = prctile(dataGre2(:), 1);
+lim2 = prctile(dataRed2(:), 99.99);
+dataGre2(dataGre2<lim1) = lim1;
+dataGre2(dataGre2>lim2) = lim2;
 dataGre2 = dataGre2-min(dataGre2(:))/range(dataGre2(:));
 
-zoom = 1.6;
-standardSize = 1000; % According to the website 1mm->1000µm is the standard FOV
-scalexy = (1000/zoom) / wid; % µm images / number of pixels | DEPENDS ON ZOOM
+% According to the website 1mm->1000µm is the standard FOV
+scalexy = (fov/zoom) / wid; % µm images / number of pixels | DEPENDS ON ZOOM
 
 x = [1:wid]*scalexy; % The position of pixels in um
 y = [1:heig]*scalexy;
-z = 1:5:5*92; % z scale | INFO FROM LOGBOOK
+% z = 1:5:5*92; % z scale | INFO FROM LOGBOOK
+z = (1:ndepths).*2; % z scale | INFO FROM LOGBOOK
 
 
 
@@ -153,18 +184,18 @@ end
 subplot('position', position1)
 greXZ = log1p(squeeze(max(dataGre2,[],1)))';
 redXZ = log1p(squeeze(max(dataRed2,[],1)))';
-RGBXZ = CreateRGB({redXZ, greXZ}, 1:2, 'r g');
+RGBXZ = CreateRGB({redXZ, greXZ}, 'r g');
 imagesc(x,z,RGBXZ)
 title('max projections of zstack, axis in µm')
 subplot('position', position2)
-greXY = log1p(squeeze(max(dataGre2,[],3)));
-redXY = log1p(squeeze(max(dataRed2,[],3)));
-RGBXY = CreateRGB({redXY, greXY}, 1:2, 'r g');
+greXY = squeeze(max(dataGre2,[],3));
+redXY = squeeze(max(dataRed2,[],3));
+RGBXY = CreateRGB({redXY, greXY}, 'r g');
 imagesc(x,y,RGBXY)
 subplot('position', position3)
-greZY = log1p(squeeze(max(dataGre2,[],2)));
-redZY = log1p(squeeze(max(dataRed2,[],2)));
-RGBZY = CreateRGB({redZY, greZY}, 1:2, 'r g');
+greZY = squeeze(max(dataGre2,[],2));
+redZY = squeeze(max(dataRed2,[],2));
+RGBZY = CreateRGB({redZY, greZY}, 'r g');
 imagesc(z,y,RGBZY)
 
 % Plot only the red channel__________________________________________
@@ -185,7 +216,7 @@ subplot('position', position2)
 imagesc(x,y,redXY)
 subplot('position', position3)
 imagesc(z,y,redZY)
-colormap(cmapL([1 1 1; 1 1 0; 1 0 0; 0.3 0 0; 0 0 0],256))
+colormap(cmapL([1 1 1; 1 0.5 0; 0.8 0 0; 0.3 0 0; 0 0 0],256))
 
 % Plot only the green channel__________________________________________
 handvatSub = gobjects(3,1);
@@ -206,41 +237,48 @@ handvatSub(2) = subplot('position', position2);
 imagesc(x,y,greXY)
 handvatSub(3) = subplot('position', position3);
 imagesc(z,y,greZY)
-colormap(cmapL([1 1 1; 0 0.7 0; 0 0 0],256))
+colormap(cmapL([1 1 0.5; 0 0.7 0; 0 0 0],256))
 linkaxes([handvatSub(1) handvatSub(2)], 'x')
 linkaxes([handvatSub(2) handvatSub(3)], 'y')
 
 %% Save figure
+SaveImg('png')
 
-[savename, savepath] = uiputfile();
-oldpath = cd;
-cd(savepath)
-print(gcf, '-dpng',[savename '.png'], '-r300')
-cd(oldpath) % navigate back to original folder
+%% Remove bleedthrough from the 2 different color channels
+greXY2 = DeBleed(greXY, redXY, true);
+redXY2 = DeBleed(redXY, greXY, true);
+
+%% save the stack
+
+[saveName, saveFolder] = uiputfile('where to save stack data');
+save([saveFolder, saveName], 'dataGre', 'dataRed', 'greXY', 'redXY', 'RGBXY',...
+                             'x', 'y', 'z', 'zoom', '')
 
 %% Colorful depth image like in Glas, Goltstein 2019: miniaturized 2P imaging in mouse V
 
-dataGre2Cell = squeeze(squeeze(num2cell(dataGre2,[1 2])));
-dataRed2Cell = squeeze(squeeze(num2cell(dataRed2,[1 2])));
 colorsDep = cmapL([1 0 0; 1 1 0; 0 1 0; 0 1 1; 0.3 0.3 1; 0 0 1], ndepths);
 
 figure
-imagesc(CreateRGB2(dataGre2Cell, 1:ndepths, colorsDep))
+imagesc(CreateRGB2_mat(dataGre2, colorsDep))
 colormap(colorsDep)
 title('green Z stack colored by depth')
 hand = colorbar;
+zLabels = cell(length(hand.Ticks), 1);
+zLabels([1 end]) = {num2str(z(1)), num2str(z(end))};
+hand.TickLabels = zLabels;
 title(hand, 'depth')
 
 figure
-imagesc(CreateRGB2(dataRed2Cell, 1:ndepths, colorsDep))
+imagesc(CreateRGB2_mat(dataRed2, colorsDep))
 title('red Z stack colored by depth')
 colormap(colorsDep)
 hand = colorbar;
+hand.TickLabels = zLabels;
 title(hand, 'depth')
 
 
 %% plot 3 slices of the data
-depthsQuest = [80 160 250]; % Requested depths to plot
+depthsQuest = [40 100 160]; % Requested depths to plot
 index = zeros(1,3);
 for i = 1:3 % Find closest imaged plane
     [~, index(i)] = min(abs(double(z)-depthsQuest(i)));
@@ -260,7 +298,7 @@ imgDepth1 = dataGre2(:,:,index(1));
 imgDepth2 = dataGre2(:,:,index(2));
 imgDepth3 = dataGre2(:,:,index(3));
 handvat(2) = subplot(3,2,5);
-imagesc(x,y,CreateRGB({imgDepth1 imgDepth2 imgDepth3}, 1:3, 'r g b'))
+imagesc(x,y,CreateRGB({imgDepth1 imgDepth2 imgDepth3}, 'r g b'))
 title(sprintf('red = %dµm, green=%dµm, blue=%dµm', depthmu(1),depthmu(2),depthmu(3)))
 handvat(3) = subplot(3, 2, 2);
 imagesc(x,y,imgDepth1)
@@ -274,20 +312,46 @@ title(sprintf('depth %d um', depthmu(3)))
 colormap(cmapL([1 1 1; 0 0.8 0; 0 0 0],256))
 linkaxes(handvat,'x')
 
+%% clear some variables
+clearvars i j k m h lim1 lim2 position1 position2 position3 zs xs ys w h m2
+clearvars imgDepth1 imgDepth2 imgDepth3 index  zLabels screenSize
+clearvars handvat hand handvatSub colorsDep depthmu depthQuest
+
 
 %% Walk through the Zstack
 % With the tool made by Tobias v.d. Bijl
 
 viewVolume(log1p(dataGre2))
 
+
+%% Slice up the Zstack with red and green images
+
+% Green green-channel, red red-channel
+ViewVolumeRGB1({dataRed2, dataGre2}, scalexy, z)
+
+% White red-channel
+ViewVolumeRGB1(dataRed2, scalexy, z)
+
+% Redlike red-channel
+ViewVolumeRGB1({log1p(dataRed2), dataRed2, dataRed2}, scalexy, z)
+
+% Greenlike green-channel
+ViewVolumeRGB1({dataGre2, log1p(dataGre2), dataGre2}, scalexy, z)
+
+% Green green-channel, purple(magenta) red-channel
+ViewVolumeRGB1({log1p(dataRed2), dataGre2, dataRed2}, scalexy, z)
+
+
+
 %% Walk through the Z stack
 figure
-for i = 1:size(dataGre,3)
-    imagesc(dataGre(:,111:end,i));
+for i = 1:size(dataGre2,3)
+    imagesc(CreateRGB({dataGre2(:,:,i), dataRed2(:,:,i)}, 'g r'));
     title(sprintf('%d',i))
     pause()
 end
-%% Register the two different stacks
+
+%% Register two different stacks (knobby stack vs optotune stack)
 % Lots of registering
 %
 % Backup the dataGre etc
@@ -359,7 +423,13 @@ dataRed2Knobsub = dataRed2Knobsub(1:3:end,1:3:end,:);
 subplot = @(m,n,p) subtightplot (m, n, p, [0.06 0.03], [0.05 0.05], [0.05 0.05]);
 
 % Coordinates of some neurons (row, col)
-pos = [353 168; 231 193; 242 227; 250 265; 106 316; 197 388; 328 291; 500 162];
+% pos = [137, 143;  196, 257;  271, 279;  294, 494;  340, 343;  371, 257;...
+%        387, 500;  390, 357;  394, 100;  410, 184;  444, 269;  461, 341;  537, 365;...
+%        540, 100;  572, 146;  576, 359;  639, 265;  645, 308;  682, 469;  732, 283];
+% pos = [353 168; 231 193; 242 227; 250 265; 106 316; 197 388; 328 291; 500 162;...
+%     603 105; 697 131; 540 232; 736 405];
+pos = [697 270; 621 131; 414 457; 563 113; 256 175; 551 142; 658 190; 294 264];
+
 extra = 1; % Get extra to smooth the signals out
 extraR = extra*2+1; % The width of the area that will be extracted per pos
 
@@ -383,7 +453,7 @@ plot(x(pos(:,1)),y(pos(:,2)),'xy')
 text(x(pos(:,1)),y(pos(:,2)),string(1:npos),'Color','y')
 
 % Get the data of the Z stack 
-figure; 
+figure;
 for i = 1:npos
     row = pos(i,2);
     col = pos(i,1);
@@ -456,4 +526,8 @@ fprintf('maximal cellheight based on 1/%d of signal: %dµm\n',...
 fprintf('average cellheight based on 1/%d of signal: %dµm\n',...
     fraction, round(mean(cellHeight)))
 figtitle(sprintf('average cellheight: %dµm', round(mean(cellHeight))))
+
+%% clear some variables
+clearvars lineCounter i suby subx zLabels fraction extra extraR row col areaj
+clearvars dataColumn colmap dataRed2Backup dataGre2Backup
 
