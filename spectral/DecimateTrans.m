@@ -16,8 +16,9 @@ function DecimateTrans(varargin)
 % 
 % Chris v.d. Togt
 % 2020-7-25
-% Edited by Leander to enable call as function
-% 2020-7-29
+% 2020-7-29: Edited by Leander to enable call as function
+% 2022-8-25: Edited by Leander to aliviate memory usage, as memory usage of
+%               memorymapped file grows as more data is retrieved from it.
 % 
 
 %% Get the filename
@@ -53,14 +54,37 @@ chunk = floor(width/steps);
 rem = width - steps*chunk;
 
 Decf = round(frequency/freqDec); % decimation factor 
-freqDec = frequency/Decf;  % downsampled frequency (about 0.5 Hz)
+freqDec = frequency/Decf;  % downsampled frequency
 LngD1 = ceil(Lng/Decf); % number of samples after decimating
 nbytes = fprintf(fileDecimated, "%d %d %d %d %s", LngD1, dim(2), dim(3), freqDec, datetime);
 fwrite(fileDecimated,zeros(500-nbytes,1));
 D1 = zeros(LngD1, chunk);
 
+% Calculate how many times to reload the memorymapped data
+switch sbxt.Format
+    case 'uint8'
+        multiplier = 1;
+    case 'uint16'
+        multiplier = 2;
+    case 'single'
+        multiplier = 4;
+    case 'double'
+        multiplier = 8;
+    otherwise % whatever
+        multiplier = 8;
+end
+fileSize = numel(sbxt.Data)*multiplier ./ (1*10^9);
+[~, memSize] = memory;
+memSize = memSize.PhysicalMemory.Available ./ (1*10^9);
+memSize = max(2, memSize); % Do not accept less than 2GB memory
+timesToReload = ceil(fileSize/(memSize/3));
+timeToReload = round(linspace(0, steps+1, timesToReload+1));
+
+% Load, decimate and write data
 hw = waitbar(0, 'processed: 0%', 'Name', 'Decimating transposed dataset');
+% timer = zeros(steps, 1); memSystem = zeros(steps, 1); memPhysical = zeros(steps, 1);
 for j = 1:steps
+%     tic
     indices = (1 + (j-1)*chunk):(j*chunk);
     D = double(XYgetZ(indices, sbxt, Lng));
     D = reshape(D, Lng, [] ); 
@@ -69,8 +93,19 @@ for j = 1:steps
     end
     fwrite(fileDecimated, D1,'double');
     waitbar(j/steps, hw, ['processed: ' num2str(round(j/steps*1000)*0.1) '%'])
+    
+    if ismember(j, timeToReload) % Reload sbxt to aliveate memory usage
+        clearvars sbxt
+        pause(0.02)
+        sbxt = memmapfile(strfp, 'Format', 'uint16', 'Offset', 500);
+    end
+%     timer(j) = toc; 
+%     [~, memmi] = memory; 
+%     memSystem(j) = memmi.SystemMemory.Available;
+%     memPhysical(j)= memmi.PhysicalMemory.Available;
 end
 
+% Write remaining data
 D1 = zeros(LngD1, rem);
 indices = (1 + steps*chunk):(steps*chunk + rem);
 D = double(XYgetZ(indices, sbxt, Lng));
@@ -83,6 +118,9 @@ close(hw)
 fclose(fileDecimated);
 sbxt = [];
 fprintf('done with decimating data\n')
+
+
+
 
 %% Reading the Dec file  %%
 % strfp = [fp mfn{1} '_D1.dat']

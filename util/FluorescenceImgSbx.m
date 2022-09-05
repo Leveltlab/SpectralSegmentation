@@ -3,7 +3,7 @@ function [BImgMax, BImgAverage] = FluorescenceImgSbx(varargin)
 % 
 % [BImgMax, BImgAverage] = FluorescenceImgSbx(sbxName, spigfileName);
 % 
-% Optional input: 1. sbx file name (string) (with foldername if necissary)
+% Optional input: 1. sbx file name (string) (with foldername if necessary)
 %                 2. spsig file name to save the images to
 %
 % In case no input is given the file names will be requested.
@@ -18,6 +18,7 @@ function [BImgMax, BImgAverage] = FluorescenceImgSbx(varargin)
 %
 % Leander de Kraker
 % 2018-10-17
+% 2022-08-25, updated to also save a colored spectral image
 %
 
 %% You can also execute this as a script
@@ -134,12 +135,6 @@ for i = 1:nchunks
 end
 BImgAverage = BImgAverage/nchunks;
 
-% Fix horizontal alignment, error from incorrect bi-directional scanning
-% BImgMaxLines = BImgMax;
-% BImgMaxLines(1:2:end, 1:end-1) = BImgMaxLines(1:2:end, 2:end);
-% BImgAvLines = BImgAverage;
-% BImgAvLines(1:2:end, 1:end-1) = BImgAvLines(1:2:end, 2:end);
-
 if plotter
     % Plot example average fluorescence portions of the dataset
     figure('units','normalized','position',[0.01 0.1 0.25 0.8]);
@@ -189,74 +184,46 @@ if nchannels >= 2
     linkaxes(h, 'xy')
 end
 
-infoimg.percent = nframes*i./info.max_idx*100;
-infoimg.framesPerChunk = nframes;
-infoimg.nchunks = nchunks;
-infoimg.comment = {'BImgMax= maximum projection';'BImgAverage= average projection';...
-    'BImg= low frequency spectral components';...
-    'SpatialCorr= signal correlation per pixel with ROI brightest pixel'};
-if nchannels >= 2
-    infoimg.comment(end+1) = {'BImgMaxC2 = maximum projection of 2nd color channels'};
-    infoimg.comment(end+1) = {'BImgAverageC2 = average projection of 2nd color channels'};
-end
-fprintf('done calculating :)\n')
-
 
 %% check how the spectral looks
 
 if plotter
-    load(spsigName, 'Sax', 'SPic', 'PP')
-
-    if exist('SPic','var') && exist('Sax', 'var') 
-
-        imgStack = SPic(:,:,2:end);
-        Sax = Sax(2:end); %first spectral component is the average power over al components
-
-        vals = sort(unique(imgStack(:))); % remove -inf values
-        if vals(1)==-inf
-            imgStack(imgStack==-inf) = vals(2);
-        end
-        imgStack = log1p(permute(imgStack,[2 1 3])); % transpose the SPic variable so it's same as BImg
-
-        nSpec = size(imgStack,3);
-
-        % A spectral image for all the different frequencies
-        colors = flip(jet(nSpec));
-        norma = true; % normalize each frequency?
-        figure('units','normalized','position',[0.52 0.5 0.25 0.4]);
-        subplot(1,1,1)
-        SPicTCell = squeeze(num2cell(imgStack, [1 2]));
-        RGBspectral = CreateRGB2(SPicTCell, colors, norma);
-        imagesc(RGBspectral)
-        title('The intensity of the spectral density at all different frequencies')
-        % Set the correct colorbar for this image
-        colormap(colors)
-
-        if exist('PP', 'var')
-            hold on
-            for i = 1:PP.Cnt
-                plot(PP.Con(i).x, PP.Con(i).y, 'r')
-            end
-        end
-
-        h = colorbar;
-        hTicks = linspace(Sax(1),Sax(end),length(h.Ticks));
-        h.Ticks = h.Ticks; % prevent ticks from changing
-        h.TickLabels = num2str(hTicks', '%2.2f');
-        ylabel(h, 'spectral frequency', 'FontSize',12)
-    else
-        fprintf('Unable to load SPic and Sax (Spectral Axis) from spsigName\n')
-        fprintf('Not creating colored spectral image\n')
-    end
+    figure('units','normalized','position',[0.52 0.5 0.25 0.4]);
+    subplot(1,1,1)
 end
+[BImgRGB, colorsRGB, colorbarVals] = SpectralColorImg('file', spsigName, [0 0.5], plotter);
+title('colored spectral image')
 
-%% The end: save it
+fprintf('done calculating fluorescence and colored spectral images :)\n')
 
-save(spsigName, 'BImgMax','BImgAverage','infoimg','-append')
+%% Save information about the images
+
+infoimg.percent = nframes*nchunks./info.max_idx*100;
+infoimg.framesPerChunk = nframes;
+infoimg.nchunks = nchunks;
+infoimg.BImgRGBfreqs = colorbarVals;
+infoimg.BImgRGBcolors= colorsRGB;
+infoimg.comment = {'BImgMax= maximum fluorescence projection';...
+    'BImgAverage= average fluorescence projection';...
+    'BImg= low frequency spectral components';
+    'BImgRGB= low frequency spectral components, color coded per frequency';...
+    'SpatialCorr= signal correlation per ROI pixel with ROI seedpoint'};
 if nchannels >= 2
-    save(spsigName, 'BImgMaxC2','BImgAverageC2','-append')
+    infoimg.comment(end+1) = {'BImgMaxC2 = maximum projection of 2nd color channels'};
+    infoimg.comment(end+1) = {'BImgAverageC2 = average projection of 2nd color channels'};
 end
+
+
+%% Save it
+
+if nchannels >= 2
+    save(spsigName, 'BImgMax', 'BImgAverage', 'infoimg', 'BImgMaxC2','BImgAverageC2','BImgRGB','-append')
+else
+    save(spsigName, 'BImgMax', 'BImgAverage', 'infoimg', 'BImgRGB','-append')
+end
+
 fprintf('saved background images to %s\n\n',spsigName)
 
-end
+
+
 
