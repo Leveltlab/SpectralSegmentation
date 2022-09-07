@@ -1,4 +1,6 @@
 //mex transpose image stack
+//  Chris van der Togt, 2017, 
+//  Netherlands Institute for Neuroscience 
 
 #include "mex.h"
 #include <iostream>
