@@ -1,6 +1,8 @@
 function roundedness = perimarea(x, y)
 %calculate area to perimeter of a contour
 % roundedness = 1 for perfect circle
+% Chris van der Togt, 2017, 
+% Netherlands Institute for Neuroscience 
 
 fac = round(length(x)/50);
 if fac > 0

@@ -1,5 +1,8 @@
 function Z = XYgetZ(indices, sbxt, stacksz)
 %return array of traces, given XY coordinates
+% Chris van der Togt, 2017, 
+% Netherlands Institute for Neuroscience 
+
 if ~isobject(sbxt)
     return
 end

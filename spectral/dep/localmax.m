@@ -6,6 +6,7 @@ function pnt = localmax(IM, edge, vox)
 % vox; voxel size to process
 % Pxd; number of pixels of separation between maxima
 % Chris van der Togt, 2021
+% Netherlands Institute for Neuroscience 
 
     Pxd = 7;
     

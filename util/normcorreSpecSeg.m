@@ -14,6 +14,8 @@ function [M_final,shifts,template,options] = normcorreSpecSeg(Y,options,template
 % shifts_up:        upsampled shifts
 % shifts:           originally calculated shifts
 % template:         calculated template
+% Chris van der Togt, 2017, 
+% Netherlands Institute for Neuroscience 
 
 %% first determine filetype
 

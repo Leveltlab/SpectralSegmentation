@@ -3,8 +3,6 @@ function RS = smoothG(RDtemp, se)
 %RS = smoothG(RDtemp, se)
 %se is the standard deviation of the smoothing gaussian
 %column wise smoothing!!!
-%
-%
 %Chris van der Togt 
 %Dept. of Vision and Cognition 
 %Netherlands Institute for Neurosciences

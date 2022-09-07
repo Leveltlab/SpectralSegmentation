@@ -26,6 +26,7 @@ function [Con, A, F, V, roundedness, Rvar] = PixelCor(...
 % added correlation cutoff and median filtering of correlations
 % Added median correlation of surround to obtain a better cutoff 
 % Chris van der Togt, 2021
+% Netherlands Institute for Neuroscience 
 
 global DISPLAY
 Con = []; %found contour
@@ -48,28 +49,17 @@ Mb(yrange, xrange) = Fb;
 
 Mt = logical(Mt');%transposed
 Sigpix = double(sbxt.Data.y(:,Mt(:)));
-PreRoiSz = sum(Mt(:));
-%R = round(freq);
+%PreRoiSz = sum(Mt(:));
 
 Mb = logical(Mb');
 Sigborder = double(sbxt.Data.y(:,Mb(:)));
 
-%if R > 1.5 % decimate signal if sampling rate is above 1.5Hz
-%     Sp = zeros(ceil(size(Sigpix,1)/(R*2)), size(Sigpix,2));      
-%     for q = 1:size(Sigpix,2)
-%         Sp(:,q) = decimate(double(Sigpix(:,q)), R*2); %signals for all pixels in ROI decimated by freq * 2 => 0.5Hz
-%     end
 if DISPLAY == 1
-        %ax = (1:ceil(size(Sigpix,1)/(R*2))) .*R*2;
-        figure(4)  %, plot(ax, mean(Sp,2)), hold on, 
+        figure(4)
         plot(median(Sigpix,2), 'b'), hold on
         plot(median(Sigborder,2), 'g'), hold off
 end
-%    Sigpix = Sp;
- %   clear Sp
-%end
-%some index accounting to find the traces associated with the ROI
-%max
+
 Ft = F'; %transpose indices
 linix = find(Ft(:));
 Seed = zeros(size(Ft));
@@ -81,17 +71,14 @@ Msig = median(Sigpix(:,ISix), 2); %take median of signal of max and surrounding 
 Cor = corr(Msig, Sigpix, 'rows', 'pairwise');
 Corb = corr(Msig, Sigborder, 'rows', 'pairwise');
 Cmx = max(Cor);
-%n1 = length(Cor);
 Cmd = median(Corb);
-%n2 = length(Corb);
-% [~, ~, T ]= rrsig(Cmx, Cmd, n1, n2);
+
 
 % In voxel
 V = zeros(size(Ft));
 V(linix) = Cor;
 
 %determine correlation strength at which to set contourc level
-%thr = ThC * max(Cor); 
 thr = ThC * (Cmx - Cmd) + Cmd; %difference between center and border
 
 V = V'; %transpose back
@@ -137,12 +124,12 @@ for j = 1:length(iv)
 end
 
 if A > 0 && DISPLAY
-    Vimg = V;
-    Vimg(Vimg==0) = nan;
-    figure(3), hold off, imagesc(Vimg), caxis([0 1]), hold on
-    plot(Con.x, Con.y, 'w')
-    colormap([0 0 0 ; parula(256)]); colorbar;
-    drawnow
+        Vimg = V;
+        Vimg(Vimg==0) = nan;
+        figure(3), hold off, imagesc(Vimg), caxis([0 1]), hold on
+        plot(Con.x, Con.y, 'w')
+        colormap([0 0 0 ; parula(256)]); colorbar;
+        drawnow
 
 % For debugging
   %  if PreRoiSz >  1.5 * A

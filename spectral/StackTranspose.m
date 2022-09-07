@@ -10,7 +10,8 @@ function StackTranspose(varargin)
 % sbx file is located.
 % When input is not given a pop-up will ask for the sbx filename and the
 % location of where to save
-%
+% Chris van der Togt, 2017, 
+% Netherlands Institute for Neuroscience 
 
 global info
 %% Transpose Stack from SBX file

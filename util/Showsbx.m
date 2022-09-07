@@ -1,4 +1,6 @@
 function Showsbx(varargin)
+% Chris van der Togt, 2017, 
+% Netherlands Institute for Neuroscience 
 
 global info Pos clim Chan %bRun SliderChan
 persistent Crop

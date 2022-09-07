@@ -33,7 +33,10 @@ function getSpectrois(varargin)
 %
 %         spar: Spectral PARameters used to find the ROIs
 %
-%
+% Leander de Kraker
+% Chris van der togt, 01-07-2020 
+% Netherlands Institute for Neuroscience, 
+
 global DISPLAY
 global spar
 DISPLAY = false;

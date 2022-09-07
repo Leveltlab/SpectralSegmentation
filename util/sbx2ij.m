@@ -1,3 +1,5 @@
+% Chris van der Togt, 2017, 
+% Netherlands Institute for Neuroscience 
 
 %Miji
 %IJ = ij.IJ;

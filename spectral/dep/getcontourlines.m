@@ -1,4 +1,6 @@
 function s = getcontourlines(c)
+% Chris van der Togt, 2017, 
+% Netherlands Institute for Neuroscience
 
     sz = size(c,2);     % Size of the contour matrix c
     ii = 1;             % Index to keep track of current location

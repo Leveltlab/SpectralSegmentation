@@ -1,5 +1,7 @@
 function I = ZgetXY(zx, nm, sbxt, dim)
 %return nm images given z coordinate
+% Chris van der Togt, 2017, 
+% Netherlands Institute for Neuroscience 
 
 if ~isobject(sbxt)
     return

@@ -1,4 +1,6 @@
 function POW = getcorpow(CSpect, ASpect) 
+% Chris van der Togt, 2017, 
+% Netherlands Institute for Neuroscience 
 
 [Lng, Width, Height] = size(ASpect);
 

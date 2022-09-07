@@ -1,4 +1,7 @@
 function [Con, A, F, Pin, roundedness] = getCon(Imgin, th, area, Rof, py, px, Iy, Ix)
+% Chris van der Togt, 2017
+% Netherlands Institute for Neuroscience 
+
 
 dim = size(Imgin);
 F = zeros(dim);
@@ -26,11 +29,6 @@ for j = 1:length(iv)
         if At > area(1) 
             A = At;
             roundedness = perimarea(vx, vy);
-%            indices = poly2mask(vx,vy, dim(1), dim(2));
-%             MxA = max(Imgin(indices));
-%             if M < MxA
-%                M = MxA;
-%             end
             if At < area(2) && roundedness > Rof
                 Con.x = vx;
                 Con.y = vy;            

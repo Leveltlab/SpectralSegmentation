@@ -16,9 +16,10 @@ function [sbxt, dim, freq] = transmemap(varargin)
 % Decimated data is in data format double, and will not be subsampled by
 % other scripts.
 % 
-% Chris v.d. Togt
-% edited by Leander to include decimate recognition 2020-8-4
-% 
+% Chris van der Togt, 2017, 
+% Netherlands Institute for Neuroscience 
+% edited by Leander de Kraker to include decimate recognition 2020-8-4
+
 
 % What file to ananlyse
 if nargin > 0

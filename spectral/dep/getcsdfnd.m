@@ -1,8 +1,7 @@
 function [SDF, AUTO] = getcsdfnd(data, Width, Height, Win, Seg)
 % on parallel pool
-%
-%
-%
+% Chris van der Togt, 2017, 
+% Netherlands Institute for Neuroscience 
 
 %Seg = round(Segment/4)+1; %reduce output
 SDF = zeros(Seg, Width-2, Height-2,  8);
