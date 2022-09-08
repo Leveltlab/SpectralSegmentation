@@ -84,7 +84,7 @@ function varargout = RoiManagerGUI(varargin)
 % Made by: Leander de Kraker
 % 2018-2020
 
-% Last Modified by GUIDE v2.5 30-Nov-2021 18:04:39
+% Last Modified by GUIDE v2.5 05-Sep-2022 14:20:45
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -248,6 +248,8 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     switches.creationAllow = false; % allow creation of new ROI with current data
     switches.creationPos = [100, 100]; % position where the user wants a new ROI
     switches.creationThres = 80; % threshold for percentile pixelvalue new ROI inclusion
+    switches.creationVoxelSz = h.creationVoxelSzSlider.Value; % Search field size of ROI create
+    switches.creationLocalCorr = false;
     switches.chronic = false; % Has a chronic image been calculated already?
     switches.backgrdCLim = [0 1]; % color axis limits of the background image in mainAx
     switches.backgrdDLim = [1 length(Sax)]; % Which spectral images to show in Spectral color bckgrd image
@@ -329,9 +331,10 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
         {'clicked point', 'contour above threshold','chosen ROI',...
         'maximum of new ROI'},'Location', 'Northoutside','AutoUpdate','off');
     h.createRoiAx2.NextPlot = 'replaceChildren';
+    h.createRoiAx2.XTick = [];
     h.createRoiAx2.YTick = [];
+    h.createRoiAx2.Colormap = gray();
     h.createRoiAx2.YDir = 'reverse';
-    set([h.createRoiAx1 h.createRoiAx2], 'XTick', [])
     
     % Start with the ROI rejection turned on.
     h.majorToggle1 = TurnOn(h.majorToggle1);
@@ -368,6 +371,7 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     h.mainAx.NextPlot = 'add';
     h.mainAx.YDir = 'reverse';
     h.im = imagesc(data.Mask, 'Parent',h.mainAx);
+    uistack(h.im, 'bottom')
     
     % Check if background size is the same as sbx data size.
     if ~(dim(2)==size(data.BImg,2) && dim(3)==size(data.BImg,1))
@@ -443,7 +447,7 @@ end
 
 
 % --- Executes during object creation, after setting all properties.
-function slider_CreateFcn(hObject, ~, ~) %#ok<DEFNU>
+function slider_CreateFcn(hObject, ~, ~)
     % hObject    handle to the slider calling at the moment
     % handles    empty - handles not created until after all CreateFcns called
     % Every slider calls this function for asthetic reasons
@@ -454,7 +458,7 @@ end
 
 
 % --- Executes during object creation, after setting all properties.
-function backGrdView_CreateFcn(hObject, ~, ~) %#ok<DEFNU>
+function backGrdView_CreateFcn(hObject, ~, ~)
     % hObject    handle to backGrdView (see GCBO)
     % handles    empty - handles not created until after all CreateFcns called
 
@@ -467,9 +471,10 @@ function backGrdView_CreateFcn(hObject, ~, ~) %#ok<DEFNU>
     end
 end
 
+
 %% Button activation functions %%
 % --- Executes on button press of major toggle buttons
-function majorToggles_Callback(hObject, ~, h) %#ok<DEFNU>
+function majorToggles_Callback(hObject, ~, h)
     % Turns a functionality of the UI on or off. switches panels.
 
     buttonN = str2double(hObject.Tag(end)); % Which button was pressed? Important
@@ -548,7 +553,7 @@ function majorToggles_Callback(hObject, ~, h) %#ok<DEFNU>
 end
     
 
-function minorToggles_Callback(hObject, ~, h) %#ok<DEFNU>
+function minorToggles_Callback(hObject, ~, h)
     % Turns a functionality of the UI on or off
     % different buttons are:
     % corrButton
@@ -620,7 +625,7 @@ end
 
 
 % --- Executes on button press in plotListing.
-function plotListing_Callback(hObject, ~, h) %#ok<DEFNU>
+function plotListing_Callback(hObject, ~, h)
     % Save the state of the toggle/radio button
     % If turned on the signal of clicked ROIs while white and blacklisting
     % will be plotted. This can be slow sometimes
@@ -647,7 +652,7 @@ end
 
 
 % --- Executes on button press in thresCorToggle.
-function thresToggle_Callback(~, ~, h) %#ok<DEFNU>
+function thresToggle_Callback(~, ~, h)
     % Which of the two threshold rejection criteria to use?
     % MATLAB already turns the value of the clicked button automatically.
     % So this function makes sure one of the two is activated
@@ -662,7 +667,7 @@ end
 
 
 % --- Executes on button press in thresCorToggle.
-function thresCorToggle_Callback(~, ~, h) %#ok<DEFNU>
+function thresCorToggle_Callback(~, ~, h)
     % Which of the two threshold rejection criteria to use?
     if h.thresToggle.Value && h.thresCorToggle.Value
         h.thresToggle.Value = false;
@@ -723,7 +728,7 @@ end
 
 
 % --- Executes on slider movement.
-function minSizeSlider_Callback(hObject, ~, h) %#ok<DEFNU>
+function minSizeSlider_Callback(hObject, ~, h)
     % Callback function to control minimum size limit
     switches = getappdata(h.hGUI, 'switches');
     switches.minSize = hObject.Value;
@@ -739,7 +744,7 @@ end
 
 
 % --- Executes on slider movement.
-function maxSizeSlider_Callback(hObject, ~, h) %#ok<DEFNU>
+function maxSizeSlider_Callback(hObject, ~, h)
     % Callback function to control minimum size limit
     switches = getappdata(h.hGUI, 'switches');
     switches.maxSize = hObject.Value;
@@ -767,7 +772,7 @@ end
 
 
 % --- Executes on slider movement.
-function thresSlider_Callback(hObject, ~, h) %#ok<DEFNU>
+function thresSlider_Callback(hObject, ~, h)
     % changes which ROIs are rejected based on mean smoothed spectral power
     threshold = hObject.Value;
     h.thresTitle.String = sprintf('Threshold mean spec power: %.2f',threshold);
@@ -788,7 +793,7 @@ end
 
 
 % --- Executes on slider movement.
-function thresCorSlider_Callback(hObject, ~, h) %#ok<DEFNU>
+function thresCorSlider_Callback(hObject, ~, h)
     % Changes how ROI are rejected based on 'mean inner correlation
     % coefficients of raw signals' threshold
     threshold = hObject.Value;
@@ -816,7 +821,7 @@ end
 
 
 % --- Executes on slider movement.
-function roundnessSlider_Callback(hObject, ~, h) %#ok<DEFNU>
+function roundnessSlider_Callback(hObject, ~, h)
 	% Remove ROIs based on their roundness
     threshold = hObject.Value;
     h.roundnessSliderTitle.String = sprintf('Min roundness: %.2f',threshold);
@@ -865,7 +870,7 @@ end
 
 %% Edit ROIs based on selection
 % --- Executes on button press in deleteButton.
-function deleteButton_Callback(~, ~, h) %#ok<DEFNU>
+function deleteButton_Callback(~, ~, h)
     % Callback function for the apply delete button
     % Will remove ROIs from data
     idx = getappdata(h.hGUI, 'idx');
@@ -926,15 +931,44 @@ end
 
 %% ROI creation functions
 % --- Executes on slider movement.
-function creationThresholdSlider_Callback(hObject, ~, h) %#ok<DEFNU>
+function creationThresholdSlider_Callback(hObject, ~, h)
     % hObject    handle to creationThresholdSlider (see GCBO)
-    % handles    structure with handles and user data (see GUIDATA)
+    % h          structure with handles and user data (see GUIDATA)
     switches = getappdata(h.hGUI, 'switches');
     switches.creationThres = round(hObject.Value);
     hObject.Value = switches.creationThres;
     h.creationThresholdTitle.String = sprintf('Threshold: %d%%', hObject.Value);
     setappdata(h.hGUI, 'switches', switches); % update the switches
     CreateRoi(h,'update')
+end
+
+
+% --- Executes on slider movement.
+function creationVoxelSzSlider_Callback(hObject, ~, h)
+    % hObject    handle to creationVoxelSzSlider (see GCBO)
+    % h          structure with handles and user data (see GUIDATA)
+    switches = getappdata(h.hGUI, 'switches');
+    switches.creationVoxelSz = round(hObject.Value);
+    hObject.Value = switches.creationVoxelSz;
+    h.creationVoxelSzTitle.String = sprintf('Search field: %d x %dpx',...
+                                        hObject.Value*2+1, hObject.Value*2+1);
+    setappdata(h.hGUI, 'switches', switches); % update the switches
+    CreateRoi(h,'new')
+end
+
+
+% --- Executes on button press in creationLocalCorr.
+function creationLocalCorr_Callback(hObject, ~, h)
+    % hObject    handle to creationLocalCorr (see GCBO)
+    % eventdata  reserved - to be defined in a future version of MATLAB
+    % handles    structure with handles and user data (see GUIDATA)
+    switches = getappdata(h.hGUI, 'switches');
+    switches.creationLocalCorr = hObject.Value;        
+    if isfield(h, 'correl') && hObject.Value == false
+        delete(h.correl)
+    end
+    setappdata(h.hGUI, 'switches', switches); % update the switches
+    CreateRoi(h,'new')
 end
 
 
@@ -947,51 +981,68 @@ function CreateRoi(h, do)
     pos = switches.creationPos;
     
     if MaskTemp(pos(2),pos(1))==0
-        voxelSz = round(64./2); % SIZE OF THE SEARCH AREA
+        voxelSz = switches.creationVoxelSz; % SIZE OF THE SEARCH AREA
         % Make sure the searchfield isn't outside of the image
-        piecex = pos(2)-voxelSz:pos(2)+voxelSz; % x coordinates of the patch of data
-        piecey = pos(1)-voxelSz:pos(1)+voxelSz; % y coordinates of the patch of data
+        piecex = pos(2)-voxelSz:pos(2)+voxelSz; % coordinates of the patch of data
+        piecey = pos(1)-voxelSz:pos(1)+voxelSz;
         
         piecex(piecex<1) = [];
         piecey(piecey<1) = [];
-        piecex(piecex>data.dim(3)) = [];
-        piecey(piecey>data.dim(2)) = [];
-        pieceWidth = length(piecex);
-        pieceHeight = length(piecey);
+        piecex(piecex>data.dim(3)-1) = [];
+        piecey(piecey>data.dim(2)-1) = [];
+        pieceHeight = length(piecex);
+        pieceWidth = length(piecey);
         
         % get the coordinate of the clicked point. Coordinate is not the
         % center of the searchfield when the searchfield is cut because it
         % is close to the edges
         centre = [pos(2)-piecex(1), pos(1)-piecey(1)];
         
-        img = h.im.CData;
-        dims = size(img);
-        % if the current background image is a color image average colors
-        if length(dims) == 3
-            img = mean(img, 3);
-        end
-        vals = sort(unique(img(:))); 
         
         % A new place for a new ROI is being requested: create and plot search area
         if strcmp(do,'new')
             plot(pos(1),pos(2), 'x', 'color', 'w', 'hittest', 'off', 'Parent', h.mainAx);
             
             % expand ROI masks so no ROIs can be made close to existin ROIs
-            [~,~,MaskTemp]= BufferMask(data.Mask, 2);
-            MaskTemp = MaskTemp + data.Mask; 
-            img(MaskTemp>0) = vals(2); % remove pieces that are already ROIs
+            [~,~,MaskTemp]= BufferMask(data.Mask, 1);
+            MaskTemp = MaskTemp + data.Mask;                 
+            MaskTemp = MaskTemp(piecex, piecey);
             
-            % Get a 'voxel' of the data and filter the search space to reduce noise
-            piece = imgaussfilt(img(piecex, piecey),1.3);
+            
+            if switches.creationLocalCorr % Use local time trace correlations for ROI search
+                
+                [xm, ym, signal, centersignal] = SelectData(pos, voxelSz, h, '');
+                img = LocalCorrCalc(signal, centersignal);
+                if true % Plot the local correlation in main image
+                    h = LocalCorrPlot(xm, ym, img, h);
+                    % Save the new h.correl handle
+                    guidata(h.hGUI, h)
+                end
+                
+                img = reshape(img, size(xm));
+                img(MaskTemp>0) = min(img(:));
+                
+            else % Use current background image
+                img = h.im.CData;
+                img = img(piecex, piecey, :);
+                if length(size(img)) == 3 % average colors of color image
+                    img = mean(img, 3);
+                end
+            end
+            
+            img(MaskTemp>0) = min(img(:)); % remove pieces that are already ROIs
 
+            % GAUSIAN FILTER the search space to reduce noise
+            img = imgaussfilt(img, 1);
+            
             % Plot the 'voxel'/ searchfield with the spectral data
             h.createRoiAx2.NextPlot = 'replacechildren';
-            imagesc(piece, 'Parent', h.createRoiAx2)
+            imagesc(img, 'Parent', h.createRoiAx2)
             h.createRoiAx2.NextPlot = 'add';
-            h.createRoiAx2.XLim = [1, size(piece,2)];
-            h.createRoiAx2.YLim = [1, size(piece,1)];
+            h.createRoiAx2.XLim = [1, size(img,2)];
+            h.createRoiAx2.YLim = [1, size(img,1)];
             plot(centre(2),centre(1), 'xk', 'Parent', h.createRoiAx2)
-            plot([1 size(piece,2) size(piece,2) 1 1], [1 1 size(piece,1), size(piece,1), 1],...
+            plot([1 size(img,2) size(img,2) 1 1], [1 1 size(img,1), size(img,1), 1],...
                 'y', 'Parent', h.createRoiAx2)
             % Plot the searchfield
             if isfield(h, 'createRoiSearchBox')
@@ -999,20 +1050,21 @@ function CreateRoi(h, do)
             end
             h.createRoiSearchBox = plot(piecey([1 1 end end 1]), piecex([1 end end 1 1]),...
                                         'y', 'Parent', h.mainAx, 'HitTest', 'off');
+        
         elseif strcmp(do,'update')
             % A different contour threshold is being requested. Try to
             % extract the search area that was calculated previously
-            piece = getimage(h.createRoiAx2);
+            img = getimage(h.createRoiAx2);
             
-            if isempty(piece) % If no searchfield had been created
+            if isempty(img) % If no searchfield had been created
                 fprintf('changed threshold while not creating ROI\n')
                 return
             else
                 h.createRoiAx2.NextPlot = 'replacechildren';
-                imagesc(piece, 'Parent', h.createRoiAx2)
+                imagesc(img, 'Parent', h.createRoiAx2)
                 h.createRoiAx2.NextPlot = 'add';
                 plot(centre(2),centre(1), 'xk', 'Parent', h.createRoiAx2)      
-                plot([1 size(piece,2) size(piece,2) 1 1], [1 1 size(piece,1), size(piece,1), 1],...
+                plot([1 size(img,2) size(img,2) 1 1], [1 1 size(img,1), size(img,1), 1],...
                     'y', 'Parent', h.createRoiAx2)
             end
         end
@@ -1021,13 +1073,13 @@ function CreateRoi(h, do)
         found = false;
         
         threshval = switches.creationThres;
-        threshold = prctile(piece(:), threshval); % calculate percentile threshold
-        con = contourc(piece, [threshold threshold]); % Get the contours
+        threshold = prctile(img(:), threshval); % calculate percentile threshold
+        con = contourc(img, [threshold threshold]); % Get the contours
         con = getcontourlines(con);
         
         % Only use the contour if it has the centre point inside of itself
         for i = 1:length(con) % Check every contour
-            MaskTemp = poly2mask(con(i).x, con(i).y, pieceWidth,  pieceHeight);
+            MaskTemp = poly2mask(con(i).x, con(i).y, pieceHeight,  pieceWidth);
             plot(con(i).x, con(i).y, 'color', [0 1 0 0.5], 'Parent', h.createRoiAx2)
             if MaskTemp(centre(1),centre(2))
                  % the contour that includes the clicked point is found
@@ -1043,18 +1095,16 @@ function CreateRoi(h, do)
             sbxt = getappdata(h.hGUI, 'sbxt');
             
             % Create a mask that includes this new ROI
-            MaskTemp = poly2mask(con.x, con.y, pieceWidth,  pieceHeight);
+            MaskTemp = poly2mask(con.x, con.y, pieceHeight,  pieceWidth);
             MaskNew = data.Mask;
             MaskNew(MaskNew>0) = MaskNew(MaskNew>0) + 1; % make room for the new ROI
             MaskNew(piecex, piecey) = double(MaskTemp) + MaskNew(piecex, piecey);
             
             % Calculate the extra info
-            piece(MaskTemp==0) = min(piece(:));
-            [maxval, y] = max(piece); % maximum value for 1st dimension
+            img(MaskTemp==0) = min(img(:));
+            [maxval, y] = max(img); % maximum value for 1st dimension
             [maxval, x] = max(maxval); % maximum value of complete matrix
             y = y(x); % so which row was it again? - the xth row
-            xcord = x+piecey(1)-1; % the coordinates in the complete mask
-            ycord = y+piecex(1)-1;
             
             % Plot the local maximum
             plot(x,y, 'xr', 'Parent', h.createRoiAx2)
@@ -1076,24 +1126,22 @@ function CreateRoi(h, do)
             h.signalAx2.YLim = [round(min(signal),-2)-100, round(max(signal),-2)+100];
             h.signalAx2.YDir = 'normal';
             % Info about the new neuron
-            str = cell(4,1);
-            str{1} = sprintf('threshold value: %.3f', threshold);
-            str{2} = sprintf('maximum value:  %.3f', maxval);
-            % Do not allow any sized ROI to be saved. ROI needs to be
-            % bigger then 35 pixels
+            str = cell(2,1);
+            minApplySize = 20;
+            % Do not allow any sized ROI to be saved. ROI needs to be bigger
             if newRoi.A < 10
-                str{3} = sprintf('size: %d px <- VERY LOW!', newRoi.A);
+                str{1} = sprintf('size: %d px <- VERY LOW!', newRoi.A);
                 switches.creationAllow = false; % do not allow this ROI to be saved
-            elseif newRoi.A < 20
-                str{3} = sprintf('size: %d px <- LOW!', newRoi.A);
+            elseif newRoi.A < minApplySize
+                str{1} = sprintf('size: %d px <- LOW!', newRoi.A);
                 switches.creationAllow = false;
             else
-                str{3} = sprintf('size: %d px', newRoi.A);
+                str{1} = sprintf('size: %d px', newRoi.A);
             end
             if newRoi.Roundedness<0.4
-                str{4} = sprintf('roundedness=%.2f <- LOW!', newRoi.Roundedness);
+                str{2} = sprintf('roundedness=%.2f <- LOW!', newRoi.Roundedness);
             else
-                str{4} = sprintf('roundedness=%.2f', newRoi.Roundedness);
+                str{2} = sprintf('roundedness=%.2f', newRoi.Roundedness);
             end
             h.creationRoiText.String =  strjoin(str, '\n');
             h.creationRoiText.FontWeight =  'normal';
@@ -1115,18 +1163,6 @@ function CreateRoi(h, do)
             
             switches.creationAllow = false; % After this fail, do not allow creation of ROI
         end
-        
-        h.createRoiAx1.NextPlot = 'replacechildren';
-        bins = 50; % number of bins
-        piece = img(piecex, piecey); % Get a 'voxel' of the data
-        piece(piece<=vals(2)) = NaN;
-        histogram(piece, bins,'EdgeAlpha',0, 'Parent', h.createRoiAx1)
-        h.createRoiAx1.NextPlot = 'add';
-        h.createRoiAx1.YLim = h.createRoiAx1.YLim;% Set ylimits fixed
-        line([threshold, threshold], h.createRoiAx1.YLim, 'color','k',...
-            'linewidth', 2,'Parent', h.createRoiAx1)
-        legend(h.createRoiAx1, {'spectral density values', 'threshold'},...
-            'Location','NorthOutside','FontSize',8)
         
     else % User clicked on an existing ROI
         str = cell(2,1);
@@ -1217,6 +1253,7 @@ function applyNewRoi_Callback(~, ~, h)
         end
     end
 end
+
 
 %% ROI manual creation functions
 
@@ -1340,6 +1377,7 @@ function ManualRoi(pos, button, h)
     setappdata(h.hGUI, 'data', data);
     setappdata(h.hGUI, 'switches', switches);
 end
+
 
 % --- Executes on button press in applyManRoi.
 function applyManRoi_Callback(~, ~, h)
@@ -1594,12 +1632,12 @@ function DeleteCluster(pos, h)
 end
 
 
-function nClusterSlider_Callback(hObject, ~, h) %#ok
+function nClusterSlider_Callback(hObject, ~, h)
     % Changes the number of cluster kmeans finds in ROIs
     hObject.Value = round(hObject.Value);
     switches = getappdata(h.hGUI, 'switches');
     switches.nCluster = hObject.Value;
-    h.nClusterTitle.String = sprintf('number of clusters: %d', hObject.Value);
+    h.nClusterTitle.String = sprintf('Number of clusters: %d', hObject.Value);
     setappdata(h.hGUI, 'switches', switches)
     ClusterRoi(h)
 end
@@ -1761,7 +1799,7 @@ end
 
 
 % --- Executes on slider movement.
-function selSize_Callback(hObject, ~, h) %#ok
+function selSize_Callback(hObject, ~, h)
     % Change the amount of pixels a dataselection will be wide/2
     switches = getappdata(h.hGUI, 'switches');
     switches.selSize = round(hObject.Value);
@@ -1779,24 +1817,24 @@ function [xmesh, ymesh, signal, varargout] = SelectData(pos, selSize, h, modus)
     sbxt = getappdata(h.hGUI, 'sbxt');
     data = getappdata(h.hGUI, 'data');
     dim = data.dim;
+
     x = round(pos(1));
     y = round(pos(2));
+    x(x<2) = 2;
+    y(y<2) = 2;
+    x(x>(dim(2)-1)) = dim(2)-1;
+    y(y>(dim(3)-1)) = dim(3)-1;
     
-    % Make sure the selection window does not fall outside of the BImg
-    if x-selSize < 1
-        x = selSize+1;
-    elseif x+selSize > dim(2)
-        x = dim(2)-selSize-1;
-    end
-    if y-selSize < 1
-        y = selSize+1;
-    elseif y+selSize > dim(3)
-        y = dim(3)-selSize-1;
-    end
+    xLim = x-selSize:x+selSize;
+    yLim = y-selSize:y+selSize;
+    xLim(xLim<1) = [];
+    xLim(xLim>(dim(2)-1)) = [];
+    yLim(yLim<1) = [];
+    yLim(yLim>(dim(3)-1)) = [];
     
     % Get 2D indexes of data
-    xmesh = meshgrid(x-selSize:x+selSize);
-    ymesh = meshgrid(y-selSize:y+selSize)';
+    xmesh = repmat(xLim, [length(yLim), 1]);
+    ymesh = repmat(yLim', [1, length(xLim)]);
 
     % Convert 2D indexes to 1D indexes
     ind = xmesh + (ymesh-1).*dim(2);
@@ -1820,7 +1858,7 @@ end
 
 %% Data visualisation functions %%
 % --- Executes on slider movement.
-function AlphaSlider_Callback(hObject, ~, h) %#ok
+function AlphaSlider_Callback(hObject, ~, h)
     % Determines the alpha value for the ROI contour lines
     switches = getappdata(h.hGUI, 'switches');
     switches.alph = hObject.Value; % Update the alpha value
@@ -1831,7 +1869,7 @@ end
 
 
 % --- Executes on selection change in backGrdView.
-function backGrdView_Callback(hObject, ~, handles) %#ok
+function backGrdView_Callback(hObject, ~, handles)
     backGrdView(hObject.Value, handles)
 end
 
@@ -1881,6 +1919,7 @@ function BackgrdCLimStart(h)
     backgrdCLim_Apply(backgrdCLim(2),h) % Update the color axis correctly
 end
 
+
 function backGrdView(selected, h)
     % Changes the background image of mainAx
     
@@ -1905,11 +1944,11 @@ function backGrdView(selected, h)
     
             case 2 % Spectral image
                 h.im.CData = data.BImg;
-                colormap(gray)
+                h.mainAx.Colormap = gray;
                 
             case 3 % SpatialCorr
                 h.im.CData = data.SpatialCorr;
-                colormap(jet)
+                h.mainAx.Colormap = jet;
                 
             case 4 % ROI corners signal correlations image
                 if switches.roiCorrIm == false % image needs to be created
@@ -1938,13 +1977,14 @@ function backGrdView(selected, h)
                     h.im.CData = data.roiCorrImg;
                 end
                 
-                colormap(gray)
+                h.mainAx.Colormap = gray;
                 
             case 5 % Mask view
                 picMask = data.Mask;
                 picMask(picMask==0) = data.PP.Cnt+100;
                 h.im.CData = picMask;
-                colormap(flipud(gray))
+                h.mainAx.Colormap = flipud(gray);
+                
                 
             case 6 % Chronic & current backgroudn overlay view
                 if ~switches.chronic % Load the chronic recording
@@ -1970,7 +2010,7 @@ function backGrdView(selected, h)
                 end
                 h.im.CData = img;
                 colors = [0 0 0; jet(255)]; % jet with black
-                colormap(colors)
+                h.mainAx.Colormap = colors;
                 
             case 9 % Import variable from workspace
                 
@@ -2024,6 +2064,8 @@ function backGrdView(selected, h)
                                 impImg = CreateRGB2(impImgCell, colors, norma, norma);
                             elseif length(impDim) > 3
                                 msgbox('variables with more than 3 dimensions not supported', 'error')
+                            else
+                                h.mainAx.Colormap = gray;
                             end
 
                             % Apply the chosen variable
@@ -2051,6 +2093,7 @@ function backGrdView(selected, h)
     end
 end
 
+
 function importChronicFile(h)
     % Load a chronic file, and register the averaged background images to
     % the current background image
@@ -2073,6 +2116,7 @@ function importChronicFile(h)
     setappdata(h.hGUI, 'switches', switches)
 end
 
+
 function UpdateMainImg(h)
     % Update plot
     h.mainAx.NextPlot = 'replacechildren';
@@ -2081,6 +2125,7 @@ function UpdateMainImg(h)
     DrawRois(h)
     h = guidata(h.hGUI); % Update the handles, was edited by DrawRois
     UpdateRois(h)
+    uistack(h.im, 'bottom')
     RejectInfoFunc(h)
 end
 
@@ -2191,14 +2236,25 @@ function DrawData(xm, ym, signal, h)
 end
 
 
-function LocalCorr(xm, ym, signal, centersignal, h)
-    % Calculate correlations between the centersignal and all rows of the
-    % signal, transform those correlations into the 2D image and overlay it
-    % on the background image
+function correl = LocalCorrCalc(signal, centersignal)
+    % Calculating the correlation between signal and centersignal
+    % subsampling for long signals
+    time = 1:length(centersignal);
+    if length(centersignal) > 1000
+        step = round(length(centersignal)./1000);
+        time = 1:step:length(centersignal);
+    end
+    signal = signal(time,:);
+    centersignal = centersignal(time);
+    correl = corr(double(centersignal), double(signal),'rows','pairwise');
+end
+
+
+function h = LocalCorrPlot(xm, ym, correl, h)
+    % Plotting an overlay of local correlation values into the main image
     
     colors = getappdata(h.hGUI, 'colors');
     
-    correl = corr(double(centersignal), double(signal),'rows','pairwise');
     correl = round(correl*128)+128;
     correl = colors.parula(correl,:);
     correl = reshape(correl, [size(xm),3]);
@@ -2208,6 +2264,8 @@ function LocalCorr(xm, ym, signal, centersignal, h)
     end
     h.correl = imagesc(xm(1,:), ym(1,:), correl,...
         'Parent', h.mainAx, 'hittest', 'off');
+    uistack(h.correl, 'bottom')
+    uistack(h.correl, 'up')
     
     % Save the new h.correl handle
     guidata(h.hGUI, h)
@@ -2216,7 +2274,7 @@ end
 
 %% Axes click callback
 % --- Executes on mouse press over axes background.
-function mainAx_ButtonDownFcn(~, eventdata, h) %#ok<DEFNU>
+function mainAx_ButtonDownFcn(~, eventdata, h)
     % Gives the position of a click on the main axes to a function if a
     % function that can use clicks of the main axes is turned on
     position = eventdata.IntersectionPoint([1 2]);
@@ -2228,7 +2286,10 @@ function mainAx_ButtonDownFcn(~, eventdata, h) %#ok<DEFNU>
         
     elseif switches.currentMajor == 3 % The ROI creation panel
         % The ROI creation panel is active -> be ready for ROI selection
-        switches.creationPos = round(position);
+        position = round(position);
+        position(position<2) = 2;
+        switches.creationPos = position;
+        
         setappdata(h.hGUI, 'switches', switches)
         CreateRoi(h,'new')
         
@@ -2258,17 +2319,8 @@ function mainAx_ButtonDownFcn(~, eventdata, h) %#ok<DEFNU>
         % Local correlation visualisation
         
         [xmesh, ymesh, signal, centersignal] = SelectData(position, 24, h, '');
-        
-        % subsampling for long signals
-        time = 1:length(centersignal);
-        if length(centersignal) > 1000
-            step = round(length(centersignal)./1000);
-            time = 1:step:length(centersignal);
-        end
-        signal = signal(time,:);
-        centersignal = centersignal(time);
-        
-        LocalCorr(xmesh, ymesh, signal, centersignal, h)
+        correl = LocalCorrCalc(signal, centersignal);
+        LocalCorrPlot(xmesh, ymesh, correl, h);
         
     elseif strcmp(switches.currentMinor, 'plotROIsButton')
         % Plot the ROI signal that is clicked
@@ -2278,7 +2330,7 @@ end
 
 
 % --- Executes on mouse press over axes background.
-function clusterPlot_ButtonDownFcn(~, eventdata, h) %#ok
+function clusterPlot_ButtonDownFcn(~, eventdata, h)
     % Both cluster plots, which show data for ROI splitting use this
     % callback
     
@@ -2298,13 +2350,14 @@ end
 
 
 % --- Executes on mouse press over axes background.
-function backgrdCLimAx_ButtonDownFcn(~, eventData, h) %#ok<DEFNU>
+function backgrdCLimAx_ButtonDownFcn(~, eventData, h)
     % The plot in Show Data tab uses this callback to set the color axis
     % limits of the main background image
     x = eventData.IntersectionPoint(1);
     
     backgrdCLim_Apply(x, h)
 end
+
 
 function backgrdCLim_Apply(x, h)
     % Change the color axis or color values of the main image
@@ -2347,7 +2400,7 @@ end
 
 
 % --- Executes on mouse press over axes background.
-function backgrdDLimAx_ButtonDownFcn(~, eventData, h) %#ok<DEFNU>
+function backgrdDLimAx_ButtonDownFcn(~, eventData, h)
     % The plot in the showdata tab uses this axes to set which of a 3D
     % background image to show
     x = ceil(eventData.IntersectionPoint(1));
@@ -2429,7 +2482,7 @@ end
 function backgrdDLim_Lims(x, h)
     
     switches = getappdata(h.hGUI, 'switches');
-        
+    
     xMin = switches.backgrdDLim(1);
     xMax = switches.backgrdDLim(2);
     
@@ -2450,7 +2503,7 @@ end
 
 %% Help call function
 % --- Executes on button press in any of the '?' help buttons
-function Help_Callback(~, eventdata, h) %#ok<DEFNU>
+function Help_Callback(~, eventdata, h)
     switch eventdata.Source.Tag
         case 'plotRoisHelp' % in tab Show data
             strTitle = 'plot Roi signal help';
@@ -2465,6 +2518,7 @@ function Help_Callback(~, eventdata, h) %#ok<DEFNU>
                    ' the surrounding 256 pixels. The correlation values are then'...
                    ' shown in the main image.']};
                str{3} = 'This can be helpful to see individual neurons and close dendrites, which have a correlated signal.';
+               str{5} = 'Remove the overlay image by pressing "delete"';
                
         case 'sigSelectHelp' % in tab Show data
             strTitle = 'main image signal plotting help';
@@ -2514,13 +2568,12 @@ function Help_Callback(~, eventdata, h) %#ok<DEFNU>
             
         case 'createRoiHelp' % in tab Create ROI
             strTitle = 'auto ROI creation help';
-            str = {['The Create ROI functionality finds a ROI based on the current background image.'...
+            str = {['The Create ROI functionality finds a ROI based on the current main background image.'...
                    'If the current background image is a color image, the different color channels (Red, green, blue) '...
                    'will be averaged together.']};
-            str{2} = 'Decrease the threshold to include more pixels into the new ROI.';
-            str{4} = ['If the search field is not large enough, go into the RoiManagerGUI.m code '...
-                   'and edit the variable "voxelSz" in function "CreateROI". No restart of GUI required after edit.'];
-            str{6} = 'Do not forget to press apply, or enter on your keyboard, when you want to save the new ROI.';
+            str{3} = 'Decrease the threshold to include more pixels into the new ROI.';
+            str{5} = 'Existing ROIs are set to minimum value in the ROI search image';
+            str{7} = 'Do not forget to press apply, or enter on your keyboard, when you want to save the new ROI.';
             
         case 'roiSelectHelp' % in tab Reject ROIs
             strTitle = 'ROI selection/ rejection help';
@@ -2581,6 +2634,7 @@ function Help_Callback(~, eventdata, h) %#ok<DEFNU>
             str{11} = 'g = grab/pan image';
             str{12} = 'd = datacursor (pretty useless)';
             str{13} = '"enter"  can be used to apply ROI creation or splitting';
+            str{14} = '"delete" remove local time trace correlation overlay image';
             
         otherwise
             strTitle = 'otherwise is an error';
@@ -2589,9 +2643,10 @@ function Help_Callback(~, eventdata, h) %#ok<DEFNU>
     msgbox(str, strTitle)
 end
 
+
 %% Save changes function
 % --- Executes on button press in saveButton.
-function saveButton_Callback(~, ~, h) %#ok
+function saveButton_Callback(~, ~, h)
     % Save the new ROIs to workspace
     data = getappdata(h.hGUI, 'data');
     switches = getappdata(h.hGUI, 'switches');
@@ -2654,7 +2709,7 @@ function saveButton_Callback(~, ~, h) %#ok
 end
 
 
-
+%% keyboard key press function
 % --- Executes on key press with focus on hGUI or any of its controls.
 function myKeyPressFcn(hObject, eventdata, h)
 % Activates when keyboard keys are pressed while the figure is in focus
@@ -2680,6 +2735,11 @@ function myKeyPressFcn(hObject, eventdata, h)
                     applyNewRoi_Callback([], [], h)
                 case 5 % Manual ROI creation: Apply manual ROI
                     applyManRoi_Callback([], [], h)
+            end
+        case 'delete'
+            h = guidata(h.hGUI);
+            if isfield(h, 'correl')
+                delete(h.correl)
             end
     end
     
