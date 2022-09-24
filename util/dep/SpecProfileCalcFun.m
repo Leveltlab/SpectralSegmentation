@@ -46,17 +46,11 @@ if length(specAx) ~= nSpec
     warning('difference between spectral frequency axis and spec 3rd dimension!')
 end
 
-% mask3D = repmat(mask, [1 1 nSpec]);
 
 SP = reshape(spec, [], nSpec);
 % Retrieve the spectral profiles
 specProfiles = zeros(nSpec, nRois);
 for i = 1:nRois
-%     roii = mask == rois(i); 
-%     npixels = sum(roii(:));
-%     specProfilei = reshape(spec(mask3D==rois(i)), [npixels, nSpec]);
-%     specProfiles(:,i) = mean(specProfilei);
-    
     roii = mask == rois(i);
     roii = roii(:);
     spfl = SP(roii, :);

@@ -1,9 +1,9 @@
-function [cor, roiidx, rvar] = SpatialCorrCalcFun(sbxt, freq, mask, roiNr, originPos, varargin)
+function [cor, roiidx, r2] = SpatialCorrCalcFun(sbxt, freq, mask, roiNr, originPos, varargin)
 % [cor, roiidx, rvar] = SpatialCorrCalcFun(sbxt, freq, mask, roiNr, originPos, true)
 % Calculate the spatial corr of a ROI: correlation of the signal of
 % individual pixels with the signal of the median of 9 central ROI pixels
 % 
-% Can also calculate the variance of the correlation!
+% Can also calculate the square of the correlation!
 % 
 % inputs: 
 %   sbxt: transposed memorymapped sbxt from transmemap(transfile), 
@@ -27,9 +27,9 @@ function [cor, roiidx, rvar] = SpatialCorrCalcFun(sbxt, freq, mask, roiNr, origi
 
 % Get whether to calculate rvar or not
 if nargin == 6
-    calcRvar = varargin{1};
+    calcR2 = varargin{1};
 else
-    calcRvar = false;
+    calcR2 = false;
 end
 
 % Check if we got the actual coordinates for this ROI, or all coordinates
@@ -78,8 +78,8 @@ cor = zeros(size(maskT));
 cor(roiidx) = corr(seedSig, sigs, 'rows', 'pairwise');
 
 
-% Calculate the mean variance of correlation
-if calcRvar
+% Calculate the mean R squared
+if calcR2
     thr = 0.5 * max(abs(cor(:))); 
     if thr < 0.5
         %smooth with median filter, since with lower cutoff more variable
@@ -89,9 +89,9 @@ if calcRvar
     else
         corFiltered = cor;
     end
-    rvar = mean(corFiltered(roiidx).^2);
+    r2 = mean(corFiltered(roiidx).^2);
 else
-    rvar = nan;
+    r2 = nan;
 end
 
 % Transpose to the original size

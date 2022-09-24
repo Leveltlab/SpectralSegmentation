@@ -112,7 +112,7 @@ hSessionTable.Data = repmat({true},[2,nfiles]);
 
 % View dropdown menu
 hViewPopup = uicontrol('Style', 'popup',...
-    'String', {'Backgrd','Masks','nLinks','mask overlap'},...
+    'String', {'Backgrd','Masks selected','Masks all','nLinks','mask overlap'},...
     'Position', hViewAx.Position,'units','normalized','Callback',@BackgroundView);  
 
 % Alpha value slider for contours
@@ -216,7 +216,7 @@ function RoiSelect(~, event)
                 end
             end
         end
-
+        
         % Which ROIs were clicked? Update selected ROIs
         selCells = event.Indices; % Selected cells
         selFiles = selCells(:,2)-1; % -1 because first column is nLinks
@@ -231,8 +231,8 @@ function RoiSelect(~, event)
                 end
             end
         end
-
-
+        
+        
         % Set the clicked rois to fat contours
         for i = 1:size(selCells,1)
             if length(selRoi{i})==1 
@@ -251,11 +251,14 @@ function RoiSelect(~, event)
         end
         
         rShow = unique(event.Indices(:,1));
+        if length(rShow)==1 && rShow==0
+            rShow = 1:length(linkMat);
+        end
         
         RefreshInfoText
         
         % With certain views the image changes as well
-        if viewToggle == 2 || viewToggle == 4
+        if viewToggle == 2 || viewToggle == 5
             UpdateView
         end
         if autoZoom
@@ -396,13 +399,13 @@ function UpdateView
         end
         
         % ViewToggle selection
-        if viewToggle == 1 || viewToggle == 2 
+        if ismember(viewToggle, [1 2 3])
             
             if viewToggle == 1 % Background images
                 hImg.CData = CreateRGB2(BImgs(sShow2), colors2);
-            else % Mask view!
+            else % Mask view
                 MasksShow = Masks;
-                if rShow>1
+                if rShow>1 & viewToggle == 2
                     for x = sShow2(:)' % ROI selection
                         idx = linkMat(rShow, x+1);
                         MasksShow{x}(~ismember(MasksShow{x},idx)) = 0;
@@ -410,6 +413,7 @@ function UpdateView
                     end
                 end
                 hImg.CData = CreateRGB2(MasksShow(sShow2), colors2);
+                
             end
             
             % legend Text
@@ -421,7 +425,7 @@ function UpdateView
                 end
             end
             
-        elseif viewToggle == 3 
+        elseif viewToggle == 4
             % Number of links image. color based on ROI number of links
             hImg.CData = CreateRGB2(nLinksMask(sShow2), colors2);
             
@@ -434,7 +438,7 @@ function UpdateView
                 end
             end
            
-        elseif viewToggle == 4 
+        elseif viewToggle == 5
             % Mask pixel overlap determines intensity
             linkHeat = Masks;
             for x = sShow2(:)' % ROI selection possible
@@ -458,7 +462,7 @@ function UpdateView
         end
         
         % Put the normal colors if the view is not linkview 2
-        if viewToggle ~= 4
+        if viewToggle ~= 5
             for x = 1:nfiles
                 hLegendText(x).Color = colors(x,:);
             end

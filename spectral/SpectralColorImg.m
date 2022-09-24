@@ -12,7 +12,7 @@ function [rgb, colors, colorbarVals] = SpectralColorImg(loadType, inData, vararg
 % 2  -inData. In case of 'data': 
 %     ([3 x 1] cell array): 1st SPic, 2nd Sax, 3rd (optional) spar.
 %   (optional inputs 3 and 4)
-% 3  - freqToUse ([1 x 2] double). Frequencies in Hz to use.
+% 3  - freqToUse ([1 x 2] double). Frequencies in Hz to use. [min, max]
 % 4  - plotter (scalar logical). Plot the output? (in an existing axes)
 % 
 % Output:

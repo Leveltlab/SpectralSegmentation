@@ -18,7 +18,7 @@
 % 
 
 clc
-%% Load SPSIG data
+%% Select SPSIG files
 % load multiple files, ordered on recording time. Press cancel when done
 
 filenames = {};
@@ -115,7 +115,6 @@ for i = 1:nfiles
     % Normalize and remove -infs
     vals = unique(img);
     mini(i) = vals(round(end/20)); % 5th percentile
-%     mini(i) = vals(2); % second smallest value (not -inf)
     maxi(i) = vals(end);
     img(img < mini(i)) = mini(i);
     img = (img - mini(i)) ./ range([mini(i), maxi(i)]);
@@ -149,14 +148,22 @@ elseif size(colors,1)==2
 end
 
 % Plot image of unregistered overlayed recordings
-figure; subplot('Position', [0 0 1 1])
+figure('Units','Normalized', 'Position', [0.1766 0.1407 0.4203 0.7074]) 
+subplot('Position', [0 0 1 1])
 RGB = CreateRGB2(BImgs(toplot), colors(toplot,:));
 imagesc(RGB)
 for i = 1:length(toplot)
     text(20, 20+i*17, datestr(filedates(toplot(i))),'color',colors(toplot(i),:),...
         'fontweight','bold','fontsize',12)
 end
-figtitle('non-registered masks', 'Color', 'w')
+hold on
+for r = 1:nfiles
+    for i = 1:PPs(r).Cnt
+        plot(PPs(r).Con(i).x, PPs(r).Con(i).y, 'color', [colors(r,:) 0.2])
+    end
+    plot(PPs(r).P(1, :), PPs(r).P(2, :), '.', 'color', colors(r,:))
+end
+figtitle('non-registered images', 'Color', 'w')
 
 
 % Prepare for registration
@@ -178,21 +185,20 @@ clearvars vals mini maxi i img RGB
 %% Register images with manual GUI.
 
 %% Register images automatically (optional: run multiple times)
-referenceNum = 4; % which background image to take as reference
+referenceNum = 3; % which background image to take as reference
 lockRecs =  []; % Lock certain recordings (to the reference), do not move them
-buf = 40; % Buffer to remove around the to-register image
 
-iter = iter + 1;
+buf = 40; % Buffer to remove around the to-register image
 
 moveRecs = 1:nfiles;
 moveRecs(lockRecs) = [];
+iter = iter + 1;
 
 if referenceNum>nfiles
     error('Select a lower reference recording number! referenceNum exceeds number of files')
 end
 
 tic
-
 fprintf('\nstarting registration. with recording %d as reference\n', referenceNum)
 % Determine which minimum size image since recordings are different sizes
 dims = cellfun(@size, BImgs,'UniformOutput',false);
@@ -320,7 +326,7 @@ for i = find(abs(rotAng)>0.02) % If rotation angle < 0.02, don't rotate
     Masks{i} = imrotate(Masks{i},rotAng(i),'nearest','crop');
     
     % Rotate contours coordinates
-    PPs(i) = RotatePPCoordinates(PPs(i), rotAng(i), size(BImgs{1}));
+    PPs(i) = RotatePPCoordinates(PPs(i), -rotAng(i), size(BImgs{1}));
 end
 
 transformed(iter).rotation =  rotAng';
@@ -338,9 +344,10 @@ subplot('Position', [0.04 0.05 0.65 0.95])
 RGB = CreateRGB2(BImgs(toplot), colors);
 imagesc(RGB);
 hold on
-for i = 1:PPs(1).Cnt
-    plot(PPs(1).Con(i).x, PPs(1).Con(i).y, 'w')
+for i = 1:PPs(referenceNum).Cnt
+    plot(PPs(referenceNum).Con(i).x, PPs(referenceNum).Con(i).y, 'color', colors(referenceNum,:))
 end
+plot(PPs(referenceNum).P(1, :), PPs(referenceNum).P(2, :), '.', 'color', colors(referenceNum,:))
 figtitle(sprintf('Registration iteration %d', iter))
 for i = 1:length(toplot)
     text(20, 20+i*17, filenamesShort{toplot(i)},'color',colors(toplot(i),:),...
@@ -396,8 +403,8 @@ xlabel('Rotation (degrees)'), xlim([min(rotations),max(rotations)])
 %% clear some registration variables
 clearvars ssr step h j ji ij i regiHori regiVert RGB rotbest rotAng rotation
 clearvars section w h xLabels snd rotIdx moveVert moveHori moveHorMin moveVertMin
-clearvars imgtemp iter lockRecs moveRecs dims cutting buf referenceNum
-clearvars rotCorrel rotBest rotDiff corrScoreMean corrScore correl BImgRot BImgRef rotations
+clearvars imgtemp lockRecs moveRecs dims cutting buf referenceNum
+clearvars rotCorrel rotBest rotDiff correl BImgRot BImgRef rotations
 
 
 %% Checking how ROIs overlap. % % % % % % % %  MATCHING ROIS
@@ -554,7 +561,7 @@ for i = 2:nfiles
         % If one of the recordings matched another ROI keep it. So even if
         % the matched ROI is not found via some of the recordings, it can still
         % get linked with those recordings.
-        for j = 2:length(rois)
+        for j = 1:length(rois)
             if dif(j) > 1
                 rows = limits(j):(limits(j)+dif(j)-1);
                 linkMat(limits(j),:) = max(linkMat(rows,:));

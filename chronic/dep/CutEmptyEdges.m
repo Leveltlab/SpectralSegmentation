@@ -6,6 +6,14 @@ function [BImg2, Masks2, PP, cutting] = CutEmptyEdges(BImg2, Masks2, PP, nfiles)
 % This is desireable because consecutive registration rounds can cause
 % empty edges around the images.
 % 
+% Output:
+% - Updated BImgs, Masks, PP
+% - cutting ([4 x 1] double): Described which how many pixels were cut from
+%           which sides of the data:
+%           [bottom cut (end 1st dimension), top cut, right cut (end 2nd 
+%            dimension), left cut (beginning 2nd dimension)], respectively.
+% 
+% 
 % Leander de Kraker
 % 2021
 
@@ -55,9 +63,9 @@ if ~isempty(zeroCols)
         for i = 1:nfiles
             BImg2{i}(1:zeroCols(skipper),:) = [];
             Masks2{i}(1:zeroCols(skipper),:) = [];
-            PP(i).P(1,:) = PP(i).P(1,:) - skipper;
+            PP(i).P(2,:) = PP(i).P(2,:) - skipper;
             for j = 1:PP(i).Cnt
-                PP(i).Con(j).x = PP(i).Con(j).x - skipper;
+                PP(i).Con(j).y = PP(i).Con(j).y - skipper;
             end
         end
     end
@@ -100,9 +108,9 @@ if ~isempty(zeroRows)
         for i = 1:nfiles
             BImg2{i}(:,1:zeroRows(skipper)) = [];
             Masks2{i}(:,1:zeroRows(skipper)) = [];
-            PP(i).P(2,:) = PP(i).P(2,:) - skipper;
+            PP(i).P(1,:) = PP(i).P(1,:) - skipper;
             for j = 1:PP(i).Cnt
-                PP(i).Con(j).y = PP(i).Con(j).y - skipper;
+                PP(i).Con(j).x = PP(i).Con(j).x - skipper;
             end
         end
     end

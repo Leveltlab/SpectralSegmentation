@@ -12,7 +12,10 @@ function [corner, check] = GetRoiCorners(Mask, PP, decreSize, checkSize, varargi
 % correlation with the rest of the ROI. But the points shouldn't be 
 % outside of neurons. To  ensure this, I decrease the size of the masks,
 % using my BufferMask function in a reverse way
-
+%
+% Leander de Kraker
+% 2019
+% 
 
 rMask = Mask; % reverse valued Mask (0 -> 1), (>=1 -> 0)
 rMask(rMask>0) = 1;
