@@ -110,6 +110,8 @@ for i = 1:Nmp
         if RoiMx > Ws(SigTh) % Pixel value maximum should be significantly higher than surrounding pixels
             it = 0;
             bval = false;
+            NwA = [];
+            Ro = [];
             while ~bval && it < 10
                 [Con, A, F, Pin, Ro] = getCon(If, th, area, PAf*0.9, py, px, Iy, Ix);
                 if ~isempty(Con) %valid contour: contains point and has valid roundedness
