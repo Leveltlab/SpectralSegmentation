@@ -133,22 +133,22 @@ if A > 0 && DISPLAY
 
 % For debugging
   %  if PreRoiSz >  1.5 * A
-        figure(4)
-        Rix = find(F);
-        [~, Ix] = intersect(linix, Rix);
-        [~, Inx] = intersect(linix, find(~F));
-        plot(median(Sigpix(:,Ix), 2), 'b')
-        hold on
-        plot(median(Sigpix(:,Inx), 2), 'g')
- 
-        Ft = Fd';
-        lx = find(Ft(:));
-        M =  zeros(Dim);
-        M(yrange, xrange) = Fd;
-        Mt = logical(M');%transposed
-        Sig = sbxt.Data.y(:,Mt(:));
-        [W, H] = runnmf(Sig, lx, size(V));
-        figure(4), plot(W(:,1)/7 + 4500, 'm'), hold off 
+%         figure(4)
+%         Rix = find(F);
+%         [~, Ix] = intersect(linix, Rix);
+%         [~, Inx] = intersect(linix, find(~F));
+%         plot(median(Sigpix(:,Ix), 2), 'b')
+%         hold on
+%         plot(median(Sigpix(:,Inx), 2), 'g')
+%  
+%         Ft = Fd';
+%         lx = find(Ft(:));
+%         M =  zeros(Dim);
+%         M(yrange, xrange) = Fd;
+%         Mt = logical(M');%transposed
+%         Sig = sbxt.Data.y(:,Mt(:));
+%         [W, H] = runnmf(Sig, lx, size(V));
+%         figure(4), plot(W(:,1)/7 + 4500, 'm'), hold off 
 %     end
      pause
 end
