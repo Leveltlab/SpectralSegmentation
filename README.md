@@ -1,5 +1,5 @@
 SpecSeg: Cross spectral power-based segmentation of neurons and neurites in chronic calcium imaging datasets
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6993003.svg)](https://doi.org/10.5281/zenodo.6993003)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7113362.svg)](https://doi.org/10.5281/zenodo.7113362)
 [![View SpectralSegmentation on File Exchange](https://www.mathworks.com/matlabcentral/images/matlab-file-exchange.svg)](https://nl.mathworks.com/matlabcentral/fileexchange/118135-spectralsegmentation)
 ===========
 
