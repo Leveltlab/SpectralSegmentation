@@ -1,5 +1,6 @@
 SpecSeg: Cross spectral power-based segmentation of neurons and neurites in chronic calcium imaging datasets
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6993003.svg)](https://doi.org/10.5281/zenodo.6993003)
+[![View SpectralSegmentation on File Exchange](https://www.mathworks.com/matlabcentral/images/matlab-file-exchange.svg)](https://nl.mathworks.com/matlabcentral/fileexchange/118135-spectralsegmentation)
 ===========
 
 This Github contains 'SpecSeg', an open source calcium imaging processing toolbox to detect regions of interest (ROIs) in calcium imaging datasets.
@@ -71,8 +72,12 @@ If you get the C++ compiler by installing Visual Studio, make sure to install:
 
 Paper
 ======
-We are submitting a manuscript on this pipeline (WIP). A preprint has been published on biorxiv
+A preprint has been published on biorxiv
 ([Kraker et al. 2020](https://doi.org/10.1101/2020.10.20.345371)).
+
+***Leander de Kraker, Koen Seignette, Premnath Thamizharasu, Bastijn J.G. van den Boom, Ildefonso Ferreira Pica, Ingo Willuhn, Christiaan N. Levelt, Chris van der Togt,
+SpecSeg is a versatile toolbox that segments neurons and neurites in chronic calcium imaging datasets based on low-frequency cross-spectral power,
+Cell Reports Methods, 2022, 100299, ISSN 2667-2375, https://doi.org/10.1016/j.crmeth.2022.100299.***
 
 
 Matlab dependencies
