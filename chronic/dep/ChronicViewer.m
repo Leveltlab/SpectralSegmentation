@@ -27,7 +27,10 @@ function ChronicViewer(BImgs, Masks, names, nLinksMask, linkMat, contours, score
 % 
 % Leander de Kraker
 % 2021-5-12
+% 2022-9-24: Added ability to deselect ROIs by pressing the empty 1st row
+% 2022-9-28: to-edit-ROI-row takes into account changing row from editing
 % 
+%
 
 % The height of the table individual ROIs according to the java properties
 tableRowHeight =  17.8349; 
@@ -303,6 +306,11 @@ function RoiEdit(source,event)
         n = sum(linkMat(oldRow,2:end-1)>0);
         if n == 0
             linkMat(oldRow,:) = []; % delete old row if it is empty now
+            if row > oldRow % If that deleted old row is deleted, shift the selected row up.
+                row = row - 1;
+                selCells(1) = selCells(1) - 1;
+                RefreshInfoText
+            end
         else
             linkMat(oldRow,1) = n; % new number of links
             linkMat(oldRow,end) = OverlapScore(inRoi, linkMat(:,2:end-1), oldRow);
@@ -333,6 +341,7 @@ function RoiEdit(source,event)
     if row == 1
         linkMat = [zeros(1, size(linkMat,2)); linkMat];
         selCells(1) = selCells(1)+1; % the selected cell is thus shifted
+        RefreshInfoText
     end
     
     source.Data = num2cell(linkMat);    
@@ -342,7 +351,7 @@ function RoiEdit(source,event)
     viewport.setViewPosition(P);
     
     eventToGive.Indices = selCells;
-    RoiSelect(nan, event)
+    RoiSelect(nan, eventToGive)
 end
 
 
