@@ -558,13 +558,17 @@ end
 
 function AutoZoomFunc
     % zoom to the final selected contour
-    [~, idx] = find(linkMat(rShow(end),2:end)>0);
+    [~, idx] = find(linkMat(rShow(end),2:end-1)>0);
     if ~isempty(idx)
-        roi = linkMat(rShow(end),idx(1)+1);
-        hImgAx.XLim = [min(contours(idx(1)).Con(roi).x)-35,...
-                       max(contours(idx(1)).Con(roi).x)+35];
-        hImgAx.YLim = [min(contours(idx(1)).Con(roi).y)-35,...
-                       max(contours(idx(1)).Con(roi).y)+35];
+        roi = linkMat(rShow(end),idx+1);
+        x = [];
+        y = [];
+        for i = 1:length(idx)
+            x = cat(2, x, contours(idx(i)).Con(roi(i)).x);
+            y = cat(2, y, contours(idx(i)).Con(roi(i)).y);
+        end
+        hImgAx.XLim = [min(x)-35, max(x)+35];
+        hImgAx.YLim = [min(y)-35, max(y)+35];
     end
 end
 

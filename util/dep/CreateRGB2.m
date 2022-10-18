@@ -1,50 +1,69 @@
 function [RGB] = CreateRGB2(data, colors, varargin)
-% Create RGB 2
-% RGB = CreateRGB2(data, colors, normalization, whitebalance)
-% input:
-%   - data: 1D cell array with 2D matrixes
-%   - colors: In which color values that correspond to the data matrixes.
-%   - optional - 'normalize': true or false. Normalizes each data slice
-%   -          - 'wbalance' : true of false. White balances final RGB image
-% 
-% output:
-%   - RGB: 2D double [height x width x 3] of largest 2D double in data 
-% 
 % Create a colorfull image by overlaying 2D images from a cell array using
-% a requested SPECIFIC COLORMAP
+% a requested specific colormap
 % 
+% RGB = CreateRGB2(data, colors, normalization, whitebalance, selected)
+% 
+% input:
+%   - data: ([n x 1] cell array), with 2D or 3D doubles.
+%   - colors ([n x 3] double): color values to give to corresponding data.
+%   Optional input: can be left empty [] or disregarded completely
+%   - normalize: true or false. Normalizes each data slice
+%   - wbalance : true or false. White balances final RGB image. Can make
+%                     the images not correspond to their intended colors.
+%   - selected ([n x 1] double): In case each cell contains a 3D matrix
+%                         select which image of the 3rd dimension to use.
+%  
+%  
+% output:
+%   - RGB: 3D double [height x width x 3] of largest 2D double in data 
+% 
+% 
+% See also CreateRGB, CreateRGB2_mat
 % 
 % Leander de Kraker
 % 2019-3-1
+%
 
 % normalize?
-if (nargin > 3) && (varargin{1} == true)
-    norma = true;
+if (nargin > 3) && ~isempty(varargin{1})
+    norma = varargin{1};
 else
     norma = false;
 end
-if (nargin == 5) && (varargin{2} == true)
-    wbalance = true;
+if (nargin >= 4) && ~isempty(varargin{2})
+    wbalance = varargin{2};
 else
     wbalance = false;
 end
+if (nargin == 5)
+    selected = varargin{3};
+else
+    selected = 1;
+end
 
+nslices = length(data);
 dims = (cellfun(@size, data,'UniformOutput',false));
 dims = cat(1,dims{:});
+if size(dims, 2)==3
+    for i = 1:nslices
+        data{i} = data{i}(:,:,selected);
+    end
+end
+
 maxdim(1) = max(dims(:,1));
 maxdim(2) = max(dims(:,2));
 RGB = zeros(maxdim(1), maxdim(2), 3);
-nslices = length(data);
+
 
 for i = 1:nslices
     
-    if norma
-        % normalize intensities of the channel
+    if norma % normalize intensities of the channel
         data{i} = (data{i}-min(data{i}(:)))./ range(data{i}(:));
-    else
+    else % Set the data to minimum 0
         data{i} = data{i}-min(data{i}(:));
     end
-    % 
+    
     for c = 1:3
         if colors(i,c)>0
             % RGB update = old colorchannel values + imgage i * colormap  value

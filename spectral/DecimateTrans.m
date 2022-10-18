@@ -74,9 +74,13 @@ switch sbxt.Format
         multiplier = 8;
 end
 fileSize = numel(sbxt.Data)*multiplier ./ (1*10^9);
-[~, memSize] = memory;
-memSize = memSize.PhysicalMemory.Available ./ (1*10^9);
-memSize = max(2, memSize); % Do not accept less than 2GB memory
+if IsWin
+    [~, memSize] = memory;
+    memSize = memSize.PhysicalMemory.Available ./ (1*10^9);
+    memSize = max(2, memSize); % Do not accept less than 2GB memory
+else % Hardoded value for non-windows computers. Pablo B
+    memSize = 8;
+end
 timesToReload = ceil(fileSize/(memSize/3));
 timeToReload = round(linspace(0, steps+1, timesToReload+1));
 
