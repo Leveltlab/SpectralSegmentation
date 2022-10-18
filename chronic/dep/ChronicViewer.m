@@ -593,7 +593,7 @@ function SaveRois(source, ~)
     % Saving the changes of the edited linkMat table
     
     hSaveButton.String = 'saving the table';
-    assignin('base', 'linkMat2', linkMat(2:end, 2:end-1));
+    assignin('base', 'linkMat', linkMat(2:end, 2:end-1));
     assignin('base', 'score', linkMat(:,1));
     
     try

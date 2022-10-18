@@ -14,6 +14,7 @@
 % 2022-3-1  Rotation uses nearest neighbour interpolation to prevent noise
 %               reduction which causes higher correlation with more rotation
 % 2022-4-12 Improved figure spam.
+% 2022-9-24 Changed some plotting, bugfixed contour registration
 % 
 % 
 
@@ -68,7 +69,7 @@ toc
 clearvars selecting str pos i questionStr answerStr strdate
 
 %% Backing up data variable WHEN GOING TO RESIZE SOME RECORDINGS
-% This of course only resizes the images that are loaded in. actual recordings will not be edited
+% This of course only resizes the images in workspace. actual recordings will not be edited
 data2 = data;
 %% Resize some recordings? ONLY IF RESIZE IS NECESSARY! Manual parameters!
 % This step is only necessary when recordings are made with different zoom
@@ -109,9 +110,14 @@ mini = zeros(1,nfiles);
 maxi = zeros(1,nfiles);
 
 for i = 1:nfiles
-%     img = data(i).BImgMax;
-    img = data(i).BImg;
-
+    if isfield(data, 'BImg')
+        img = data(i).BImg;
+    elseif isfield(data, 'BImgMax')
+        img = data(i).BImgMax;
+    else
+        img = data(i).BImgAverage;
+    end
+    
     % Normalize and remove -infs
     vals = unique(img);
     mini(i) = vals(round(end/20)); % 5th percentile
@@ -337,7 +343,7 @@ corrScoreMean(:,end+1) = [sum(corrScore)./(nfiles-1)]'; %#ok<NBRAK>
 
 
 
-% Show the result of registration
+% Show the result of registration  % % % % % % % % % % % % % % 
 figure('Units', 'normalized', 'Position',[0.15 0.1 0.65 0.75])
 % The registered images
 subplot('Position', [0.04 0.05 0.65 0.95])
@@ -399,6 +405,14 @@ xlabel('Rotation (degrees)'), xlim([min(rotations),max(rotations)])
 
 
 
+%% Re-draw all ROI contours.
+% ROI contours are hard to register same as the images, since the contours
+% can rotate on subpixel levels etc. One solution is to just redraw all
+% ROI contours.
+
+for i = 1:nfiles
+    PPs(i) = PPfromMask(Masks{i}, [], PPs(i));
+end
 
 %% clear some registration variables
 clearvars ssr step h j ji ij i regiHori regiVert RGB rotbest rotAng rotation
@@ -561,7 +575,7 @@ for i = 2:nfiles
         % If one of the recordings matched another ROI keep it. So even if
         % the matched ROI is not found via some of the recordings, it can still
         % get linked with those recordings.
-        for j = 1:length(rois)
+        for j = 2:length(rois)
             if dif(j) > 1
                 rows = limits(j):(limits(j)+dif(j)-1);
                 linkMat(limits(j),:) = max(linkMat(rows,:));

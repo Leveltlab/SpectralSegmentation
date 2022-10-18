@@ -190,10 +190,10 @@ if size(PP.P,1)>=5 && size(PP.P,2) == PP.Cnt
     differentRvar = sum(PP.P(5,:)~=PP.Rvar');
     fprintf('PP.P 5th row had %d\\%d changes compared to PP.Rvar\n', differentRvar, PP.Cnt)
 end
-% if size(PP.P,1)>2
-%     fprintf('removing rows from PP.P\n')
-%     PP.P(3:end, :) = [];
-% end
+if size(PP.P,1)>2
+    fprintf('removing rows from PP.P. Should only contain ROI center coordinates (2 rows)\n')
+    PP.P(3:end, :) = [];
+end
 
 
 %% Save the updated PP to the file
