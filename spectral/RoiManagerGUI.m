@@ -2078,12 +2078,12 @@ function importChronicFile(h)
     switches = getappdata(h.hGUI, 'switches');
     [f,p] = uigetfile('','load the chronic file for this dataset');
 
-    chronicImg = load([p,f],'BImg2');
-    chronicImg = chronicImg.BImg2;
+    chronicImg = load([p,f],'BImgs');
+    chronicImg = chronicImg.BImgs;
     dims = size(chronicImg{1});
     % Average the other background images to one nice image
-    chronicImg = mean(reshape(cell2mat(chronicImg),[dims(1),dims(2),length(chronicImg)]),3)';
-
+    chronicImg = mean(reshape(cell2mat(chronicImg),[dims(1),dims(2),length(chronicImg)]),3);
+    
     % Register the chronic dataset to this dataset
     data.chronicImg = Register2Imgs(data.BImg, chronicImg);
 
@@ -2549,8 +2549,16 @@ function Help_Callback(~, eventdata, h)
                    'If the current background image is a color image, the different color channels (Red, green, blue) '...
                    'will be averaged together.']};
             str{3} = 'Decrease the threshold to include more pixels into the new ROI.';
-            str{5} = 'Existing ROIs are set to minimum value in the ROI search image';
-            str{7} = 'Do not forget to press apply, or enter on your keyboard, when you want to save the new ROI.';
+            str{5} = ['"Use local time trace correlation" takes the correlation of the signal exactly where you clicked'...
+                        '(median fluorescence signal of 9 pixels) and correlates that with the fluorescence signal of all'...
+                        'pixels in the search field'];
+            str{6} = ['Depending on the dataset a large searchfield can be really slow. The RoiManagerGUI will be unresponsive'...
+                      ' until the local correlation is calculated and plotted.'...
+                      ' Consider selecting a smaller search field if it is too slow'];
+            str{8} = 'You can remove the local correlation overlay in the main image by pressing "delete"';
+            str{10} = 'Existing ROIs are set to minimum value in the ROI search image';
+            
+            str{12} = 'Do not forget to press apply, or enter on your keyboard, when you want to save the new ROI.';
             
         case 'roiSelectHelp' % in tab Reject ROIs
             strTitle = 'ROI selection/ rejection help';
