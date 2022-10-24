@@ -879,23 +879,13 @@ function deleteButton_Callback(~, ~, h)
     Mask = data.Mask;
     
     if h.thresToggle.Value
-        selectedPoints = (idx.Black|idx.Size|idx.Round|idx.Thres) & ~idx.White;
+        idxDel = (idx.Black|idx.Size|idx.Round|idx.Thres) & ~idx.White;
     else
-        selectedPoints = (idx.Black|idx.Size|idx.Round|idx.ThresCor) & ~idx.White;
+        idxDel = (idx.Black|idx.Size|idx.Round|idx.ThresCor) & ~idx.White;
     end
-    
-    if ~isempty(find(selectedPoints, 1))
-        idxDel = logical(selectedPoints);
-        PP.Con(idxDel) = [];
-        PP.A(idxDel) = [];
-        PP.P(:,idxDel) = [];
-        PP.SpecProfile(:,idxDel) = [];
-        PP.peakFreq(idxDel) = [];
-        PP.peakVal(idxDel)  = [];
-        PP.Roundedness(idxDel) = [];
-        PP.Rvar(idxDel) = [];
-        PP.creationMethod(idxDel) = [];
-        PP.Cnt = size(PP.P,2);
+    idxDel = find(idxDel);
+    if ~isempty(idxDel)
+        [Mask, PP] = RemoveROIs(Mask, PP, idxDel);
         
         % Update the selected points list
         idx.Black = false(1, PP.Cnt);
@@ -903,20 +893,7 @@ function deleteButton_Callback(~, ~, h)
         idx.Thres = false(1, PP.Cnt);
         idx.ThresCor = false(1, PP.Cnt);
         idx.Round = false(1, PP.Cnt);
-        
-        % Clean up the mask
-        for i = find(idxDel)
-            Mask(Mask==i) = 0;
-        end
         idx.White(idxDel) = [];
-        
-        v = unique(Mask(:));
-        v = v(2:end);        
-        for i = 1:length(v)
-            if v(i) ~= i
-                Mask(Mask == v(i)) = i;
-            end
-        end
         
         % Save edited variables
         data.PP = PP;
