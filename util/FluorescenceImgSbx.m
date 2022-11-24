@@ -1,10 +1,20 @@
 function [BImgMax, BImgAverage] = FluorescenceImgSbx(varargin)
 % Create GFP channel images from long recording
 % 
+% FluorescenceImgSbx(sbxName, spigfileName);
+% FluorescenceImgSbx(sbxName, spigfileName, percentageToUse);
+% FluorescenceImgSbx(sbxName, spigfileName, [nframes, nchunks]);
 % [BImgMax, BImgAverage] = FluorescenceImgSbx(sbxName, spigfileName);
+% [BImgMax, BImgAverage] = FluorescenceImgSbx;
 % 
-% Optional input: 1. sbx file name (string) (with foldername if necessary)
-%                 2. spsig file name to save the images to
+% Optional input: 
+%   - sbx filename (string) (with foldername if necessary)
+%   - spsig filename to save the images to
+%   - how many frames to take: 2 options: - (1 double): percentage of
+%                                           frames to use
+%                                         - ([2 x 1] integer): 1. number of
+%                                           frames to average per chunk.
+%                                           2. number of chunks to take.
 %
 % In case no input is given the file names will be requested.
 % In case only one input is given (the sbx filename), the spectral file is
@@ -26,7 +36,7 @@ function [BImgMax, BImgAverage] = FluorescenceImgSbx(varargin)
 nchunks = 1000; % How many pieces of the data to take
 nframes = 10; % How many frames are those pieces long
 
-if exist('varargin', 'var') && nargin == 2 % In case both sbx and spsig file name are given
+if exist('varargin', 'var') && nargin >= 2 % In case both sbx and spsig file name are given
     % When called as a function, make sure the normcorr sbx file is being used
     sbxName = varargin{1};
     spsigName = varargin{2};
@@ -72,8 +82,24 @@ clearvars -global info
 
 sbxread(sbxName, 0,1);
 global info
+
 fprintf('Creating background image for %s\n', sbxName)
 
+% Process optional nframes, nchunks or, take-percentage input
+if exist('varargin', 'var') && nargin == 3
+    if length(varargin{3})==1
+        percentTook = varargin{3};
+        nchunks = round(info.max_idx .* percentTook/100 ./ nframes);
+    elseif length(varargin{3})==2
+        nchunks = varargin{3}(2);
+        nframes = varargin{3}(1);
+        percentTook = nframes*nchunks./info.max_idx*100;
+    end
+else
+    percentTook = nframes*nchunks./info.max_idx*100;
+end
+
+fprintf('Using %d chunks of %d frames = %.1f%% of data\n', nchunks, nframes, percentTook)
 % Activate much tighter subplots
 % [subplot margin top&side],[figure bottomspace,topspace],[leftspace,rightspace]
 subplot = @(m,n,p) subtightplot (m, n, p, [0.075 0.005], [0.05 0.07], [0.07 0.01]);
@@ -192,13 +218,15 @@ if plotter
     subplot(1,1,1)
 end
 [BImgRGB, colorsRGB, colorbarVals] = SpectralColorImg('file', spsigName, [0 0.5], plotter);
-title('colored spectral image')
+if plotter
+    title('colored spectral image')
+end
 
 fprintf('done calculating fluorescence and colored spectral images :)\n')
 
 %% Save information about the images
 
-infoimg.percent = nframes*nchunks./info.max_idx*100;
+infoimg.percent = percentTook;
 infoimg.framesPerChunk = nframes;
 infoimg.nchunks = nchunks;
 infoimg.BImgRGBfreqs = colorbarVals;
