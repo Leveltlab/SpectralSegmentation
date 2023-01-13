@@ -1,13 +1,23 @@
 function PP = PPfromMask(Mask, varargin)
-% Find contours around 2D ROI mask which is inside a file.
+% Find contours around 2D ROI mask
 % 
 % PP = PPfromMask(Mask);
 % PP = PPfromMask(Mask, BImg);
 % PP = PPfromMask(Mask, BImg, PP);
 % 
+% Input:
+%   Mask (2D double): ROI mask with numbers indicating ROI id at each pixel
+%   If BImg is inputted, that image will be used to find the location of
+%   brightest pixel in each ROI: the seedpoint location. 
+%       If no BImg is inputted, the center of mass of the ROI will be used
+%   If PP is inputted, Con and P will be updated with new data.
 % 
-% Also edit the rest of PP
-% PP = PPModernize(pathname, filename);
+% Output:
+%   PP.Con.x 
+%   PP.Con.y
+%   PP.P    ([2 x nrois]): x and y coordinates of seedpoint or COM
+% 
+% See also: PPfromMaskFile, PPModernize
 % 
 % Leander de Kraker
 % 2022-9-23
@@ -49,7 +59,7 @@ for i = 1:nROIs
     end
 end
 
-if ~hasBImg %  If BImg not present, get Center Of Mask of Mask ROI
+if ~hasBImg %  If BImg not present, get Center Of Mass of Mask ROI
     PP.P = GetRoiCoM(Mask);
 end
 

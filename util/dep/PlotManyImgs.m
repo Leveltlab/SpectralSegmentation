@@ -64,7 +64,7 @@ end
 
 if ischar(distr)
     if strcmpi(distr, 'rect')
-        distr = [ceil(sqrt(nimgs)),  floor(sqrt(nimgs))];
+        distr = [ceil(sqrt(nimgs)),  round(sqrt(nimgs))];
     elseif strcmpi(distr, 'horizontal')
         distr = [1, nimgs];
     elseif strcmpi(distr, 'vertical')

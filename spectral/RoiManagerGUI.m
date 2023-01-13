@@ -1927,8 +1927,15 @@ function backGrdView(selected, h)
                 h.im.CData = data.SpatialCorr;
                 h.mainAx.Colormap = jet;
                 
-            case 4 % ROI corners signal correlations image
-                if switches.roiCorrIm == false % image needs to be created
+            case 4 % ROI corners signal correlations image                
+                if switches.roiCorrIm == false % image needs to be created                    
+                    answer = 'recalculate';
+                else % optional recalculation after first calculation
+                    answer = questdlg('recalculate roi corr?', '',...
+                                'recalculate', 'use previous calculated', 'use previous calculated');
+                end
+
+                if strcmp(answer, 'recalculate')
                     sbxt = getappdata(h.hGUI, 'sbxt');
                     
                     try % If ROIs are too small they get deleted when trying to remove
@@ -2495,7 +2502,7 @@ function Help_Callback(~, eventdata, h)
                    ' the surrounding 256 pixels. The correlation values are then'...
                    ' shown in the main image.']};
                str{3} = 'This can be helpful to see individual neurons and close dendrites, which have a correlated signal.';
-               str{5} = 'Remove the overlay image by pressing "delete"';
+               str{5} = 'Remove the overlay image by pressing "delete" on your keyboard.';
                
         case 'sigSelectHelp' % in tab Show data
             strTitle = 'main image signal plotting help';
@@ -2555,10 +2562,10 @@ function Help_Callback(~, eventdata, h)
             str{6} = ['Depending on the dataset a large searchfield can be really slow. The RoiManagerGUI will be unresponsive'...
                       ' until the local correlation is calculated and plotted.'...
                       ' Consider selecting a smaller search field if it is too slow'];
-            str{8} = 'You can remove the local correlation overlay in the main image by pressing "delete"';
+            str{8} = 'You can remove the local correlation overlay in the main image by pressing "delete" on your keyboard.';
             str{10} = 'Existing ROIs are set to minimum value in the ROI search image';
             
-            str{12} = 'Do not forget to press apply, or enter on your keyboard, when you want to save the new ROI.';
+            str{12} = 'Do not forget to press apply, or "enter" on your keyboard, when you want to save the new ROI.';
             
         case 'roiSelectHelp' % in tab Reject ROIs
             strTitle = 'ROI selection/ rejection help';
