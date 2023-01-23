@@ -191,7 +191,7 @@ clearvars vals mini maxi i img RGB
 %% Register images with manual GUI.
 
 %% Register images automatically (optional: run multiple times)
-referenceNum = 3; % which background image to take as reference
+referenceNum = 2; % which background image to take as reference
 lockRecs =  []; % Lock certain recordings (to the reference), do not move them
 
 buf = 40; % Buffer to remove around the to-register image

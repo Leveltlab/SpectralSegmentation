@@ -46,6 +46,10 @@ spectral
 % Projections get saved into SPSIG file (and outputted into the workspace)
 FluorescenceImgSbx;
 
+%% Print pngs of fluorescence images & colored spectral (optional)
+% Uses images in the SPSIG file created by FLuorescenceImgSbx
+PrintBImgs
+
 %% ROI segmentation (neurons, or boutons)
 % ROIs, ROI properties and used spectral images get saved into SPSIG file
 getSpectrois

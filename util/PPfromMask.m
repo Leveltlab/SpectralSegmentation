@@ -42,21 +42,23 @@ end
 
 PP.Cnt = nROIs;
 PP.Con = struct('x', [], 'y', []);
-PP.P = [];
-
+PP.P = nan(2, nROIs);
+diskim = fspecial('disk', 1); % disk for smoothing mask for smoother contours
 for i = 1:nROIs
-    maski = double(Mask==i);
-    coni = contourc(maski, [0.5 0.5]);
+    maski = Mask==i;
+    if hasBImg % Get ROI probable seedpoint
+        [idxd1, idxd2] = find(maski);
+        vals = BImg(maski);
+        [~, maxidx] = max(vals);
+        PP.P(:,i) = [idxd2(maxidx), idxd1(maxidx)];
+    end
+
+    maski = filter2(diskim, double(maski));
+    thres = max(maski(:))./2.5;
+    coni = contourc(maski, [thres thres]);
     coni = getcontourlines(coni);
     PP.Con(i).x = coni.x;
     PP.Con(i).y = coni.y;
-
-    if hasBImg % Get ROI probable seedpoint
-        BImgi = BImg;
-        BImgi(maski==0) = minval;
-        [~, PP.P(1,i)] = max(max(BImgi));
-        [~, PP.P(2,i)] = max(BImgi(:,PP.P(1,i)));
-    end
 end
 
 if ~hasBImg %  If BImg not present, get Center Of Mass of Mask ROI

@@ -1068,6 +1068,10 @@ function CreateRoi(h, do)
         
         if found
             con = con(num);
+            if con.x(1)~= con.x(end) || con.y(1)~=con.y(end)
+                con.x(end) = con.x(1);
+                con.y(end) = con.y(1);
+            end
             switches.creationAllow = true; % This could be a good ROI
             sbxt = getappdata(h.hGUI, 'sbxt');
             

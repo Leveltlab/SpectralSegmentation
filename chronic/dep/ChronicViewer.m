@@ -36,6 +36,11 @@ function ChronicViewer(BImgs, Masks, names, nLinksMask, linkMat, contours, score
 tableRowHeight =  17.8349; 
 
 nfiles = length(Masks);
+for f = 1:nfiles % Expand the masks so they are easier to click.
+    [~, ~, MaskExpansion] = BufferMask(Masks{f}, 3);
+    Masks{f} = Masks{f} + MaskExpansion;
+end
+
 
 dims = size(Masks{1});
 
@@ -50,7 +55,13 @@ contAlpha = 0.4;
 autoZoom = false;
 oldZoom = [1, dims(1), 1, dims(2)];
 viewToggle = 1;
-colors = flipud(cmapL([0 0 1; 0 1 1; 0 1 0; 1 1 0; 1 0 0; 1 0 1], nfiles));
+if nfiles == 2
+    colors = [1 0 0; 0 1 1];
+elseif nfiles == 3
+    colors = [1 0 0; 0 1 0; 0.1 0.1 1];
+else
+    colors = flipud(cmapL([0 0 1; 0 1 1; 0 1 0; 1 1 0; 1 0 0; 1 0 1], nfiles));
+end
 
 % Activate tight subplotting
 % [subplot margin side&top],[figure bottomspace,topspace],[leftspace,rightspace]
@@ -567,8 +578,9 @@ function AutoZoomFunc
             x = cat(2, x, contours(idx(i)).Con(roi(i)).x);
             y = cat(2, y, contours(idx(i)).Con(roi(i)).y);
         end
-        hImgAx.XLim = [min(x)-35, max(x)+35];
-        hImgAx.YLim = [min(y)-35, max(y)+35];
+        padding = 50;
+        hImgAx.XLim = [min(x)-padding, max(x)+padding];
+        hImgAx.YLim = [min(y)-padding, max(y)+padding];
     end
 end
 
