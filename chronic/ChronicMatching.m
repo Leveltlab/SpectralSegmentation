@@ -595,6 +595,10 @@ fprintf('\ndone matching ROIs\n')
 % The 'OVERLAP SCORE' is based on the pixel overlap between the linked ROIs. 
 % This also takes into account the ROIs which are not officially linked with
 % each other, but were linked together because of mutual links.
+nLinks = sum(linkMat~=0,2);
+linkMat(nLinks==1,:)=[];
+nLinks = sum(linkMat~=0,2);
+
 score = zeros(length(linkMat),1);
 for i = 1:length(linkMat)
     score(i) = OverlapScore(inRoi, linkMat, i);
@@ -602,7 +606,6 @@ end
 
 % Plot scores of the ROIs
 h = figure; hold on
-nLinks = sum(linkMat~=0,2);
 plot(nLinks+(rand(length(nLinks),1)./5-0.1), score, 'o')
 % plot(nLinks+(score2-0.5), score2, 'o')
 h.Children.XTick = 2:nfiles;
