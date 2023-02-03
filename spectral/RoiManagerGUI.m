@@ -247,7 +247,7 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     switches.nCluster = h.nClusterSlider.Value; % in how many clusters to split the ROI
     switches.creationAllow = false; % allow creation of new ROI with current data
     switches.creationPos = [100, 100]; % position where the user wants a new ROI
-    switches.creationThres = 80; % threshold for percentile pixelvalue new ROI inclusion
+    switches.creationThres = h.creationThresholdSlider.Value; % threshold for percentile pixelvalue new ROI inclusion
     switches.creationVoxelSz = h.creationVoxelSzSlider.Value; % Search field size of ROI create
     switches.creationLocalCorr = false;
     switches.chronic = false; % Has a chronic image been calculated already?
@@ -2091,9 +2091,8 @@ function importChronicFile(h)
 
     chronicImg = load([p,f],'BImgs');
     chronicImg = chronicImg.BImgs;
-    dims = size(chronicImg{1});
     % Average the other background images to one nice image
-    chronicImg = mean(reshape(cell2mat(chronicImg),[dims(1),dims(2),length(chronicImg)]),3);
+    chronicImg = mean(cat(3, chronicImg{:}), 3);
     
     % Register the chronic dataset to this dataset
     data.chronicImg = Register2Imgs(data.BImg, chronicImg);

@@ -16,5 +16,5 @@ try % try to decipher user input as a datetime
     filedate = datetime(answerStr, 'inputformat','yyyyMMdd');
 catch METOO % another error: No date for this recording.
     warning('User input not recognized as date')
-    throw(METOO)
+    filedate = answerStr;
 end

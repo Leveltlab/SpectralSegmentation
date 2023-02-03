@@ -7,12 +7,10 @@ function [image2, transformation] = Register2Imgs(reference,image2,varargin)
 %
 % input: image1: this 2D matrix is the reference
 %        image2: this 2D matrix will be moved
-%        interpMethod (optional): interpolation method for rotation: 
-%                           'bilinear', 'linear', 'nearest' (default)
 %
 % output: image2: 2D double with the size of image1. Registration
-%           result.
-%         transformation: which x shift, y shift (in pixels) was applied. 
+%           result
+%         transformation: which x shift, y shift (in pixels) was applied.
 %                         which rotation was applied(in degrees)
 %
 % Leander de Kraker
@@ -48,13 +46,32 @@ end
 correl = xcorr2_fft(reference, image2(buffer:dims(1)-buffer, buffer:dims(2)-buffer));
 [~,snd] = max(correl(:));
 [ij, ji] = ind2sub(size(correl),snd);
-x = -(dims(1) - ij - buffer);
-y = -(dims(2) - ji - buffer);
+x = dims(1) - ij - buffer;
+y = dims(2) - ji - buffer;
 
-transformation = struct('x',x, 'y',y, 'rotAng',0);
-image2 = RegistrationApply(image2, transformation);
+% Cutting or padding the chornic image if necessary
+if x>=1 % Cut top
+    image2 = image2(x:end, :);
+else % Padd top
+    image2(-x+1:-x+size(image2,1),:) = image2;
+end
+if y>=1 % Cut left beginning
+    image2 = image2(:, y:end);
+else % Padd left beginning
+    image2(:,-y+1:-y+size(image2,2)) = image2;
+end
+if size(image2,1) > dims(1) % Cut bottom
+    image2(dims(1)+1:end,:) = [];
+else % padd bottom
+    image2(dims(1),1) = 0;
+end
+if size(image2,2) > dims(2) % Cut right side
+    image2(:,dims(2)+1:end) = [];
+else % padd right side
+    image2(1,dims(2)) = 0;
+end
 
-% Rotation by checking rotations    
+% Rotation by checking rotations
 rotation = -1:0.1:1; % rotations to apply: counterclockwise to clockwise degrees
 correl  = zeros(1, length(rotation));
 for i = 1:length(rotation)
@@ -69,6 +86,5 @@ if rotAng ~= 0
     image2 = imrotate(image2, rotAng, interpMethod, 'crop');
 end
 
-transformation = struct('x',x, 'y',y, 'rotAng',rotAng);
-
+transformation = struct('rotAng',rotAng,'x',x,'y',y);
 
