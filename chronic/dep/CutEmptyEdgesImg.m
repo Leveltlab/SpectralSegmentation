@@ -19,24 +19,24 @@ nfiles = length(img);
 if ~isnan(cutting(1)) 
     % Cut at the end (bottom)
     for i = 1:nfiles
-        img{i}(cutting(1):end,:) = [];
+        img{i}(cutting(1):end,:,:) = [];
     end
 end
 if  ~isnan(cutting(2))
     % Cut at the beginning (top)
     for i = 1:nfiles
-        img{i}(1:cutting(2),:) = [];
+        img{i}(1:cutting(2),:,:) = [];
     end
 end
 if ~isnan(cutting(3)) 
     % Cut at the end (right)
     for i = 1:nfiles
-        img{i}(:, cutting(3):end) = [];
+        img{i}(:, cutting(3):end,:) = [];
     end
 end
 if ~isnan(cutting(4))
     % Cut at the beginning (left)
     for i = 1:nfiles
-        img{i}(:, 1:cutting(4)) = [];
+        img{i}(:, 1:cutting(4),:) = [];
     end
 end

@@ -11,6 +11,7 @@ function infoSigPar = retrievesignals(filename)
 % corrected sig = raw - 0.7 * background sig
 %
 % version changes:
+%   version 1.5 (2023-2-22): Changed DF/F calculation (basecorrect)
 %   version 1.4 (2021-8-19): save frametimes (in seconds) to SPSIG as well
 %   version 1.3 (2019-3-11): 'a' set to 0.7
 % 	version 1.2 (2019-2-26): Changes in plotting and SEAL variables corrected
@@ -26,7 +27,7 @@ bufSize = 4; % n pixels buffer around ROIs before background ROI starts
 surround = 11; % take area of n pixels around the buffer as background ROI
 
 infoSigPar = struct(); % info with script parameters
-infoSigPar.scriptVersion  = 1.4;
+infoSigPar.scriptVersion  = 1.5;
 infoSigPar.alpha  = alpha; % alpha of neuropil substraction
 infoSigPar.bufSize = bufSize;
 infoSigPar.surround = surround;

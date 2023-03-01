@@ -1,14 +1,9 @@
-function sigb = basecorrect(sig, window)
+function sig = basecorrect(sig, window)
 % Convert fluorescence signal to Df/f
-% Chris vd Togt
+% Chris vd Togt.
+% 2023-2-22. Leander changed calculation from (F-F0)/linearfitF0 + 1 
+%                                          to (F-F0)/F0
 
-% 10% = baseline percentile correction
-bsl = prctfilt(sig',10,window,window,0)';  
-x = (1:size(bsl,1))';
-
-%scale roi traces to DF/F
-parfor i = 1:size(bsl,2)
-    p = polyfit(x,bsl(:,i),1); %linear baseline estimator: 1st deg polynomal fit = linear least squares fit
-    sigb(:,i) = (sig(:,i) - bsl(:,i))./polyval(p,x) + 1.0;
-end
-
+% 10th quantile interpolated baseline correction
+f0 = prctfilt(sig',10,window,window,0)';  
+sig = (sig - f0) ./ f0;

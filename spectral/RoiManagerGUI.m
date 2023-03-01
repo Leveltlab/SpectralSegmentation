@@ -147,7 +147,7 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
         [fn, pn] = uigetfile('*SPSIG.mat');
         fprintf('Loading...\n')
         SPSIGfile = [pn fn];
-        load(SPSIGfile,'Mask','PP','Sax','SPic', 'SpatialCorr');
+        load(SPSIGfile,'Mask','PP','Sax','SPic', 'SpatialCorr', 'rmSliderSettings');
         fprintf('Done loading\n')
         
         % Try to find the 2P transposed datafile based on given SPSIG file
@@ -158,7 +158,7 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
                 fprintf('selecting original transposed data\n')
                 datafile =  [pn fn(1:end-9) 'Trans.dat'];
             else
-                fprintf('using decimated dataset')
+                fprintf('using decimated dataset\n')
             end
         end
         if exist(datafile, 'file') ~= 2
@@ -188,11 +188,6 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
         % assume the ROIs that are present were created automatically
         PP.creationMethod = repmat({'auto'}, [PP.Cnt, 1]);
     end
-    % If the SpatialCorr is not there yet, initialze empty placeholder and warn user
-    if ~exist('SpatialCorr', 'var')
-        SpatialCorr = zeros(size(Mask));
-        warning('SpatialCorr not present, calculate it later with SpatialCorrCalcRun.m!')
-    end
     % if Rvar doesn't exist, warn user and initialze zeros
     if ~isfield(PP, 'Rvar') 
         if size(PP.P,1)==5
@@ -215,6 +210,12 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     if size(PP.P,1)>2
         fprintf('Deleting rows from PP.P because it should only have ROIs center x & y (2 rows)!\n')
         PP.P(3:end,:) = [];
+    end
+
+    % If the SpatialCorr is not there yet, initialze empty placeholder and warn user
+    if ~exist('SpatialCorr', 'var')
+        SpatialCorr = zeros(size(Mask));
+        warning('SpatialCorr not present, calculate it later with SpatialCorrCalcRun.m!')
     end
     
     % Memorymap the 2P signal file
@@ -253,7 +254,11 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     switches.chronic = false; % Has a chronic image been calculated already?
     switches.backgrdCLim = [0 1]; % color axis limits of the background image in mainAx
     switches.backgrdDLim = [1 length(Sax)]; % Which spectral images to show in Spectral color bckgrd image
-    
+    if ~(exist('rmSliderSettings', 'var') && ~istable(rmSliderSettings))
+        sliderNames = {'minSize', 'maxSize', 'thresholdSpectral' 'thresholdCorr', 'roundedness','sliderDeleted','manDeleted'};
+        sliderDefaults = {NaN;     NaN;       NaN;                NaN;             NaN;          0;              0};
+        switches.sliderSettings = cell2struct(sliderDefaults, sliderNames);
+    end
     switches.activeSignalAx = 2;
     
     % Setting more useful limits for the  'minimum size rejection' slider
@@ -263,7 +268,7 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     h.minSizeTitle.String = {sprintf('Minimum size: %4.0f px', switches.minSize)};
 
     % The maximum ROI sizes can be very different per dataset, so the
-    % slider value gets edited here
+    % slider value gets edited here  
     h.maxSizeSlider.Max = switches.maxSize;
     h.maxSizeSlider.Value = switches.maxSize;
     h.maxSizeTitle.String = {sprintf('Maximum size: %4.0f px', switches.maxSize)};
@@ -273,9 +278,7 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     h.thresSlider.Max = max(mean(PP.SpecProfile));
     h.thresSlider.Value = h.thresSlider.Min;
     
-    sliderNames = {'minSize', 'maxSize', 'thresholdSpectral' 'thresholdCorr', 'roundedness'};
-    sliderDefaults = nan([1, length(sliderNames)]);
-    switches.sliderSettings = array2table(sliderDefaults, 'variableNames',sliderNames);
+    
     
     % idx are ROI indexes that tells which ROIs to reject
     idx = struct();
@@ -873,6 +876,7 @@ end
 function deleteButton_Callback(~, ~, h)
     % Callback function for the apply delete button
     % Will remove ROIs from data
+    switches = getappdata(h.hGUI, 'switches');
     idx = getappdata(h.hGUI, 'idx');
     data = getappdata(h.hGUI, 'data');
     PP = data.PP;
@@ -885,6 +889,8 @@ function deleteButton_Callback(~, ~, h)
     end
     idxDel = find(idxDel);
     if ~isempty(idxDel)
+        switches.sliderSettings.sliderDeleted = switches.sliderSettings.sliderDeleted + length(idxDel) - sum(idx.Black);
+        switches.sliderSettings.manDeleted = switches.sliderSettings.manDeleted + sum(idx.Black);
         [Mask, PP] = RemoveROIs(Mask, PP, idxDel);
         
         % Update the selected points list
@@ -899,7 +905,8 @@ function deleteButton_Callback(~, ~, h)
         data.PP = PP;
         data.Mask = Mask;
         setappdata(h.hGUI, 'data', data)
-        setappdata(h.hGUI, 'idx',  idx) 
+        setappdata(h.hGUI, 'idx',  idx)
+        setappdata(h.hGUI, 'switches', switches)
         
         UpdateMainImg(h)
     end
@@ -2663,15 +2670,16 @@ function saveButton_Callback(~, ~, h)
         h.saveButton = TurnOn(h.saveButton);
         
         % If at least one of the sliders is edited, save their settings
-        saveSliders = ~all(isnan(table2array(switches.sliderSettings)));
+        saveSliders = mean(struct2array(switches.sliderSettings), 'omitnan')~=0;
         
         if isfield(data, 'SPSIGfile')
             h.saveButton.String = {'to SPSIG file'};
             pause(0.01)
-            save(data.SPSIGfile, 'PP', 'Mask', 'BImg', 'SpatialCorr', '-append')
             if saveSliders
                 rmSliderSettings = switches.sliderSettings;
-                save(data.SPSIGfile, 'rmSliderSettings', '-append')
+                save(data.SPSIGfile, 'PP', 'Mask', 'BImg', 'SpatialCorr', 'rmSliderSettings', '-append')
+            else
+                save(data.SPSIGfile, 'PP', 'Mask', 'BImg', 'SpatialCorr', '-append')
             end
             % TODO: update the SpatialCorr!!!
             disp('Changes saved to SPSIG file & workspace')

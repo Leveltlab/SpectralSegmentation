@@ -18,8 +18,8 @@ for i = 1:length(tr)
     regiHori = tri.hori;
     imgNew = cell(1, nfiles);
     for f = 1:nfiles
-        imgNew{f} = zeros(max(regiVert(:,2)), max(regiHori(:,2)));
-        imgNew{f}(regiVert(f,1):regiVert(f,2), regiHori(f,1):regiHori(f,2)) = imgs{f};   
+        imgNew{f} = zeros(max(regiVert(:,2)), max(regiHori(:,2)), size(imgs{f},3));
+        imgNew{f}(regiVert(f,1):regiVert(f,2), regiHori(f,1):regiHori(f,2), :) = imgs{f};   
     end
     
     % Cut empty edges away
