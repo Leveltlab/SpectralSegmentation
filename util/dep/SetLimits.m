@@ -2,7 +2,7 @@ function img = SetLimits(img, lims, varargin)
 % Set the range limits of the img, 
 % And if a colormap is inputted, apply that colormap to the image
 % 
-% img = SetLimits(img, lims, varargin)
+% img = SetLimits(img, lims, colors)
 % 
 % input:
 %   - img (2D double).
