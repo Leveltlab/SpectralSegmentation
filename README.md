@@ -72,8 +72,7 @@ If you get the C++ compiler by installing Visual Studio, make sure to install:
 
 Paper
 ======
-A preprint has been published on biorxiv
-([Kraker et al. 2020](https://doi.org/10.1101/2020.10.20.345371)).
+The pipeline is published in Cell Reports Methods:
 
 ***Leander de Kraker, Koen Seignette, Premnath Thamizharasu, Bastijn J.G. van den Boom, Ildefonso Ferreira Pica, Ingo Willuhn, Christiaan N. Levelt, Chris van der Togt,
 SpecSeg is a versatile toolbox that segments neurons and neurites in chronic calcium imaging datasets based on low-frequency cross-spectral power,
@@ -138,7 +137,12 @@ References
 	*Journal of Neuroscience Methods*, vol. 291, pp 83-94, 2017; 
 	doi: [/10.1016/j.jneumeth.2017.07.031](https://doi.org/10.1016/j.jneumeth.2017.07.031)
 	
-- Kraker L., Seignette, K., Thamizharasu, P., Pica, I.F., Levelt, C.N. & Togt, C. (2020) 
-	Specseg: cross spectral power-based segmentation of neurons and neurites in chronic calcium imaging datasets.
+- de Kraker, L., Seignette, K., Thamizharasu, P., Boom, B.J.G., Ferreira Pica, I., Willuhn, I., Levelt, C N. & Togt, C. (2022) 
+	SpecSeg is a versatile toolbox that segments neurons and neurites in chronic calcium imaging datasets based on low-frequency cross-spectral power
+	doi: [10.1016/j.crmeth.2022.100299](https://doi.org/10.1016/j.crmeth.2022.100299)
+	
+	
+- Kraker L., Seignette, K., Thamizharasu, P., Boom, B.J.G., Pica, I.F., Levelt, C.N. & Togt, C. (2020) 
+	Specseg: cross spectral power-based segmentation of neurons and neurites in chronic calcium imaging datasets. Cell Reports Methods, 2(10), 100299
 	doi: [10.1101/2020.10.20.345371](https://doi.org/10.1101/2020.10.20.345371)
 

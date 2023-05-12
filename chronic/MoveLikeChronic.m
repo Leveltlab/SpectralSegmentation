@@ -20,7 +20,9 @@ load([chronicPath, chronicName], 'transformed',...
 %% Load and chronically register requested images
 
 % Which variables to load from each file?
-toLoad = {'BImg', 'BImgAverage', 'BImgMax', 'BImgR', 'BImgG'};
+toLoad = {'SPic', 'BImg', 'BImgAverage', 'BImgMax', 'BImgR', 'BImgG'};
+% toLoad = {'SPic', 'BImg', 'BImgAverage', 'BImgMax'};
+% toLoad = {'SPic', 'BImg'};
 % toLoad = {'BImg', 'BImgAverage', 'BImgMax'};
 useimgsMean = true; % Use imgsMean from files which contain that variable?
 
@@ -45,7 +47,10 @@ for i = 1:nToLoad
             imgsi{f} = load([filepaths{f} filenames{f}], toLoad{i});
             imgsi{f} = imgsi{f}.(toLoad{i});
         end
-        imgsi{f} = imgsi{f}-min(imgsi{f}(:));
+        if strcmp(toLoad{i}, 'SPic')
+            imgsi{f} = permute(imgsi{f}, [2 1 3]);
+        end
+%         imgsi{f} = imgsi{f}-min(imgsi{f}(:));
     end
     % Register them like the chronic matchign did
     imgsi = MoveLikeChronicFun(imgsi, transformed);
@@ -62,7 +67,9 @@ clearvars imgsi i f notdone
 %% Plot them overlayed on each other
 
 
-colorsRGB = jet(nfiles);
+colorsRGB = jet(nfiles+1); 
+% colorsRGB(end-1,:)=[];
+colorsRGB(2,:) = [];
 norma = false; % normalize each image in colored overlay?
 whiteBalance = true; % white balance resulting image? (makes colorbar untrue)
 
@@ -74,15 +81,15 @@ hax = gobjects(nToLoad, 1);
 for i = 1:nToLoad
     imgsi  = imgs.(toLoad{i});
     
-    figure;
+    figure('position', [680 558 842 420]);
     hax(i) = subplot(1,1,1);
-    imagesc(CreateRGB2(imgsi, colorsRGB, norma, whiteBalance))
+    img = CreateRGB2(imgsi, colorsRGB, norma, whiteBalance);
+    imagesc(img)
     colormap(colorsRGB)
     hcbar = colorbar;
     hcbar.YTick = ((1:nfiles)-0.5)/nfiles;
     hcbar.YTickLabel = filenamesShort;
     figtitle(sprintf('%s overlayed',toLoad{i}))
-    
 end
 linkaxes(hax, 'xy')
 

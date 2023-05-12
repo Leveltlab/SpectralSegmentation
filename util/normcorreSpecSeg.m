@@ -286,6 +286,7 @@ fprintf('Template initialization complete. \n')
 tic
 for it = 1:iter
     if it < iter; plot_flag = 0; else plot_flag = options.plot_flag; end
+    treport = unique(round(linspace(100,T,10),0.01));
     for t = 1:T
         switch filetype
             case 'tif'
@@ -509,12 +510,16 @@ for it = 1:iter
                     if nd == 3; fwrite(fid, mem_buffer(:,:,:,1:rem_mem), data_type); end
                 end  
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%              
-        end         
-        
-        if mod(t,bin_width) == 0 && upd_template
+        end
+
+        if any(ismember(t, treport))
             ETA = ((T-t) / (t/toc)) / 60;
             fprintf('%i/%i frames registered, iteration %i/%i elapsed time %.1f min, ETA %.1f min\n',...
-                t,T,it,iter, (toc/60), ETA)
+                    t, T, it, iter, (toc/60), ETA)
+        end
+        
+        if mod(t,bin_width) == 0 && upd_template
+          
             cnt_buf = cnt_buf + 1;                
             if strcmpi(method{2},'mean')
                 new_temp = cellfun(@(x) nanmean(x,nd+1), buffer, 'UniformOutput',false);

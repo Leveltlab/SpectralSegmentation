@@ -469,7 +469,7 @@ function backGrdView_CreateFcn(hObject, ~, ~)
 
     hObject.String = {'Spectral color', 'Spectral BW', 'SpatialCorr', 'ROI corr',...
                       'Mask', 'Chronic (red) & spectral (green)',...
-                      'Chronic', 'peak frequency', 'workspace variable'};
+                      'Chronic 2', 'Chronic 3 (colored per file)', 'chronic 4 (mask heatmap)', 'peak frequency', 'workspace variable'};
     
     if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
         set(hObject,'BackgroundColor','white');
@@ -1012,7 +1012,7 @@ function CreateRoi(h, do)
                 img = h.im.CData;
                 img = img(piecex, piecey, :);
                 if length(size(img)) == 3 % average colors of color image
-                    img = mean(img, 3);
+                    img = mean(img, 3, 'omitnan');
                 end
             end
             
@@ -1989,7 +1989,7 @@ function backGrdView(selected, h)
                     data = getappdata(h.hGUI, 'data');
                     switches = getappdata(h.hGUI, 'switches');
                 end
-                h.im.CData = CreateRGB({data.BImg, data.chronicImg}, 'g r');
+                h.im.CData = CreateRGB({data.BImg, mean(data.chronicImg, 3)}, 'g r');
                 
             case 7 % Chronic view only
                 if ~switches.chronic % Load the chronic recording
@@ -1997,9 +1997,29 @@ function backGrdView(selected, h)
                     data = getappdata(h.hGUI, 'data');
                     switches = getappdata(h.hGUI, 'switches');
                 end
-                h.im.CData = CreateRGB({data.chronicImg}, 'r');
+                h.im.CData = mean(data.chronicImg, 3);
+                h.mainAx.Colormap = cmapL([1 1 1; 0.5 0 0; 0 0 0], 512);
                 
-            case 8 % Colors are based on what the peak frequency is
+            case 8 % Chronic colored view
+                if ~switches.chronic % Load the chronic recording
+                    importChronicFile(h)
+                    data = getappdata(h.hGUI, 'data');
+                    switches = getappdata(h.hGUI, 'switches');
+                end
+                colors = jet(size(data.chronicImg, 3));
+                h.im.CData = CreateRGB2_mat(data.chronicImg, colors, true, true);
+
+            case 9 % Chronic Mask heatmap
+                if ~switches.chronic
+                    ImportChronicFile(h)
+                    data = getappdata(h.hGUI, 'data');
+                    switches = getappdata(h.hGUI, 'switches');
+                end
+                colors = hot(max(data.chronicMask(:)));
+                h.im.CData = data.chronicMask;
+                h.mainAx.Colormap = colors;
+
+            case 10 % Colors are based on what the peak frequency is
                 picMask  = data.Mask;
                 img = zeros(size(picMask));
                 for i = 1:data.PP.Cnt
@@ -2009,7 +2029,7 @@ function backGrdView(selected, h)
                 colors = [0 0 0; jet(255)]; % jet with black
                 h.mainAx.Colormap = colors;
                 
-            case 9 % Import variable from workspace
+            case 11 % Import variable from workspace
                 
                 % cheat view toggle so you don't have to switch to other view before you can import another time
                 switches.viewToggle = 999; 
@@ -2098,13 +2118,18 @@ function importChronicFile(h)
     switches = getappdata(h.hGUI, 'switches');
     [f,p] = uigetfile('','load the chronic file for this dataset');
 
-    chronicImg = load([p,f],'BImgs');
+    chronicImg = load([p,f], 'BImgs', 'Masks');
+    chronicMask = sum(cat(3, chronicImg.Masks{:})>0, 3);
     chronicImg = chronicImg.BImgs;
     % Average the other background images to one nice image
-    chronicImg = mean(cat(3, chronicImg{:}), 3);
+    chronicImg = cat(3, chronicImg{:});
+    chronicImgMean = mean(chronicImg, 3);
     
     % Register the chronic dataset to this dataset
-    data.chronicImg = Register2Imgs(data.BImg, chronicImg);
+    [~, trans]= Register2Imgs(data.BImg, chronicImgMean);
+    trans = struct('x', -trans.x, 'y', -trans.y, 'rotAng', trans.rotAng);
+    data.chronicImg = RegistrationApply(chronicImg, trans);
+    data.chronicMask = RegistrationApply(chronicMask, trans);
 
     % Save the chronic, registered background image
     switches.chronic = true;
@@ -2148,7 +2173,6 @@ function DrawRois(h)
     
     guidata(h.hGUI,h); % Save the handles    
     set(h.hGUI, 'WindowKeyPressFcn', @(hObject, eventdata)myKeyPressFcn(hObject, eventdata, h))
-
 end
 
 
@@ -2548,10 +2572,12 @@ function Help_Callback(~, eventdata, h)
                        'different BImg (representative spectral images) from all the recordings'...
                        ' and then registers that average projection to the current recording in the "RoiRejecterGUI"'...
                        ' The current spectral is shown in green, and the registered chronic in red'];
-            str{19} = 'chronic2: same as chronic 1 but does not show the current spectral image';
-            str{21} = ['peak frequency: Every ROI has its highest spectral density at a specific frequency'...
+            str{19} = 'Chronic 2: same as chronic 1 but does not show the current spectral image';
+            str{21} = 'Chronic 3: shows the images from chronic, different color per day. red=1st day';
+            str{23} = 'Chronic 4: heatmap of the registered chronic ROI mask';
+            str{25} = ['peak frequency: Every ROI has its highest spectral density at a specific frequency'...
                        'the lower frequencies are shown in blue, higher frequency ROIs in red (colormap jet (rainbow))'];
-            str{23} = 'variable from workspace: import any variable of the correct background size into the RoiRejecter';
+            str{27} = 'variable from workspace: import any variable of the correct background size into the RoiRejecter';
             
         case 'manRoiHelp' % in tab Manual ROI
             strTitle = 'ROI drawing help';

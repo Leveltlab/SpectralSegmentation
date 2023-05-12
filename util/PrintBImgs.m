@@ -24,7 +24,7 @@ dims = size(BImgMax);
 
 % Set these parameters manually!
 fov = 1000; % amount of um the microscope images with 1x zoom
-zoom = 1.6; % MICROSCOPE ZOOM LEVEL, FROM LOGBOOK
+zoom = 1.3; % MICROSCOPE ZOOM LEVEL, FROM LOGBOOK
 scale =  dims(2) / (fov/zoom); % number of pixels / µm images (depends on zoom)
 um = 100; % How big you want your scalebar
 
@@ -91,7 +91,7 @@ imwrite(rgb, [baseName, '_averageFluorescence.png'])
 
 %% colored spectral image
 
-imgRGB = BImgRGB;
+% imgRGB = BImgRGB;
 freqToUse = [0, 0.25]; % frequency range in Hz
 
 figure('Units', 'Pixels', 'InnerPosition', pos)
