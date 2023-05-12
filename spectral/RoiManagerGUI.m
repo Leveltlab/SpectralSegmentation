@@ -2011,11 +2011,11 @@ function backGrdView(selected, h)
 
             case 9 % Chronic Mask heatmap
                 if ~switches.chronic
-                    ImportChronicFile(h)
+                    importChronicFile(h)
                     data = getappdata(h.hGUI, 'data');
                     switches = getappdata(h.hGUI, 'switches');
                 end
-                colors = hot(max(data.chronicMask(:)));
+                colors = [0 0 0; hot(max(data.chronicMask(:))-1)];
                 h.im.CData = data.chronicMask;
                 h.mainAx.Colormap = colors;
 
