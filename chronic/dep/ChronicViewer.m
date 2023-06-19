@@ -67,7 +67,8 @@ end
 % [subplot margin side&top],[figure bottomspace,topspace],[leftspace,rightspace]
 subplot = @(m,n,p) subtightplot (m, n, p, [0.01 0.01], [0.025 0], [0.025 0]);
 
-hFig = figure('name','Chronic Viewer', 'units', 'normalized', 'position', [0.1 0.05 0.825 0.85]);
+hFig = figure('name','Chronic Viewer', 'units', 'normalized', 'position', [0.1 0.05 0.825 0.85],...
+              'Renderer', 'painters');
 
 hImgAx = subplot(1, 3, [1 2]); hold on
 hImgAx.ButtonDownFcn = @hImgDown;
@@ -91,11 +92,14 @@ for i = 1:nfiles
     hLegendText(i) = text(3,12+i*12,names{i},'color',colors(i,:));
 end
 
+hCoMLines = gobjects(1);
+
 % Positions of the other UI elements
 hRoisTAx= subplot(16, 3, [3 24]); % chronic table table axis
 hInfoAx = subplot(16, 3, [27 30]);  % Info axis
 hViewAx = subplot(16, 6, 89); % select background image list axis
-hAlphAx = subplot(16, 6, 90); % Alpha slider axis
+hCoMLineAx = subplot(16, 12, 179); % Button to show matched ROI connection axis
+hAlphAx = subplot(16, 12, 180); % Alpha slider axis
 hZoomAx = subplot(16, 6, 95); % Auto zoom button axis
 hSaveAx = subplot(16, 6, 96); % Save button axis
 hClickTAx= subplot(16, 3, [33 36]); % clicked on image roi information table axis
@@ -108,6 +112,7 @@ hZoomAx.Units  = 'pixels';
 hSaveAx.Units  = 'pixels';
 hClickTAx.Units= 'pixels';
 hSessTAx.Units = 'pixels';
+hCoMLineAx.Units = 'pixels';
 hRoisTAx.Visible = 'off';
 hInfoAx.Visible  = 'off';
 hViewAx.Visible  = 'off';
@@ -116,6 +121,7 @@ hZoomAx.Visible  = 'off';
 hSaveAx.Visible  = 'off';
 hClickTAx.Visible= 'off';
 hSessTAx.Visible = 'off';
+hCoMLineAx.Visible = 'off';
 
 % Select sessions table
 hSessionTable = uitable('Position',hSessTAx.Position,'Units','normalized',...
@@ -145,7 +151,7 @@ hAlphTitle.Units = 'normalized';
 hZoomButton = uicontrol('Style','togglebutton','String','auto zoom',...
     'Position',hZoomAx.Position,'Units','normalized','Callback',@AutoZoomButton);
 
-% Delete button functionality
+% Save button functionality
 hSaveButton = uicontrol('Style','pushbutton','String','save table changes',...
     'Position',hSaveAx.Position,'Units','normalized','Callback',@SaveRois);
 hSaveButton.FontWeight = 'bold';
@@ -175,6 +181,9 @@ hClickedTable.ColumnName = [titles];
 hClickedTable.ColumnWidth = [num2cell(repmat(35, [1, nfiles]))];
 hClickedTable.RowName = [{'ROI'},{'row'},{'n-links'},{'score'}];
 
+hCoMLineButton = uicontrol('Style','togglebutton','String','Plot Match lines',...
+    'Position',hCoMLineAx.Position,'Units','normalized','Callback',@CoMLines);
+
 
 % Text that says something about the UI status
 hInfoText = uicontrol('Style', 'text', 'String', 'hello',...
@@ -198,15 +207,22 @@ end
 
 
 function SessionSelect(source, event)
+    tic
     % Callback to select and deselect sessions
     if ~isempty(event.Indices)
-        idx = sub2ind([2, nfiles], event.Indices(1), event.Indices(1,2));
-        source.Data{idx} = ~source.Data{idx};
-    end
-    sShow = cell2mat(source.Data(1,:));
-    sCont = find(cell2mat(source.Data(2,:)));
-    UpdateView
-    UpdateCont
+        d1 = event.Indices(1);
+        d2 = event.Indices(2);
+        source.Data{d1, d2} = ~source.Data{d1, d2};
+        if d1==1 % A change in which images to show was requested
+            sShow = cell2mat(source.Data(1,:));
+            UpdateView
+        else % A change in which contours to show was requested
+            sCont = find(cell2mat(source.Data(2,:)));
+            UpdateCont(d2)
+        end
+    end    
+    fprintf('%.7f, ', toc)
+
 end
 
 
@@ -395,13 +411,19 @@ function clickTableCallback(source, event)
         elseif clickedCells(1)==2
             % Scroll to clicked row
             rowToGoTo = source.Data{clickedCells(1), clickedCells(2)};
-            if rowToGoTo ~= 0
-                jscrollpane = javaObjectEDT(findjobj(hRoisTable));
-                viewport    = javaObjectEDT(jscrollpane.getViewport);
-                P = viewport.getViewPosition();
-                P.y = (rowToGoTo-1) *tableRowHeight;
-                viewport.setViewPosition(P);
+            if rowToGoTo == 0
+                rowToGoTo = 1;
             end
+            jscrollpane = javaObjectEDT(findjobj(hRoisTable));
+            viewport    = javaObjectEDT(jscrollpane.getViewport);
+            P = viewport.getViewPosition();
+            P.y = (rowToGoTo-1) *tableRowHeight;
+            viewport.setViewPosition(P);
+            % Also update current editable row
+            selCells= rowToGoTo;
+            RefreshInfoText
+            eventToGive.Indices = [selCells, 1];
+            RoiSelect(nan, eventToGive)
         end
     end
 end
@@ -542,27 +564,20 @@ function AlphCont(source,~)
     % Adjust alpha value for contours
     contAlpha = round(source.Value,1);
     source.Value = contAlpha;
-    UpdateCont
+    UpdateCont(sCont)
 end
 
 
-function UpdateCont
-    % Update contours
-    
-    % Make the contours of some sessions visible
-    for x = sCont(:)'
-        for y = 1:contours(x).Cnt
-            hCons{x}(y).Color(4) = contAlpha;
+function UpdateCont(recNum)
+    % Update which contours are visible, and use requested alpha value
+    for k = 1:length(recNum)
+        color = hCons{recNum(k)}(1).Color;
+        if ismember(recNum(k), sCont)
+            color = [color(1:3), contAlpha];
+        else % Do not show this recording. Set color to fully transparent
+            color = [color(1:3), 0];
         end
-    end
-    
-    % Make the other contours invisible
-    others = 1:nfiles;
-    others = others(~ismember(others, sCont));
-    for x = others(:)'
-        for y = 1:contours(x).Cnt
-            hCons{x}(y).Color(4) = 0;
-        end
+        set(hCons{recNum(k)}, 'color', color);
     end
 end
 
@@ -600,6 +615,47 @@ function AutoZoomButton(source, ~)
     end
 end
 
+
+function CoMLines(source, ~)
+    % Toggle plotting of lines connecting linked ROIs
+    
+    if source.Value
+         % if turned on, draw the connections between all linked ROIs
+        linkMatROIs = linkMat(2:end, 2:end-1);
+        nLinks = sum(linkMatROIs~=0, 2);
+        n = nLinks-1;
+        n = (n.*(n+1))./2;
+        
+        hCoMLines = gobjects(sum(n), 1);
+        counter = 0;
+        for i = 1:size(linkMatROIs, 1)
+            idx = linkMatROIs(i,:);
+            present = find(idx);
+            for j = present
+                presentRest = present(present>j);
+                for k = presentRest
+                    counter = counter + 1;
+                    cordinatesX = [contours(j).P(1, idx(j)), contours(k).P(1, idx(k))];
+                    cordinatesY = [contours(j).P(2, idx(j)), contours(k).P(2, idx(k))];
+                    colorkj = mean(colors([j k], :), 1);
+                    hCoMLines(counter) = line(cordinatesX, cordinatesY, 'color', colorkj,...
+                                               'Parent', hImgAx, 'HitTest', 'off');
+%                     hCoMLines(counter) = annotation('arrow', cordinatesX, cordinatesY, 'color', colorkj,...
+%                                                     'Parent', hImgAx, 'HitTest', 'off');
+                end
+            end
+        end
+        hCoMLineButton.FontWeight = 'bold';
+        hCoMLineButton.ForegroundColor = [0 0 1];
+    else
+        if exist('hCoMLines')
+            delete(hCoMLines)
+        end
+        hCoMLineButton.FontWeight = 'normal';
+        hCoMLineButton.ForegroundColor = [0 0 0];
+    end
+
+end
 
 function SaveRois(source, ~)
     % Saving the changes of the edited linkMat table

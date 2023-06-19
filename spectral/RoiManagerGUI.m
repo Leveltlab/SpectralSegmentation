@@ -258,6 +258,7 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
         sliderNames = {'minSize', 'maxSize', 'thresholdSpectral' 'thresholdCorr', 'roundedness','sliderDeleted','manDeleted'};
         sliderDefaults = {NaN;     NaN;       NaN;                NaN;             NaN;          0;              0};
         switches.sliderSettings = cell2struct(sliderDefaults, sliderNames);
+        fprintf('rmSliderSettings (Roi Manager ROI deletion slider settings info) did not exist yet, which is totally fine :).\n')
     else
         switches.sliderSettings = rmSliderSettings;
     end

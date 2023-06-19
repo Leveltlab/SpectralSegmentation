@@ -198,6 +198,17 @@ buf = 40; % Buffer to remove around the to-register image
 
 moveRecs = 1:nfiles;
 moveRecs(lockRecs) = [];
+
+
+if ~exist('iter', 'var')
+    warning('Had to recreate iter and corrScore variable')
+    iter = 0;
+    corrScore = BImgOverlapScore(BImgs);
+    corrScoreMean(:,1) = [sum(corrScore)./(nfiles-1)]'; %#ok<NBRAK>
+end
+if ~exist('toplot','var'); toplot=1:nfiles;end
+if ~exist('colors','var'); colors=flipud(cmapL([0 0 1; 0 1 1; 0 1 0; 1 0.7 0; 1 0 0; 0.7 0 1], nfiles));end
+
 iter = iter + 1;
 
 if referenceNum>nfiles
@@ -247,7 +258,6 @@ if moveVertMin>0, moveVertMin=1; end
 moveHorMin = min(moveHori);
 if moveHorMin>0, moveHorMin=1; end
 
-
 % Calculate the offset of each image (final offset)
 regiVert = zeros(nfiles, 2);
 regiHori = zeros(nfiles, 2);
@@ -278,7 +288,6 @@ for i = 1:nfiles
             i, regiHori(i,1)-1, regiVert(i,1)-1)
 end
 
-
 transformed(iter).vert = regiVert;
 transformed(iter).hori = regiHori;
 
@@ -296,7 +305,6 @@ corrScoreMean(:,end+1) = [sum(corrScore)./(nfiles-1)]'; %#ok<NBRAK>
 fprintf('rotating registration...\n')
 rotations = -1.5:0.05:1.5; % rotations to apply: counterclockwise to clockwise degrees
 buf = 10; % buffer image edges because rotation makes part fall off
-
 
 rotCorrel  = zeros(nfiles, length(rotations));
 BImgRef = BImgs{referenceNum}(buf:end-buf,buf:end-buf);
@@ -317,7 +325,6 @@ toc
 rotAng = rotations(rotIdx);
 % difference in similarity between 0 rotation and best rotation
 rotDiff = rotBest - rotCorrel(:,rotations==0);
-
 
 % Apply rotations__________________________________________________________
 rotAng(abs(rotAng)<0.02) = 0;
@@ -591,14 +598,19 @@ fprintf('\ndone matching ROIs\n')
 
 
 
-%% __________________________________________________________________________
-% The 'OVERLAP SCORE' is based on the pixel overlap between the linked ROIs. 
-% This also takes into account the ROIs which are not officially linked with
-% each other, but were linked together because of mutual links.
+%% MATCH STATISTIC SECTION % % % % % % % % % % % % % % % % % % % % % % % %
+
+if ~exist('toplot','var'); toplot=1:nfiles;end
+if ~exist('colors','var'); colors=flipud(cmapL([0 0 1; 0 1 1; 0 1 0; 1 0.7 0; 1 0 0; 0.7 0 1], nfiles));end
+
+
 nLinks = sum(linkMat~=0,2);
 linkMat(nLinks==1,:)=[];
 nLinks = sum(linkMat~=0,2);
 
+% The 'OVERLAP SCORE' is based on the pixel overlap between the linked ROIs. 
+% This also takes into account the ROIs which are not officially linked with
+% each other, but were linked together because of mutual links.
 score = zeros(length(linkMat),1);
 for i = 1:length(linkMat)
     score(i) = OverlapScore(inRoi, linkMat, i);
@@ -662,24 +674,25 @@ nFoundBackMat(nfiles+1,:) = sum(nFoundBackMat, 1);
 nFoundBackMat(:,nfiles+1) = sum(nFoundBackMat, 2);
 
 % Percentage wise confusion matrix
-n = repmat([PPs.Cnt]', [1, nfiles]);
+n = double(repmat([PPs.Cnt]', [1, nfiles]));
 n = [n; sum(n, 1)];
 n = [n, repmat(n(nfiles+1,1),[nfiles+1,1])];
 nFoundBackPercMat = round(nFoundBackMat ./ n .* 100);
 
 figure('name','number of ROIs matched per recording')
-h = uitable('Data',nFoundBackMat,'Units', 'Normalized', 'Position', [0, 0.6, 1, 0.3]);
+h = uitable('Data',nFoundBackMat,'Units', 'Normalized', 'Position', [0, 0.5, 1, 0.4]);
 h.ColumnName = [nameCol 'summed ROIs'];
 h.RowName = [filenamesShort; {'summed ROIs'}];
+annotation('textbox', [0, 0.95, 1, 0], 'string', 'Specific number of ROIs which are in a match with that amount of linked ROIs')
 
-h = uitable('Data',round(nFoundBackPercMat,1), 'Units','Normalized', 'Position', [0, 0.3, 1, 0.3]);
+h = uitable('Data',round(nFoundBackPercMat,1), 'Units','Normalized', 'Position', [0, 0, 1, 0.4]);
 h.ColumnName = [nameCol, {'mean'}];
 h.RowName = [filenamesShort; {'mean'}];
+annotation('textbox', [0, 0.45, 1, 0], 'string', 'Percentage of ROIs which are in a match with that amount of linked ROIs')
 
 
-%
 %__________________________________________________________________________
-% TABLE 2
+% TABLE figure 2. confusionlike matrix
 % Find how much ROIs recording i linked with recording j
 confusionFoundMat = zeros(nfiles+1);
 for i = 1:nfiles
@@ -690,9 +703,19 @@ end
 confusionFoundMat(nfiles+1,1:end-1) = round(mean(confusionFoundMat(1:end-1,1:end-1),1));
 confusionFoundMat(1:end-1,nfiles+1) = round(mean(confusionFoundMat(1:end-1,1:end-1),2));
 
-h = uitable('Data', confusionFoundMat, 'Units', 'Normalized', 'Position', [0, 0, 1, 0.3]);
+figure
+h = uitable('Data', confusionFoundMat, 'Units', 'Normalized', 'Position', [0, 0.5, 1, 0.4]);
 h.ColumnName = [filenamesShort; {'mean'}];
 h.RowName = [filenamesShort; {'mean'}];
+annotation('textbox', [0, 0.95, 1, 0], 'string', 'Between which recordings ROIs are linked')
+
+n = double(repmat([PPs.Cnt]', [1, nfiles]));
+confusionFoundMatPerc = round(confusionFoundMat(1:nfiles, 1:nfiles) ./ n * 100);
+
+h = uitable('Data', confusionFoundMatPerc, 'Units', 'Normalized', 'Position', [0, 0, 1, 0.4]);
+h.ColumnName = filenamesShort;
+h.RowName = filenamesShort;
+annotation('textbox', [0, 0.45, 1, 0], 'string', 'Between which recordings ROIs are linked as percentage of recording row')
 
 % 
 %__________________________________________________________________________

@@ -286,7 +286,7 @@ fprintf('Template initialization complete. \n')
 tic
 for it = 1:iter
     if it < iter; plot_flag = 0; else plot_flag = options.plot_flag; end
-    treport = unique(round(linspace(100,T,10),0.01));
+    treport = unique(round(linspace(min(100, T),T,10),-2));
     for t = 1:T
         switch filetype
             case 'tif'
