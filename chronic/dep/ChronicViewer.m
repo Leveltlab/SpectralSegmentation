@@ -207,7 +207,6 @@ end
 
 
 function SessionSelect(source, event)
-    tic
     % Callback to select and deselect sessions
     if ~isempty(event.Indices)
         d1 = event.Indices(1);
@@ -221,8 +220,6 @@ function SessionSelect(source, event)
             UpdateCont(d2)
         end
     end    
-    fprintf('%.7f, ', toc)
-
 end
 
 
