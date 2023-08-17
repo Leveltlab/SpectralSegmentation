@@ -48,6 +48,7 @@ scaleBary = round(dims(1)*0.9); % Set vertical position of scalebar
 scaleBary = scaleBary:scaleBary+2; % Set thickness of scalebar
 scaleBarx = round(dims(2)*0.9); % Setting the x position of scalebar
 scaleBarx = scaleBarx-scaleBar+1:scaleBarx;
+scaleBar = {scaleBarx, scaleBary};
 
 
 %% Image settings
@@ -60,87 +61,27 @@ pos = GetCenteredFigPos(dims([2 1])); % figure that does not get saved
 
 
 %% BImgMax (Maximum fluorescence projection) 
-
-rgb = BImgMax;
-rgb = MidtoneBalance(rgb, 0.3);
-
-
-brightnessCutOff = 99.99; % Values above this percentile will be max color value. 
-                          % 2p data brightness can be highly skewed 
-                          % this causes most pixels to be dark. This is not
-                          % nice to look at. So select lower than 100% to
-                          % cut off the brightness and thereby making the
-                          % image brighter/ more contrast
-darknessCutOff = 0.1; % percentile of values below which the values will be the darkest color.
-lims = prctile(rgb, [darknessCutOff, brightnessCutOff]); % color axis limits
-
-[rgb, s,  m]      = ShiftLinesImg(rgb);
-[rgb, s(2), m(2)] = ShiftLinesImg(rgb);
-rgb = SetLimits(rgb, lims, colors);
-
-% Apply scalebar
-rgb(scaleBary, scaleBarx, :) = 1;
-
-% For our eyes only
-if doPlotForOurEyes
-    figure('Units', 'Pixels', 'InnerPosition', pos)
-    subplot('Position', [0 0 1 1])
-    image(rgb);
-end
-
-% save image
-imwrite(rgb, [baseName, '_maxFluorescence2_', filename, '.png'])
+limsPerc = [0.1, 99.99];
+saveName = [baseName, '_maxFluorescence_', filename, '.png'];
+img = MidtoneBalance(BImgMax, 0.3);
+[rgb, s, m] = PrintBImg(img, limsPerc, colors,  doPlotForOurEyes, saveName, scaleBar);
 
 
 %% BImgAverage (average fluorescence projection)
+limsPerc = [0.1, 99.99];
+saveName = [baseName, '_averageFluorescence_', filename, '.png'];
+rgb = PrintBImg(BImgAverage, limsPerc, colors,  doPlotForOurEyes, saveName, scaleBar);
 
-rgb = BImgAverage;
-
-brightnessCutOff = 99.999;
-darknessCutOff = 0.1; % percentile of values below which the values will be the darkest color.
-lims = prctile(rgb(:), [darknessCutOff, brightnessCutOff]); % color axis limits
-
-[rgb, s,  m]      = ShiftLinesImg(rgb);
-[rgb, s(2), m(2)] = ShiftLinesImg(rgb);
-rgb = SetLimits(rgb, lims, colors);
-rgb(scaleBary, scaleBarx, :) = 1;
-
-
-% For our eyes only
-if doPlotForOurEyes
-    figure('Units', 'Pixels', 'InnerPosition', pos)
-    subplot('Position', [0 0 1 1])
-    image(rgb);
-end
-
-% save image
-imwrite(rgb, [baseName, '_averageFluorescence_', filename, '.png'])
 
 %% Spectral image
-
+limsPerc = [0.1, 99.99];
+saveName = [baseName, '_spectral_', filename, '.png'];
 rgb = BImg;
-
-brightnessCutOff = 99.99;
-darknessCutOff = 0.1; % percentile of values below which the values will be the darkest color.
 if sum(rgb(:)==-inf)>0
     vals = unique(rgb(:));
     rgb(rgb==-inf) = vals(2);
 end
-lims = prctile(rgb(:), [darknessCutOff, brightnessCutOff]); % color axis limits
-
-colorsGray = gray(256);
-rgb = SetLimits(rgb, lims, colorsGray);
-rgb(scaleBary, scaleBarx, :) = 1;
-
-% For our eyes only
-if doPlotForOurEyes
-    figure('Units', 'Pixels', 'InnerPosition', pos)
-    subplot('Position', [0 0 1 1])
-    image(rgb);
-end
-
-% save image
-imwrite(rgb, [baseName, '_spectral_', filename, '.png'])
+rgb = PrintBImg(rgb, limsPerc, gray(256),  doPlotForOurEyes, saveName, scaleBar);
 
 
 %% colored spectral image

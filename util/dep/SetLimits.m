@@ -17,7 +17,7 @@ function img = SetLimits(img, lims, varargin)
 % 2022-10-20
 % 
 
-if ~isempty(lims)
+if isempty(lims)
     lims = [min(img(:)), max(img(:))];
 end
 img = (img-lims(1))./range(lims);

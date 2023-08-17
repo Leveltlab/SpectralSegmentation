@@ -7,9 +7,13 @@ function imgs = MoveLikeChronic(varargin)
 % 
 
 %% Load chronic file
-if exist('varargin', 'var') && nargin==2
+saveImgs = false; % save each individual image to png?
+if exist('varargin', 'var') && nargin>=2
     chronicPath = varargin{1};
     chronicName = varargin{2};
+    if nargin==3
+        saveImgs = varargin{3};
+    end
 else
     [chronicName, chronicPath] = uigetfile('*chronic.mat','get Chronic file');
 end
@@ -113,14 +117,22 @@ pos = GetCenteredFigPos([1200, 700]);
 nsubV = round(sqrt(nfiles));
 nsubH = ceil(sqrt(nfiles));
 
-for i = 1:nToLoad
+for i = 2:nToLoad
     imgsi  = imgs.(toLoad{i});
     
     figure('Position', pos)
     h = gobjects(nfiles, 1);
     for f = 1:nfiles
         h(f) = subplot(nsubV, nsubH, f);
-        imagesc(imgsi{f})
+        img = imgsi{f};
+        if strcmp(toLoad{i}, 'SPic')
+            img = permute(img, [2 1 3]);
+            [rgb, colorsS, ~] = SpectralColorImg('data', {img, 1:size(img, 3)}, [], true);
+            colorbar('off')
+        else
+            imagesc(img)
+            colormap(colors); colorbar
+        end
         title(filenamesShort{f})
         xlim(zoomtoD2)
         ylim(zoomtoD1)
@@ -131,9 +143,51 @@ for i = 1:nToLoad
             h(f).YTickLabel = [];
         end
     end
-    colormap(colors)
     figtitle(toLoad{i})
     linkaxes(h, 'xy')
 end
 
+%%
+if saveImgs
+    %% Save images of every recording
+    
+    doPlotForOurEyes = false;
+    doLineshift = false;
+    
+    for i = 1:nToLoad
+        imgsi = imgs.(toLoad{i});
+        for f = 1:nfiles
+            saveName = [toLoad{i}, '_', filenamesShort{f}, '.png'];
+            img = imgsi{f};
+            if strcmp(toLoad{i}, 'SPic')
+                img = permute(img, [2 1 3]);
+                img = SpectralColorImg('data', {img, 1:size(img, 3)}, [], false);
+                imwrite(img, saveName)
+            else
+                img = MidtoneBalance(img, 0.4); % brighten if <0.5. darken >0.5
+                if strcmp(toLoad{i}, 'BImgG')
+                    colors = cmapL([1 1 1; 0 1 0; 0 0 0], 256);
+    %                 lims = [0 10000]; doPercLim = false;
+                    lims = [4 99.9];  doPercLim = true;
+                elseif strcmp(toLoad{i}, 'BImgR')
+                    colors = cmapL([1 1 1 ; 1 0 0; 0 0 0], 256);
+    %                 lims = [0 15000]; doPercLim = false;
+                    lims = [4 99.9];  doPercLim = true;
+                elseif strcmp(toLoad{i}, 'BImg')
+                    colors = cmapL('inferno', 256);
+                    lims = [2, 99.95]; % Or do a perctile value based lims
+                    doPercLim = true;
+                elseif any(strcmp(toLoad{i}, {'BImgAverage', 'BImgMax'}))
+                    colors = cmapL('greenFancy', 256);
+                    lims = [1000 20000];
+                    doPercLim = false;
+                end
+    %             colors = cmapL('greenFancy', 256);
+    %             lims = [1000, 20000]; % handpick based on images created using previous section
+    %             doPercLim = false;
+                img = PrintBImg(img, lims, colors,  doPlotForOurEyes, saveName, [], doPercLim, doLineshift);    
+            end
+        end
+    end
+end
 

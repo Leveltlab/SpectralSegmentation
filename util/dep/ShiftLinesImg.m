@@ -37,6 +37,8 @@ if exist('varargin', 'var')
 end
 
 dims = size(img);
+dimsTake = [floor(dims(1)./2)*2, dims(2)]; % for check
+dimsScheck = [floor(dims(1)/2), dims(2)];
 dimsS = [ceil(dims(1)/2), dims(2)];
 
 if isempty(bestS) % Do check of how best to shift the lines
@@ -52,11 +54,11 @@ if isempty(bestS) % Do check of how best to shift the lines
     
     % shifting simply
     for i = 1:n
-        imgS = img(1:2:end, s(i)+bt:end-bt+s(i));
+        imgS = img(1:2:dimsTake(1), s(i)+bt:end-bt+s(i));
         p(i,1) = corr(imgRest(:), imgS(:));
-    
+        
         if plotting
-            imgRecon = zeros(dims(1), dimsRest(2));
+            imgRecon = zeros(dimsTake(1), dimsRest(2));
             imgRecon(2:2:end, :) = imgRest;  imgRecon(1:2:end, :) = imgS;
             subplot(4,1,[1 3]); imagesc(imgRecon(1:end/3,:))
             title(sprintf('shifting %d', s(i)))
@@ -67,11 +69,11 @@ if isempty(bestS) % Do check of how best to shift the lines
     % Resizing to the right
     imgRest = img(2:2:end, :);
     for i = 1:b+1
-        imgS = imresize(img(1:2:end, 1:end+s(i)), dimsS);
+        imgS = imresize(img(1:2:dimsTake(1), 1:end+s(i)), dimsScheck);
         p(i,2) = corr(imgRest(:), imgS(:));
     
         if plotting
-            imgRecon = zeros(dims); imgRecon(2:2:end, :) = imgRest; imgRecon(1:2:end, :) = imgS;
+            imgRecon = zeros(dimsTake); imgRecon(2:2:end, :) = imgRest; imgRecon(1:2:end, :) = imgS;
             subplot(4,1,[1 3]); imagesc(imgRecon(1:end/3,:))
             title(sprintf('resizing to right %d', -s(i)))
             subplot(4,1,4); imagesc(s, [1 2], p'); colorbar
@@ -80,11 +82,11 @@ if isempty(bestS) % Do check of how best to shift the lines
     end
     % Resizing to the left
     for i = 1:b
-        imgS = imresize(img(1:2:end, 1+i:end), dimsS);
+        imgS = imresize(img(1:2:dimsTake(1), 1+i:end), dimsScheck);
         p(i+b+1, 2) = corr(imgRest(:), imgS(:));
     
         if plotting
-            imgRecon = zeros(dims); imgRecon(2:2:end, :) = imgRest; imgRecon(1:2:end, :) = imgS;
+            imgRecon = zeros(dimsTake); imgRecon(2:2:end, :) = imgRest; imgRecon(1:2:end, :) = imgS;
             subplot(4,1,[1 3]); imagesc(imgRecon(1:end/3,:))
             title(sprintf('resizing to left %d', s(b+i+1)))
             subplot(4,1,4); imagesc(s, [1 2], p'); colorbar

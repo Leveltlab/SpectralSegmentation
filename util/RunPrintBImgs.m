@@ -4,7 +4,7 @@
 
 
 
-picFolder = 'C:\Users\Leander\Documents\Baan\PICLe\Analysis\BImgs\';
+picFolder = 'D:\2Pdata\Leander\Koen\';
 
 % Data on helero2p
 miceChronicPath = {'C:\Users\Leander\Documents\Baan\PICLe\17.20.12\Line\';...
@@ -19,27 +19,22 @@ miceChronicName = {'Line_The12_chronic';...
                    'Mickey_The12_Chronic';...
                    'Timor_The12_Chronic';...
                    'Zebedeus_The12_Chronic'};
-% miceTodo = [1 3 4];
-miceTodo = [1 2 3 4 5 6];
-labelsThe12 = {'ori 1', 'passive 1', 'passive 2',...
-               'ori 2', 'active 1', 'active 2',...
-               'ori 3', 'delay 1', 'delay 2',...
-               'ori 4', '8 ori 1', '8 ori 2'};
 
-miceChronicPath = miceChronicPath(miceTodo);
-miceChronicName = miceChronicName(miceTodo);
+miceChronicPath = {'D:\2Pdata\Koen\Muckli\Kopernik\'};
+miceChronicName = {'Kopernik_gray_v3_chronic'};
+
 nMice = length(miceChronicPath);
 
 doScalebarPlot = false;
 doPlotForOurEyes = false;
-zoom = 1.3;
+zoom = 2; % ZOOM FACTOR from logbook, info.config.magnification_list(info.config.magnification)
 
 
 
-for m = 6
+for m = 1
     load([miceChronicPath{m}, miceChronicName{m}], 'filenames', 'filepaths', 'nfiles')
     shiftAmount = zeros(nfiles, 2); shiftMethod = zeros(nfiles, 2);
     for i = 1:nfiles
-        [shiftAmount(i,:), shiftMethod(i,:)] = PrintBImgs([], filenames{i}, picFolder, zoom, doScalebarPlot, doPlotForOurEyes);
+        [shiftAmount(i,:), shiftMethod(i,:)] = PrintBImgs(filepaths{i}, filenames{i}, picFolder, zoom, doScalebarPlot, doPlotForOurEyes);
     end
 end
