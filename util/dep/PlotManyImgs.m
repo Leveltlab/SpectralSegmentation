@@ -86,6 +86,10 @@ positionw = [positionx(2)-positionx(1)] .* (1-(buffer(3)+buffer(2)));
 positionx = positionx(xidx);
 positiony = positiony(yidx);
 
+positionx = positionx(1:nimgs);
+positiony = positiony(1:nimgs);
+
+
 positions = [positionx', positiony', repmat([positionw, positionh], [nimgs, 1])];
 
 
@@ -105,7 +109,6 @@ for i = 1:nimgs
     
     if ~isempty(imgs{i})
         hImgs(i) = imagesc(img);
-        imagesc(img)
     end
     if doTitles
         title(titles{i})
