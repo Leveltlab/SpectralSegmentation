@@ -1,4 +1,4 @@
-function [h, cons] = PlotCon(PP, colors)
+function [h, cons] = PlotCon(PP, colors, varargin)
 % Quickly plot the ROI contours
 % Is accelerated by concatenating the different ROIs and seperating them by
 % a nan so no connecting line is drawn between the ROIs. 
@@ -17,6 +17,13 @@ function [h, cons] = PlotCon(PP, colors)
 % 2023-4-3
 % 
 
+if nargin>2
+    xshift = varargin{1};
+    yshift = varargin{2};
+else
+    xshift = 0;
+    yshift = 0;
+end
 
 cons = struct();
 cons.x = [];
@@ -25,4 +32,4 @@ for r = 1:PP.Cnt
     cons.x = cat(2, cons.x, [PP.Con(r).x, NaN]);
     cons.y = cat(2, cons.y, [PP.Con(r).y, NaN]);
 end
-h = plot(cons.x, cons.y, 'color', colors);
+h = plot(cons.x-xshift, cons.y-yshift, 'color', colors);

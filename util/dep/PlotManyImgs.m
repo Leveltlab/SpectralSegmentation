@@ -1,4 +1,4 @@
-function [hAxes, hImgs] = PlotManyImgs(imgs, varargin)
+function [hAxes, hImgs, xidx, yidx] = PlotManyImgs(imgs, varargin)
 % [hAxes, hImgs] = PlotManyImgs(imgs, pos, distr, buffer, titles, cut, selected)
 % [hAxes, hImgs] = PlotManyImgs(imgs)
 % 
@@ -19,8 +19,14 @@ function [hAxes, hImgs] = PlotManyImgs(imgs, varargin)
 %                                imgs to select: default: 1 (or 3 for RGB)
 % 
 % 
+% Output:
+%   - hAxes (array of handles to the axes)
+%   - hImgs (array of handles to the images)
+%   - xidx (the x position index of the axes)
+%   - yidx (the y position index of the axes)% 
+% 
 % Leander de Kraker
-% 2022-10-7
+% 2022-10-7, updated 2023-11-22
 % 
 
 nimgs = numel(imgs);
@@ -88,7 +94,8 @@ positiony = positiony(yidx);
 
 positionx = positionx(1:nimgs);
 positiony = positiony(1:nimgs);
-
+xidx = xidx(1:nimgs);
+yidx = yidx(1:nimgs);
 
 positions = [positionx', positiony', repmat([positionw, positionh], [nimgs, 1])];
 

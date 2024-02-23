@@ -63,6 +63,7 @@ else
 end
 
 %% Load and Process Spectral Images:  load('SPic.mat')
+
 fprintf('\nloading...')
 load(filenameSPSIG, 'SPic', 'Sax')
 
@@ -91,13 +92,16 @@ Sax(1) = []; %first spectral component is the average power over al components
 imgStackT = permute(imgStack,[2 1 3]); % transpose the SPic variable so it's same as BImg
 imgStackT = setminlevel(imgStackT); %replaces -infs and subtracts minimum
 
+%% Choosing the ROI search parameters: Spectral PARameters: spar
+
 if runSparArm
-%      spar = Spectroiparm(); %reads roi segmentation parameters from file
+%      spar = Spectroiparm(); % old spectral parameter selection ui
 	h = SpectParArm(imgStackT, Sax); % arm the spectral parameters (spar variable)
     waitfor(h)
 end
 
-%%
+
+%% Selecting the requested spectral images
 selectedFreq = (Sax >= spar.cutOffHzMin) & (Sax <= spar.cutOffHzMax);
 Spect = imgStackT(:,:,selectedFreq);
 SaxUsed = Sax;
