@@ -9,7 +9,7 @@ function [s, m] = PrintBImgs(filepath, filename, filepathImg, zoom, varargin)
 %
 %%
 doPlotForOurEyes = true;
-if ~exist('varargin', 'var')
+if ~exist('varargin', 'var') || (exist('varargin', 'var') && nargin == 0)
     zoom = 1.3; % MICROSCOPE ZOOM LEVEL, FROM LOGBOOK
     [filename, filepath] = uigetfile('*SPSIG.mat');
     filepathImg = filepath;
@@ -56,7 +56,8 @@ baseName =  [filepathImg, sprintf('img_scalebar%dum', um)];
 
 ncolors = 256;
 colors = cmapL('greenFancy', ncolors);
-
+doPerc = true; % limits are given as percentiles of image values (not actual amount)
+doLineShift = false;
 pos = GetCenteredFigPos(dims([2 1])); % figure that does not get saved
 
 
@@ -64,13 +65,13 @@ pos = GetCenteredFigPos(dims([2 1])); % figure that does not get saved
 limsPerc = [0.1, 99.99];
 saveName = [baseName, '_maxFluorescence_', filename, '.png'];
 img = MidtoneBalance(BImgMax, 0.3);
-[rgb, s, m] = PrintBImg(img, limsPerc, colors,  doPlotForOurEyes, saveName, scaleBar);
+[rgb, s, m] = PrintBImg(img, limsPerc, colors,  doPlotForOurEyes, saveName, scaleBar, doPerc, doLineShift, pos);
 
 
 %% BImgAverage (average fluorescence projection)
 limsPerc = [0.1, 99.99];
 saveName = [baseName, '_averageFluorescence_', filename, '.png'];
-rgb = PrintBImg(BImgAverage, limsPerc, colors,  doPlotForOurEyes, saveName, scaleBar);
+rgb = PrintBImg(BImgAverage, limsPerc, colors,  doPlotForOurEyes, saveName, scaleBar, doPerc, doLineShift, pos);
 
 
 %% Spectral image
@@ -81,24 +82,24 @@ if sum(rgb(:)==-inf)>0
     vals = unique(rgb(:));
     rgb(rgb==-inf) = vals(2);
 end
-rgb = PrintBImg(rgb, limsPerc, gray(256),  doPlotForOurEyes, saveName, scaleBar);
+rgb = PrintBImg(rgb, limsPerc, gray(256),  doPlotForOurEyes, saveName, scaleBar, doPerc, doLineShift, pos);
 
 
 %% colored spectral image
 
-% % imgRGB = BImgRGB;
-% freqToUse = [0, 0.25]; % frequency range in Hz
-% 
-% figure('Units', 'Pixels', 'InnerPosition', pos)
-% subplot('Position', [0 0 1 1])
-% [imgRGB, colorsSpectral, colorbarVals] = SpectralColorImg('data', {SPic, Sax}, freqToUse, true);
-% imgRGB = MidtoneBalance(imgRGB, 0.4);
-% imgRGB(scaleBary, scaleBarx, :) = 1;
-% h = gca;
-% h.Children.CData = imgRGB;
-% 
-% % save image
-% imwrite(imgRGB, [baseName, '_coloredSpectral', filename, '.png'])
+% imgRGB = BImgRGB;
+freqToUse = [0, 0.25]; % frequency range in Hz
+
+figure('Units', 'Pixels', 'InnerPosition', pos)
+subplot('Position', [0 0 1 1])
+[imgRGB, colorsSpectral, colorbarVals] = SpectralColorImg('data', {SPic, Sax}, freqToUse, true);
+imgRGB = MidtoneBalance(imgRGB, 0.4);
+imgRGB(scaleBary, scaleBarx, :) = 1;
+h = gca;
+h.Children.CData = imgRGB;
+
+% save image
+imwrite(imgRGB, [baseName, '_coloredSpectral', filename, '.png'])
 
 %% Color spectral image colorbar
 

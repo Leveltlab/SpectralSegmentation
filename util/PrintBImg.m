@@ -16,7 +16,8 @@ function [img, s, m] = PrintBImg(img, varargin)
 %                      if empty, image will not be saved
 %   scalebar ([2 x 1] cell with doubles idx inside).
 %   doPerc (boolean). Calculate percentile using the lims input?
-%   
+%   doLineShift (boolean).
+%   pos
 % 
 % Values above this percentile will be max color value. 2p data brightness 
 % can be highly skewed % this causes most pixels to be dark. This is not
@@ -61,11 +62,19 @@ if exist('varargin', 'var') && nargin>6 && ~isempty(varargin{6})
 else
     doPerc = true;
 end
-if exist('varargin', 'var') && nargin>7
+if exist('varargin', 'var') && nargin>7 && ~isempty(varargin{7})
     doLineShift = varargin{7};
 else
     doLineShift = false;
 end
+if exist('varargin', 'var') && nargin>8
+    pos = varargin{8};
+else
+    dims = size(img);
+    pos = GetCenteredFigPos(dims([2 1])); % figure that does not get saved
+end
+
+
 
 
 if doPerc

@@ -1,4 +1,5 @@
 function [img, bestS, bestMethod, p] = ShiftLinesImg(img, varargin)
+% [img, bestS, bestMethod, p] = ShiftLinesImg(img, varargin)
 % Some bi-directionally scanned 2P images are misaligned between the even
 % and uneven rows.
 % This script tries to estimate the best way of re-aligning the rows and
@@ -11,7 +12,8 @@ function [img, bestS, bestMethod, p] = ShiftLinesImg(img, varargin)
 %   - method to use (scalar double): 1 = shifting, 2= via resizing may be
 %   empty [].
 %   - plotting (boolean): to plot or not to plot (default = false)
-% 
+%   - trans (string): to correct vertical lines, or horizontal lines
+%                   'horizontal' (default) | 'vertical'
 % 
 % Leander de Kraker
 % 2023-8-6
@@ -21,19 +23,32 @@ function [img, bestS, bestMethod, p] = ShiftLinesImg(img, varargin)
 plotting = false;
 bestS = [];
 bestMethod = [];
+trans = false;
 
 if exist('varargin', 'var')
-    if nargin>1
+    if nargin>1 && ~isempty(varargin{1})
         bestS = varargin{1};
     end
-    if nargin>2
+    if nargin>2 && ~isempty(varargin{2})
         bestMethod = varargin{2};
     else
         bestMethod = 1;
     end
-    if nargin==4
+    if nargin==4 && ~isempty(varargin{3})
         plotting = varargin{3};
     end
+    if nargin==5 && ~isempty(varargin{4})
+        trans = varargin{4};
+        if strcmpi(trans, 'horizontal')
+            trans = false;
+        else
+            trans = true;
+        end
+    end
+end
+
+if trans
+    img = img';
 end
 
 dims = size(img);
@@ -113,4 +128,8 @@ if bestS~=0
             img(1:2:end, :) = imresize(img(1:2:end, bestS:end), dimsS);
         end
     end
+end
+
+if trans
+    img = img';
 end
