@@ -33,7 +33,8 @@ if vals(1) == -inf
 end
 % Scale the values of the images
 reference = (reference - mean(reference(:))) / range(reference(:));
-image2 = (image2 - mean(image2(:))) / range(image2(:));
+img2mean = mean(image2(:));
+img2range = range(image2(:));
 
 % Crop the image that has to be moved to make the proces faster
 if min(dims)>150
@@ -43,11 +44,13 @@ else
 end
 
 % Register the chronic dataset to this dataset
-correl = xcorr2_fft(reference, image2(buffer:dims(1)-buffer, buffer:dims(2)-buffer));
+correl = xcorr2_fft(reference,...
+                    (image2(buffer:dims(1)-buffer, buffer:dims(2)-buffer)-img2mean)/img2range);
 [~,snd] = max(correl(:));
 [ij, ji] = ind2sub(size(correl),snd);
 x = dims(1) - ij - buffer;
 y = dims(2) - ji - buffer;
+
 
 % Cutting or padding the chornic image if necessary
 if x>=1 % Cut top
@@ -87,4 +90,3 @@ if rotAng ~= 0
 end
 
 transformation = struct('rotAng',rotAng,'x',x,'y',y);
-

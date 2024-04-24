@@ -2260,7 +2260,7 @@ end
 function correl = LocalCorrCalc(signal, centersignal)
     % Calculating the correlation between signal and centersignal
     % subsampling for long signals
-    time = 1:length(centersignal);
+    time = 1:(length(centersignal)/3);
     if length(centersignal) > 1000
         step = round(length(centersignal)./1000);
         time = 1:step:length(centersignal);
