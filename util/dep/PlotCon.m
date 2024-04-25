@@ -1,17 +1,24 @@
 function [h, cons] = PlotCon(PP, colors, varargin)
+% [h, cons] = PlotCon(PP, colors, xshift, yshift);
+% PlotCon(PP, colors)
+% 
 % Quickly plot the ROI contours
 % Is accelerated by concatenating the different ROIs and seperating them by
-% a nan so no connecting line is drawn between the ROIs. 
+% a nan so no connecting line is drawn between the ROIs. But it is plotted
+% as one graphical object for MATLAB.
 % 
 % Input:
 % - PP (struct): with fields Cnt and Con.x and Con.y
 % - colors ([1 x 3 double] or [1 x 4 double] or [scalar color]): e.g.
 %           [1 0 0]        or [1 0 0 0.2]    or 'r'
+% Optional:
+% - xshift: shift to apply to data
+% - yshift: shift to apply to data
+% 
 % 
 % Ouput:
 %  - h ([scalar] graphics handle)
-%  - cons (struct): with fields x and y, for quick plotting
-%  And plotting!
+%  - cons (struct): with fields x and y
 % 
 % Leander de Kraker
 % 2023-4-3
