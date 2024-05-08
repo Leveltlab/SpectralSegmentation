@@ -7,10 +7,9 @@ function [img, bestS, bestMethod, p] = ShiftLinesImg(img, varargin)
 % 
 % Input: 
 %   - img (2D double)
-%   OPTIONAL
-%   - shift to apply (scalar double). may be left empty []
-%   - method to use (scalar double): 1 = shifting, 2= via resizing may be
-%   empty [].
+%   OPTIONAL  may be left empty []
+%   - shift to apply (scalar double).
+%   - method to use (scalar double): 1 = shifting, 2= via resizing
 %   - plotting (boolean): to plot or not to plot (default = false)
 %   - trans (string): to correct vertical lines, or horizontal lines
 %                   'horizontal' (default) | 'vertical'
@@ -57,7 +56,6 @@ dimsScheck = [floor(dims(1)/2), dims(2)];
 dimsS = [ceil(dims(1)/2), dims(2)];
 
 if isempty(bestS) % Do check of how best to shift the lines
-    
     s = -5:5;
     b = max(s);
     bt = b*2;

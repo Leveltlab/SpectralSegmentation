@@ -24,10 +24,17 @@ Hdf52Sbx
 BackgroundSubtractSbx
 
 
+%% Correct for bidirectional scanning misalignment? uneven vs even lines shifted?
+% Also decreases really high values (>65500) to something low in the data!!
+trans = false; % false: Correct for horizontal lines. True: correct for vertical lines
+% Check for shift.
+ShiftLinesSbx([], trans, 1)
+
+
 %% Motion correct sbx data
-Showsbx 
+Showsbx
 % Press the A button for the Alignment/motion correction
-% Rightclick on main image to adjust color scale
+% Rightclick on main image to adjust color scale etc
 
 %% Transpose the motion corrected sbx file to improve reading speed
 % Creates _Trans.dat file

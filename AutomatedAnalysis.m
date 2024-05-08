@@ -45,7 +45,13 @@ end
 filenames = filenames';
 filepaths = filepaths';
 nfiles = length(filenames);
+
+for i = 1:nfiles
+    filenames{i} = strsplit(filenames{i}, '.sbx');
+    filenames{i} = filenames{i}{1};
+end
 clearvars selecting i
+
 
 global info
 
@@ -55,8 +61,13 @@ global info
 % Most important part of cropping is removing the lines (on the left
 % and right side) which have value 653357 and will thus overpower all 
 % relevant data during motion correction.
-x = 102:774; % HORIZONTAL CROP
-y = 25:512;  % VERTICAL CROP
+x = 3:793; % HORIZONTAL CROP
+y = 5:510;  % VERTICAL CROP
+
+% Do line shifting correction? % % % % % % % % %
+doLineShift = false;
+doLineShiftTrans = false; % false=correct for horizontal lines, true=correct for vertical lines
+lineShift = 0;
 
 % Run motion normcorre correction? % % % % % % % % % % % % %
 doNoRMCorre = true; % (if false, cropping settings aren't used)
@@ -66,6 +77,8 @@ alignMethod = 'Rigid'; % options: 'Nonrigid' | 'Rigid'
 doEyeConvert = true;
 doEyeInvert = true; % Invert black-white?
 doEyeDeFlicker = false; % Diminish flickering brightness between subsequent frames?
+
+filepathsOutput = filepaths;
 
 % BACKGROUND SUBTRACTION parameters % % % % % Necessary for 1 photon data
 doBackgroundSubtract = false;
@@ -105,6 +118,32 @@ end
 
 %% Get settings via input dialogs
 dlgdims = [1 85];
+clearvars info; clearvars -global info
+
+% Do line shift? %
+doLineShift = questdlg('Do line shifting? to correct bi-directional scanning misalignment', 'line shift?',...
+                       'yes', 'no', 'no');
+if strcmp(doLineShift, 'yes')
+    doLineShift = true;
+    doLineShiftTrans = questdlg('correct for horizontal or vertical lines?', 'orientation of lines?',...
+                                'horizontal', 'vertical', 'horizontal');
+    if strcmp(doLineShiftTrans, 'horizontal')
+        doLineShiftTrans = false;
+    else
+        doLineShiftTrans = true;
+    end
+elseif strcmp(doLineShift, 'no')
+    doLineShift = false;
+else
+    fprintf('Canceled selecting settings\n')
+    return
+end
+if doLineShift
+    im = sbxread([filepaths{1}, filenames{1}], 5, 100);
+    lineShift = ShiftLinesCheck(im, doLineShiftTrans, true);
+%     lineShift = inputdlg('shift by how much');
+end
+
 
 % Do NoRMCorre? %
 %
@@ -120,16 +159,16 @@ end
 if doNoRMCorre
     % Get crop for NoRMCorre
     if exist('filepaths', 'var')
-        load([filepaths{1} filenames{1}(1:end-4) '.mat'], 'info');
+        load([filepaths{1} filenames{1} '.mat'], 'info');
         definput = {sprintf('1:%d', info.sz(2)), sprintf('1:%d', info.sz(1))};
         clearvars info
     else
         definput = {'1:796', '1:512'};
     end
-
+    
     prompt = {'x, horizontal crop', 'y, vertical crop'};
     dlgtitle = 'cropping settings for motion correction';
-
+    
     answer = inputdlg(prompt, dlgtitle, dlgdims, definput);
     if isempty(answer)
         fprintf('canceling selecting settings\n')
@@ -143,6 +182,31 @@ if doNoRMCorre
                            'NoRMCorre registration method',...
                            'Rigid','Nonrigid','Rigid');
 end
+
+
+% Save in original file location ? % 
+doSaveLocation = questdlg('Save new files in original folder? (yes = default)',...
+                          'Output location',...
+                          'yes', 'no (select different folders)', 'yes');
+filepathsOutput = filepaths;
+if strcmp(doSaveLocation, 'yes')
+    doSaveLocation = false;
+elseif strcmp(doSaveLocation, 'no (select different folders)') % select folder for every file
+    doSaveLocation = true;
+    outputpathi = 'lalala';
+    i = 1;
+    while i <= nfiles && ischar(outputpathi)
+        outputpathi = uigetdir(cd, sprintf('output path for file %d: %s',i, filenames{i}));
+        if ischar(outputpathi)
+            filepathsOutput{i} = [outputpathi '\'];
+        end
+        i = i + 1;
+    end
+else
+    fprintf('Canceling selecting settings\n')
+    return
+end
+
 
 % Do eye file format conversion? (keeps the original)
 doEyeConvert = questdlg('Convert "*_eye.mat" file into "*_eye.mp4" (keeps original)',...
@@ -166,8 +230,11 @@ if strcmp(doEyeConvert, 'yes')
     else
         doEyeDeFlicker = false;
     end
-else
+elseif strcmp(doEyeConvert, 'no')
     doEyeConvert = false;
+else
+    fprintf('Canceling selecting settings\n')
+    return
 end
 % Do background subtraction? %
 doBackgroundSubtract = questdlg('Do background subtraction (for 1-photon data)',...
@@ -245,6 +312,7 @@ elseif strcmp(getROIs, 'no')
     getROIs = false;
 else
     fprintf('Cancelling selecting settings\n')
+    return
 end
 
 % Timing info % 
@@ -259,7 +327,7 @@ else
 end
 if timed
     % File in which timing info is stored
-    timedFile = 'E:\data\Huub\Epsilon\spectralTimed.mat'; % Default timedFile name! % % % 
+    timedFile = 'D:\2Pdata\spectralTimed.mat'; % Default timedFile name! % % % 
     if ~isfile(timedFile) % Creating new file for timing data
         warning('%s does not exist! please say which file to add the timing data to!', timedFile)
         [timedFile, timedFilePath] = uiputfile('*.mat', 'Where to save timing file', 'spectralTimed.mat');
@@ -267,7 +335,7 @@ if timed
             timed = false;
         else % Save new requested file
             timedFile = [timedFilePath, timedFile];
-            fprintf('\nPlease change default timedFile name (line 208) to the new file for future use:\n%s\n', timedFile)
+            fprintf('\nPlease change default timedFile name (line 330) to the new file for future use:\n%s\n', timedFile)
             timedData = struct('computerName',{},'fileSize',[],'filePath', [], 'fileName',{},...
                          'nSplits', [], 'normcorrT',[],'transposeT',[],'decimatT',[],...
                          'spectralT',[],'fluorescenceT',[], 'backSubT', [], 'getRoisT', [],...
@@ -289,22 +357,36 @@ i = 1;
 for i = 1:nfiles
     fn = filenames{i};
     pn = filepaths{i};
-    pnfn = [pn fn(1:end-4)]; % pathname with filename  
+    pno = filepathsOutput{i};
     % prepare to load a different sbx file: thoroughly delete info variable
-    clearvars info 
+    clearvars info
     clearvars -global info
     
+    %% Shift lines, and replace erroneously high values (>65530)
+    if doLineShift
+        fprintf('Shifting lines & replacing high value of file %s...\n', fn)
+        ShiftLinesSbx({pn fn}, doLineShiftTrans, lineShift, pno)
+        pnUpdate = pno;
+        fnUpdate = [fn '_shiftedLines'];
+        clearvars info 
+        clearvars -global info
+    else
+        pnUpdate = pn;
+        fnUpdate = fn;
+    end
+
+    %% Load example frame and do some sbx info settings
     % An example frame of the recording (creates new global info variable)
-    Img = sbxread(pnfn, 0,1);
+    Img = sbxread([pnUpdate fnUpdate], 0,1);
     
     global info
     
     % set the name of the recording
     if ~isfield(info, 'strfp')
-        info.strfp = pnfn;
-    elseif ~strcmp(info.strfp, pnfn) % inconsitent names, maybe it'll all go wrong
+        info.strfp = [pnUpdate fnUpdate];
+    elseif ~strcmp(info.strfp, [pnUpdate fnUpdate]) % inconsitent names, maybe it'll all go wrong
         info.strfp
-        pnfn
+        [pnUpdate fnUpdate]
         fprintf('expected name and name in info are inconsistent\nPROBLEM\n\n')
     else
         fprintf('everything is going well\n')
@@ -340,12 +422,13 @@ for i = 1:nfiles
         end
     end
     
+    
     %% Normcorr    
     % Download normcorre code from flatironinstitute from github.
     % Place normcorre folder in Matlab path
     
     % Show the data before committing the analysis
-    Img = sbxread(pnfn, 0,100*nSlices);
+    Img = sbxread([pnUpdate fnUpdate], 0,100*nSlices);
     %determine pixel value range
     cLimits = prctile(Img(:), [0.02 96]);
     % Activate much tighter subplots
@@ -385,21 +468,24 @@ for i = 1:nfiles
         
         % START NORMCORR REGISTRATION % % % % %
         normcorrTic = tic;
-        simonalign3([]);
+        simonalign3(pno);
         normcorrtoc = toc(normcorrTic);
         
         filenameNormcorr = cell(nSlices,1);
         if info.bsplit
             for j = 1:nSlices
-                filenameNormcorr{j} = [pnfn sprintf('_Split%d_normcorr', j)];
+                filepathNormcorr = pno;
+                filenameNormcorr{j} = [fnUpdate sprintf('_Split%d_normcorr', j)];
             end
         else
-            filenameNormcorr{j}= [pnfn '_normcorr'];
+            filepathNormcorr = pno;
+            filenameNormcorr{j}= [fnUpdate '_normcorr'];
         end
         
     else % No NoRMCorre
         nSlices = 1;
-        filenameNormcorr = {pnfn};
+        filepathNormcorr = pn;
+        filenameNormcorr = {fnUpdate};
         normcorrtoc = NaN;
     end
     
@@ -413,11 +499,11 @@ for i = 1:nfiles
         
         for j = 1:nSlices
             filenameBackgroundSub{j} = [filenameNormcorr{j} '_Sub'];
-            BackgroundSubtractSbx(filenameNormcorr{j},...
+            BackgroundSubtractSbx([filepathNormcorr filenameNormcorr{j}],...
                                   filenameBackgroundSub{j}, filterRadius,...
                                   filterMethod, shifter, smoothDim, smoothSe, plotter)
         end
-        backSubtoc = toc;
+        backSubtoc = toc(backSubtic);
         % Replacing the normcorr names! So next analysis takes correct file
         filenameNormcorr = filenameBackgroundSub;
     else % No background subtraction
@@ -444,8 +530,8 @@ for i = 1:nfiles
     
     transposeTic = tic;
     for j = 1:nSlices
-        StackTranspose([filenameNormcorr{j} '.sbx'], pn)
-        filenameTrans{j} = [filenameNormcorr{j} '_Trans.dat'];
+        StackTranspose([filepathNormcorr filenameNormcorr{j} '.sbx'], pno)
+        filenameTrans{j} = [pno filenameNormcorr{j} '_Trans.dat'];
     end
     transposetoc = toc(transposeTic);
     
@@ -456,7 +542,7 @@ for i = 1:nfiles
     decTic = tic;
     for j = 1:nSlices
         DecimateTrans(filenameTrans{j}, 1)
-        filenameDecTrans{j} = [filenameNormcorr{j} '_DecTrans.dat'];
+        filenameDecTrans{j} = [pno filenameNormcorr{j} '_DecTrans.dat'];
     end
     dectoc = toc(decTic);
     
@@ -468,7 +554,7 @@ for i = 1:nfiles
     spectralTic = tic;
     for j = 1:nSlices
         spectral(filenameDecTrans{j});
-        filenameSpectral{j} = [filenameNormcorr{j} '_SPSIG.mat'];
+        filenameSpectral{j} = [pno filenameNormcorr{j} '_SPSIG.mat'];
     end
     spectraltoc = toc(spectralTic);
     
@@ -479,7 +565,7 @@ for i = 1:nfiles
     
     fluorescenceTic = tic;
     for j = 1:nSlices
-        FluorescenceImgSbx(filenameNormcorr{j});
+        FluorescenceImgSbx([pno filenameNormcorr{j}]);
     end
     fluorescencetoc = toc(fluorescenceTic);
     
@@ -501,7 +587,7 @@ for i = 1:nfiles
     %% fill in the timedData tracker investigation file
     if timed
         load(timedFile)
-        fileInfo = dir([pn fn]);
+        fileInfo = dir([pn fn '.sbx']);
         timedData(end+1).fileSize = fileInfo.bytes * 10^-9;
         timedData(end).normcorrT  = normcorrtoc;
         timedData(end).backSubT   = backSubtoc;
@@ -518,7 +604,7 @@ for i = 1:nfiles
         timedData(end).date       = datetime;
         timedData(end).alignMethod= alignMethod;
         save(timedFile, 'timedData')
-        fprintf('saved timeddata for file %d\n', i)
+        fprintf('saved timeddata for file %d\n\n', i)
     end
 end
 
