@@ -1,24 +1,49 @@
-function infoSigPar = DeconvolveSignals(filename)
-%
-% infoSigRetreival = DeconvolveSignal(pn, fn) deconvolves the sig and
-% sigCorrected variables which are present in the file [pn fn]
+function [infoSigPar, par] = DeconvolveSignals(filename, varargin)
+% Deconvolves requested, or sigCorrected (default) variables which are in 
+% the file and saves the results to that file.
 % 
-% Input: fn = (string) spectral filename, with sig variable present
-%        pn = (string) pathname
-% In case no input is given the script will ask for the filename
+% filename = 'C:\data\mymousy\Mikey_SPSIG.mat';
+% estimatePars = true; % let MLspike search parameters
+% signalNames = {'sigCorrected', 'sig'};
+% deconNames = {'deconCorrected', decon'};
+% infoSigPar = DeconvolveSignals(filename, estimatePars, signalNames, deconNames);
+% infoSigPar = DeconvolveSignals;
+% 
+% 
+% Input: 
+%  - filename (string): SPSIG filename, with sig variable present
+%                       can include path
+% Optional inputs (any can by left empty):
+%  - estimatePars (boolean): Use parameters from file (false) |default|
+%                            or find parameters (true)
+%  - signalNames (string or cell array with strings): signals to deconvolve
+%                                       default = 'sigCorrected'
+%  - deconNames (string or cell array with strings): names of the output
+%            deconvolved signals, corresponding to the signalNames
+%            default = 'deconCorrected', or the input sigNames with decon 
+%               in front of name and the original first letter capitalized.
+% 
+% Output: 
+%   - infoSigPar (struct): info on Signal retrieval Parameters
+%   - Updated SPSIG file.
 %
-% Output: infoSigPar = info on Signal retrieval Parameters (struct)
-%
+% Can also be executed as a script/ without input, in that case a filename
+% and whether to use parameter estimation will be requested.
+% 
 % Deconvolving using MLspike
-%
+% 
+% 
+% Chris v.d. Togt & Leander de Kraker
+% 2024-10-24: Enabled processing of specific requested signals
+%             Enabled estimation of deconvolution parameters.
+% 
 
 %% Select file if code is being called as script
-try
-    asfunction = nargin == 1;
-catch
-    asfunction = false;
-end
-if ~asfunction
+
+if exist('varargin', 'var') && nargin>=1 && ~isempty(filename)
+    asFunction = true;
+else
+    asFunction = false;
     [fn, pn] = uigetfile('*_SPSIG.mat');
     if fn == 0 % if cancelled
         fprintf('no file selected: exiting\n')
@@ -26,208 +51,175 @@ if ~asfunction
     end
     filename = [pn fn];
 end
+varNames = who('-file', filename);
 
-% Activate much tighter subplots
-% [subplot margin top&side],[figure bottomspace,topspace],[leftspace,rightspace]
-subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.06], [0.1 0.1], [0.1 0.02]);
+if asFunction && nargin==2 && ~isempty(varargin{1}) % to do estimation of parameters is given
+    doParEstimation = varargin{1};
+elseif asFunction % Not given as input but executed as function. Use standard option
+    doParEstimation = false;
+else
+    doParEstimation = questdlg('Estimate deconvolution parameters?', 'estimate MLspike parameters', ...
+                            'yes', 'Load from premade file', 'Load from premade file');
+    if strcmp(doParEstimation, 'yes')
+        doParEstimation = true;
+    else 
+        doParEstimation = false;
+    end
+end
+
+% Sigs to deconvolve
+if asFunction && nargin==3
+    sigNames = varargin{2};
+    sigNamesGiven = true;
+    if iscell(sigNames) % multiple sig names were given
+        nsigs = length(sigNames);
+    else
+        nsigs = 1;
+        sigNames = {sigNames};
+    end
+else % Use default signal name to load
+    sigNamesGiven = false;
+
+    % find valid signal
+    if ismember('sigCorrected', varNames)
+        sigNames = {'sigCorrected'};
+    elseif ismember('sig', varNames)
+        sigNames = {'sig'};
+    else
+        error('No signal found to deconvolve! Please specify in input')
+    end
+    nsigs = 1;
+end
+
+% Names to give to deconvolved signals
+if asFunction && nargin==4 % Output names are given in input
+    deconNames = varargin{3};
+    if ~iscell(deconNames)
+        deconNames = {deconNames};
+    end
+else
+    if sigNamesGiven % No output names defined, but input names were given
+        for i = 1:nsigs
+            deconNames = ['decon', upper(sigNames{i}(1)), sigNames{i}(2:end)];
+        end
+    else
+        if strcmp(sigNames{1}, 'sigCorrected')
+            deconNames = {'deconCorrected'};
+        elseif strcmp(sigNames{1}, 'sig')
+            deconNames = {'decon'};
+        else
+            warning('Do not know how to name deconvolved signal! Please specify')
+            warning('help DeonvolveSignals')
+        end
+    end
+end
+
 
 % Load the data
-load(filename, 'sig', 'sigCorrected', 'infoSigPar', 'freq');
-doSigCorrected = exist('sigCorrected','var');
+data = load(filename, sigNames{:}, 'freq', 'infoSigPar');
+infoSigPar = data.infoSigPar;
+freq = data.freq;
+nrois = size(data.(sigNames{1}), 2);
+nt = size(data.(sigNames{1}), 1);
+t = (1:nt+1)/freq;
 
-% parameters, please check params with G = spk_demoGUI
-parallel_process = true; % default
-%MLspike_params = load('MLpest20180927', 'MLpest');
-MLspike_params = load('MLPest20210313.mat', 'par'); %these are better parameters, but please check with G = spk_demoGUI
-MLspike_params = MLspike_params.par;
-MLspike_params.dt = 1/freq;
-
-nrois = size(sig,2);
-t = (1:length(sig)+1)/freq;
-
-drifting_baseline = true; % default
-if ~drifting_baseline
-    % Prevent drifting baseline estimation during MLspike deconvolution
-    MLspike_params = rmfield(MLspike_params,'drift');
-    dbsl_process = 'fixed baseline';
-else
-    dbsl_process = 'drifting baseline';
+if ~doParEstimation % parameters from file, please check params with G = spk_demoGUI
+    % parFile = 'MLpest20180927.mat';
+    parFile = 'MLPest20210313.mat';
+    load(parFile, 'par'); % load par
+else % pre-allocate variables for parameter estimation
+    par = tps_mlspikes('par'); 
+    par.saturation = 0.1;
+    par.drift.parameter = .01;
+    aest = nan(nrois, 1);
+    tauest = nan(nrois, 1);
+    sigmaest = nan(nrois, 1);
 end
-
-MLpar = repmat(MLspike_params, nrois, 1);
-
-% Data matrix preallocation
-decon  = zeros(size(sig));
-den    = zeros(size(sig));
-spikes = cell(nrois,1);
-drift  = zeros(size(sig));
-if doSigCorrected
-    deconCorrected  = zeros(size(sig));
-    denCorrected    = zeros(size(sig));
-    spikesCorrected = cell(nrois,1);
-end
+par.dt = 1/freq;
 
 % MLspike deconvolution
 tic
-if parallel_process
-    if ~verLessThan('matlab','9.3')
-        % Define waitbar
-        hWb = waitbar(0,sprintf('Running MLspike (Runtime %1.2f min)',0.00),...
-                                'Name','Deconvolution');
-        global h N p
-        D = parallel.pool.DataQueue;
-        afterEach(D, @retrievesignals_parWB);
-        h = hWb;
-        N = nrois;
-        p = 1;
-        parfor roi = 1:N % parallel processing should be possible, only the waitbar won't make much sense.
-            [spikes{roi}, den(:,roi), drift(:,roi)] = spk_est(sig(:,roi), MLpar(roi));
-            send(D,roi)
-        end
-        close(hWb)
-        
-        if doSigCorrected
-            % Start deconvolution on neuropil corrected data
-            hWb = waitbar(0,sprintf('Running MLspike on neuropil corrected data (Runtime %1.2f min)',0.00),...
-                                    'Name','Deconvolution');
-            h = hWb;
-            parfor roi = 1:N % parallel processing should be possible, only the waitbar won't make much sense.
-                [spikesCorrected{roi}, denCorrected(:,roi)] = spk_est(sigCorrected(:,roi), MLpar(roi));
-                send(D,roi)
-            end
-            close(hWb)
-        else
-            fprintf('no sigCorrected present. skipping sigCorrected\n')
-        end
-        
-    else % older versions of matlab (<2017b)
-        
-        N = nrois;
-        parfor roi = 1:N % parallel processing should be possible, only the waitbar won't make much sense.           
-            [spikes{roi}, den(:,roi), drift(:,roi)] = spk_est(sig(:,roi),MLpar(roi));
-        end
-        if doSigCorrected
-            parfor roi = 1:N % parallel processing should be possible, only the waitbar won't make much sense.           
-                [spikesCorrected{roi}, denCorrected(:,roi)] = spk_est(sigCorrected(:,roi),MLpar(roi));
-            end
-        else
-            fprintf('no sigCorrected present. skipping sigCorrected\n')
-        end
+decon = struct();
+for s = 1:nsigs
+    sig = data.(sigNames{s});
+
+    % signal should be fluctuating with baseline on 0
+    if median(sig(:))<0.5
+        sig = sig + 1;
+        fprintf('Summed one to the signal to get baseline to 1\n')
     end
-else % Not parallel process
     
-    fprintf('deconvolution at ROI: ')
-    for roi = 1:nrois % parallel processing should be possible, only the waitbar won't make much sense.
-        [spikes{roi},den(:,roi), drift(:,roi)] = spk_est(sig(:,roi), MLpar(roi));
-        fprintf('%d ', roi)
-    end
-    fprintf('\n')
-    if doSigCorrected
-        fprintf('neuropil corrected deconvolution at ROI: ')
-        for roi = 1:nrois % parallel processing should be possible, only the waitbar won't make much sense.
-            [spikesCorrected{roi}, denCorrected(:,roi)] = spk_est(sigCorrected(:,roi), MLpar(roi));
-            fprintf('%d ', roi)
-        end    
-        fprintf('\n')
+    deconS  = zeros(size(sig));
+    
+    % Define waitbar
+    if nsigs>1
+        strSigCounter =  sprintf(' (%d/%d)', s, nsigs);
     else
-        fprintf('no sigCorrected present. skipping sigCorrected\n')
+        strSigCounter = '';
     end
-end
-
-fprintf('MLspike took %1.2f minutes to process %d rois (%s).\n',toc/60,...
-        nrois,dbsl_process)
-
-
-for roi = 1:nrois % parallel processing should be possible, yields little.
-    % decon(:,roi) = sum(spikes{roi}'>=t(1:end-1)&spikes{roi}'<t(2:end))';
-    if ~isempty(spikes{roi})
-        out = arrayfun(@(x) x>=t(1:end-1)&x<t(2:end), spikes{roi}', 'UniformOutput', false);
-        decon(:,roi) = sum(cell2mat(out))';
-    end
-    if doSigCorrected
-        if ~isempty(spikesCorrected{roi})
-            out = arrayfun(@(x) x>=t(1:end-1)&x<t(2:end), spikesCorrected{roi}', 'UniformOutput', false);
-            deconCorrected(:,roi) = sum(cell2mat(out))';
+    hWb = waitbar(0,...
+                  sprintf('Running MLspike on %s %s (Runtime %1.2f min)',sigNames{s}, strSigCounter, 0.00),...
+                  'Name','Deconvolution');
+    global h N p
+    h = hWb;
+    N = nrois;
+    p = 1;
+    D = parallel.pool.DataQueue;
+    afterEach(D, @retrievesignals_parWB);
+    parfor roi = 1:N % parallel processing should be possible, only the waitbar won't make much sense.
+        if doParEstimation
+            [tauest(roi), aest(roi), sigmaest(roi), spikes] = DeconvolveWithParEstimation(sig(:,roi), freq, par);
+        else
+            [spikes, ~, ~] = spk_est(sig(:,roi), par);
         end
+
+        if ~isempty(spikes)
+            out = arrayfun(@(x) x>=t(1:end-1)&x<t(2:end), spikes', 'UniformOutput', false);
+            deconS(:,roi) = sum(cell2mat(out))';
+        end
+        send(D, roi)
     end
-end
-
-% Check deconvolution for dissapointments
-dissapointment0 = find(all(decon==0));
-dissapointment1 = find(all(decon==1));
-
-if ~isempty(dissapointment0)
-    fprintf('%d ROIs do not have any spikes in decon. ROIs:', length(dissapointment0))
-    for i = 1:length(dissapointment0); fprintf(' %d', dissapointment0(i)); end; fprintf('\n')
-    infoSigPar.dissapointment0 = dissapointment0;
-end
-if ~isempty(dissapointment1)
-    fprintf('%d ROIs have constant spikes in decon. ROIs:', length(dissapointment1))
-    for i = 1:length(dissapointment1); fprintf(' %d', dissapointment1(i)); end; fprintf('\n')
-    infoSigPar.dissapointment1 = dissapointment1;
-    % Set all the ROIs that only have 1 to 0
-    decon(:,dissapointment1) = 0;
-    fprintf('Their values have been set to 0\n')
-end
-
-if doSigCorrected
-    dissapointmentCorrected0 = find(all(deconCorrected==0));
-    dissapointmentCorrected1 = find(all(deconCorrected==1));
-    if ~isempty(dissapointmentCorrected0)
-        fprintf('%d ROIs do not have any spikes in deconCorrected. ROIs:', length(dissapointmentCorrected0))
-        for i = 1:length(dissapointmentCorrected0)
-            fprintf(' %d', dissapointmentCorrected0(i))
-        end; fprintf('\n')
-        infoSigPar.dissapointmentCorrected0 = dissapointmentCorrected0;
+    close(hWb)
+    fprintf('MLspike took %1.2f minutes to process %d rois. signal %s%s.\n',...
+            toc/60, nrois, sigNames{s}, strSigCounter)
+    
+    % Check deconvolution for dissapointments
+    dissapointment0 = find(all(deconS==0)); % no spikes at all for these ROIs
+    dissapointment1 = find(all(deconS==1)); % one spike at every timepoint for these ROIs...
+    if ~isempty(dissapointment0)
+        fprintf('%d ROIs do not have any spikes in %s. ROIs:', length(dissapointment0), deconNames{s})
+        for i = 1:length(dissapointment0); fprintf(' %d', dissapointment0(i)); end; fprintf('\n')
     end
-    if ~isempty(dissapointmentCorrected1)
-        fprintf('%d ROIs have constant spikes in deconCorrected. ROIs:', length(dissapointmentCorrected1))
-        for i = 1:length(dissapointmentCorrected1)
-            fprintf(' %d', dissapointmentCorrected1(i))
-        end; fprintf('\n')
-        infoSigPar.dissapointmentCorrected1 = dissapointment1;
-        % Set all the ROIs that only have value 1 to 0
-        deconCorrected(:,dissapointmentCorrected1) = 0;
+    if ~isempty(dissapointment1)
+        fprintf('%d ROIs have constant spikes in %s. ROIs:', length(dissapointment1), deconNames{s})
+        for i = 1:length(dissapointment1); fprintf(' %d', dissapointment1(i)); end; fprintf('\n')
+        % Set all the ROIs that only have 1 to 0
+        deconS(:,dissapointment1) = 0;
         fprintf('Their values have been set to 0\n')
     end
+    infoSigPar.(deconNames{s}).dissapointment0 = dissapointment0;
+    infoSigPar.(deconNames{s}).dissapointment1 = dissapointment1;
+    
+    % Save the estimated parameters in a more managable format
+    if doParEstimation 
+        par.a = aest;
+        par.tau = tauest;
+        par.finetune.sigma = sigmaest;
+    end
+    infoSigPar.(deconNames{s}).par = par;
+    
+    decon.(deconNames{s}) = deconS;
 end
+
 
 % Struct with info of how the retrieved signal is done
 infoSigPar.deconv = 'MLspike';
-infoSigPar.decon  = MLspike_params;
+infoSigPar.deconParEstimated = doParEstimation;
 
-if doSigCorrected
-    save(filename, 'den', 'decon', 'infoSigPar', 'denCorrected', 'deconCorrected', 'drift', '-append')
-else
-    save(filename, 'den', 'decon', 'infoSigPar', 'drift', '-append')
-end
+decon.infoSigPar = infoSigPar;
 
-% Plot deconvoluted data, yellow for non-neuropil corrected, blue for neuropil corrected 
-figure('units', 'normalized', 'position',  [0.75 0.2 0.24 0.5], 'Name', 'deconvolved')
-subplot(1,1,1)
-xas = (1:length(sig))./freq;
-RGB = cat(3,decon',decon',decon');
-if doSigCorrected % neuropil corrected decon signal in blue color channel
-    RGB(:,:,3) = deconCorrected';
-end
-imagesc(xas./60, 1:size(decon,2), RGB);
-title('spike estimates'); xlabel('time (minutes)')
-xlim([0 xas(end)/60]); ylabel('ROI')
+% Add fields of struct as variables
+save(filename, '-struct', 'decon', '-append')
 
-% % Plot all spikes using dot markers (slow)
-% set(gca,'Color','k')
-% hold on
-% for i = 1:length(spikes)
-%     if ~isempty(spikes{i})
-%         plot(spikes{i},i,'.','color',[1 0.5 0],'markersize',3)
-%     end
-% end
-% if doSigCorrected % neuropil corrected decon signal in blue color channel
-%     for i = 1:length(spikesCorrected)
-%         if ~isempty(spikesCorrected{i})
-%             plot(spikesCorrected{i},i,'.w','markersize',3)
-%         end
-%     end
-% end
-% set(gca,'YDir','reverse')
+
 

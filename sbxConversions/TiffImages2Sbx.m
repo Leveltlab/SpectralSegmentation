@@ -16,6 +16,7 @@ files = dir([fp '/*.tif*']);
 [~, fn] = fileparts(files(1).name);  
 [Fn, strSavepath] = uiputfile([fn '.sbx'], 'Select folder and filename of output sbx file');
 fileID = fopen([strSavepath Fn], 'w');
+[hz, scaleUm, FOVum, pixelAspectRatio, squareFOV] = RequestRecInfo();
 
 hwb = waitbar(0, 'writing sbx file');
 for i = 1:length(files)
@@ -36,9 +37,8 @@ info.nsamples = info.sz(2) * info.sz(1) * 2 * info.nchan;
 info.simon = 1; %don't invert with intmax
 info.scanbox_version = 2.5;
 info.max_idx = length(files);
-Strfreq = inputdlg('What is the framerate for this image sequence?');
-info.Freq = str2double(Strfreq);
 info.recordsPerBuffer = 0;
+info = RequestRecInfoProcess(info, hz, scaleUm, FOVum, pixelAspectRatio, squareFOV);
 
 save([strSavepath Fn(1:end-4) '.mat'], 'info');
 close(hwb)  

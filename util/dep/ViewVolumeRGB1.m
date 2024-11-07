@@ -117,6 +117,8 @@ function ViewVolumeRGB1(img, scalexy, z)
     h2zy = subplot('position', axposition(3,:),...
                    'ButtonDownFcn', {@axesYZfcn}, 'nextplot', 'replaceChildren');
     
+    set([h2zy h1zy], 'YTickLabel', [])
+
     % Default slice is the middle of the data
     % Cut is calculated based on mu
     xCut = x(end)/2;

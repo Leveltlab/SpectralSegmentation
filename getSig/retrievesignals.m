@@ -11,6 +11,7 @@ function infoSigPar = retrievesignals(filename)
 % corrected sig = raw - 0.7 * background sig
 %
 % version changes:
+%   version 1.6 (2024-10-30): Neuropil scales with pixelSize & aspect ratio
 %   version 1.5 (2023-2-22): Changed DF/F calculation (basecorrect)
 %   version 1.4 (2021-8-19): save frametimes (in seconds) to SPSIG as well
 %   version 1.3 (2019-3-11): 'a' set to 0.7
@@ -23,14 +24,13 @@ function infoSigPar = retrievesignals(filename)
 
 % Variables of the neuropil properties
 alpha = 0.7; % for 'y = a*x + b'. 0.7 is used in other research groups
-bufSize = 4; % n pixels buffer around ROIs before background ROI starts
-surround = 11; % take area of n pixels around the buffer as background ROI
+% If no scale variable is present, this amount of pixels will be used
+bufSize = 3; % n micrometer buffer around ROIs before background ROI starts
+surround = 8; % take area of n micrometer around the buffer as background ROI
 
 infoSigPar = struct(); % info with script parameters
-infoSigPar.scriptVersion  = 1.5;
+infoSigPar.scriptVersion  = 1.6;
 infoSigPar.alpha  = alpha; % alpha of neuropil substraction
-infoSigPar.bufSize = bufSize;
-infoSigPar.surround = surround;
 
 % Activate much tighter subplots
 % [subplot margin top&side],[figure bottomspace,topspace],[leftspace,rightspace]
@@ -53,7 +53,23 @@ if ~asfunction
 end
 
 % Load the data
-load(filename, 'Mask', 'PP', 'BImg');
+load(filename, 'Mask', 'PP', 'BImg', 'scaleUm', 'pixelAspectRatio');
+
+% Adjust neuropil scale to um
+if exist('scaleUm', 'var')
+    bufSize = round(bufSize / scaleUm);
+    surround = round(surround / scaleUm);
+    infoSigPar.scaleUm = scaleUm;
+else
+    infoSigPar.scaleUm = NaN;
+end
+if ~exist('pixelAspectRatio', 'var')
+    pixelAspectRatio = 1;
+end
+
+infoSigPar.aspectRatio = pixelAspectRatio;
+infoSigPar.bufSize = bufSize;
+infoSigPar.surround = surround;
 
 % memorymap transposed data file
 filenameTrans = strsplit(filename, {'_SPSIG','.mat'});
@@ -72,10 +88,9 @@ fprintf('\nloaded file %s\n',filenameTrans(1:end-4))
 
 
 % Create background ROIs
-[~, ~, buf] = BufferMask(Mask, bufSize);
+[~, ~, buf] = BufferMask(Mask, bufSize, pixelAspectRatio);
 % Background contours and seperate masks
-[backCon, zones, backMask] = BufferMask(buf+Mask, surround); 
-
+[backCon, zones, backMask] = BufferMask(buf+Mask, surround, pixelAspectRatio); 
 
 % Plotting the contours
 figure('Units','normalized', 'Position', [0 0.2 0.475 0.5], 'Name', 'signal retrieval');

@@ -62,7 +62,6 @@ for i = 1:nfiles
     fprintf('\nloading file %d...',i)
     data(i) = load([filepaths{i} filenames{i}], 'Mask', 'PP', 'BImg');
     fprintf('\nloaded "%s"\n', filenames{i})
-    
 end
 toc
 
@@ -191,7 +190,7 @@ clearvars vals mini maxi i img RGB
 %% Register images with manual GUI.
 
 %% Register images automatically (optional: run multiple times)
-referenceNum = 2; % which background image to take as reference
+referenceNum = 6; % which background image to take as reference
 lockRecs =  []; % Lock certain recordings (to the reference), do not move them
 
 buf = 40; % Buffer to remove around the to-register image
@@ -432,7 +431,7 @@ clearvars rotCorrel rotBest rotDiff correl BImgRot BImgRef rotations
 
 % Linking ROIs with each other, by checking if there is a certain percentage 
 % overlap between them
-thres = 0.525; % OVERLAP THRESHOLD.    range (0.5, 1) = 50% overlap - 100%
+thres = 0.6; % OVERLAP THRESHOLD.    range (0.5, 1) = 50% overlap - 100%
 
 if thres > 1
     warning('thres should be equal or smaller then 1')

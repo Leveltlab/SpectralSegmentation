@@ -65,7 +65,11 @@ end
 %% Load and Process Spectral Images:  load('SPic.mat')
 
 fprintf('\nloading...')
-load(filenameSPSIG, 'SPic', 'Sax')
+load(filenameSPSIG, 'SPic', 'Sax', 'pixelAspectRatio')
+
+if ~exist('pixelAspectRatio', 'var')
+    pixelAspectRatio = 1;
+end
 
 sfn = regexp(filenameSPSIG,'SPSIG', 'split');
 filenameTrans = [sfn{1} 'DecTrans.dat'];
@@ -82,7 +86,7 @@ if ~isfile(filenameTrans) %Using decimated data
         end
     end
 end
-[sbxt, ~, freq] = transmemap(filenameTrans);
+[sbxt, ~, ~] = transmemap(filenameTrans);
 fprintf('Memory mapped %s\n', filenameTrans)
 
 % obtain average spectral density for each image: decays exponentially
@@ -126,7 +130,7 @@ end
 BImg = max(Spect, [], 3);
 
 figure('units','normalized','position',[0.51 0.1 0.25 0.4]);
-imagesc(BImg), caxis(prctile(BImg(:), [0.01 99.9])), hold on
+imagesc(BImg), clim(prctile(BImg(:), [0.01 99.9])), hold on
 title(sprintf('spectral components max projection >%.2fHz & <%.2fHz',...
                 spar.cutOffHzMin, spar.cutOffHzMax))
 
@@ -145,7 +149,7 @@ for i = 1:dim(3)
     Img = Spect(:,:,i); 
     Img(Mask>0) = 0;
     figure(1), hold off, imagesc(Img), colormap gray, hold on   
-    [PP, Mask, SpatialCorr, rlog] = roisfromlocalmax(Img, PP, Mask, spar, sbxt, freq, SpatialCorr);   
+    [PP, Mask, SpatialCorr, rlog] = roisfromlocalmax(Img, PP, Mask, spar, sbxt, SpatialCorr, pixelAspectRatio);   
 
     str = sprintf('number of ROIs found (%.2fHz): %5d. time elapsed = %.2fminutes\n', SaxUsed(i), PP.Cnt, toc/60);
     fprintf(str)

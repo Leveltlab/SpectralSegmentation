@@ -1,5 +1,5 @@
 function [Con, A, F, V, roundedness, Rvar] = PixelCor(...
-                Dim, F, sbxt, py, px, Iy, Ix, yrange, xrange, ThC)
+                Dim, F, sbxt, py, px, Iy, Ix, yrange, xrange, ThC, aspRat)
 % Correlates all pixels in an ROI selected as valid in roisfromlocalmax, with 
 % the median trace associated with the pixels surrounding a localmax in the spectral image
 % 2018
@@ -13,8 +13,9 @@ function [Con, A, F, V, roundedness, Rvar] = PixelCor(...
 %Iy : y indices of mask F
 %xrange : x indices of Voxel in Spectral Image
 %yrange : y indices of Voxel in Spectral Image
-%freq   : sampling frequency
 %ThC    : Correlation threshold cutoff for contourc height
+%aspRat : pixel aspect ratio, to correct roundedness calculation
+%
 %Output
 %Con : new contour
 %A   : new area
@@ -54,10 +55,10 @@ Sigpix = double(sbxt.Data.y(:,Mt(:)));
 Mb = logical(Mb');
 Sigborder = double(sbxt.Data.y(:,Mb(:)));
 
-if DISPLAY == 1
-        figure(4)
-        plot(median(Sigpix,2), 'b'), hold on
-        plot(median(Sigborder,2), 'g'), hold off
+if DISPLAY
+    figure(4)
+    plot(median(Sigpix,2), 'b'), hold on
+    plot(median(Sigborder,2), 'g'), hold off
 end
 
 Ft = F'; %transpose indices
@@ -116,7 +117,7 @@ for j = 1:length(iv)
             Inix = inpolygon(Ix,Iy,vx,vy);
             F(Inix) = 1; %pixels in contour
             %roundedness
-            roundedness = perimarea(vx, vy);
+            roundedness = perimarea(vx, vy*aspRat);
             %mean pixel variance in new contour
             Rvar = mean(V(Inix).^2);
        end
@@ -124,15 +125,15 @@ for j = 1:length(iv)
 end
 
 if A > 0 && DISPLAY
-        Vimg = V;
-        Vimg(Vimg==0) = nan;
-        figure(3), hold off, imagesc(Vimg), caxis([0 1]), hold on
-        plot(Con.x, Con.y, 'w')
-        colormap([0 0 0 ; parula(256)]); colorbar;
-        drawnow
+    Vimg = V;
+    Vimg(Vimg==0) = nan;
+    figure(3), hold off, imagesc(Vimg), caxis([0 1]), hold on
+    plot(Con.x, Con.y, 'w')
+    colormap([0 0 0 ; parula(256)]); colorbar;
+    drawnow
 
-% For debugging
-  %  if PreRoiSz >  1.5 * A
+%    % For debugging
+%       if PreRoiSz >  1.5 * A
 %         figure(4)
 %         Rix = find(F);
 %         [~, Ix] = intersect(linix, Rix);
