@@ -59,7 +59,7 @@ else
         presentSbx(i) = exist([filepaths{i}, filenamesSbx{i}], 'file')==2;
     end
 end
-fprintf('(%d/%d) files had accompanying file\n', sum(presentSbx|presentSPSIG), nfiles)
+fprintf('(%d/%d) files had accompanying file\n', sum(presentSbx & presentSPSIG), nfiles)
 
 %% 3. Add scale info to the files
 
@@ -97,7 +97,11 @@ for i = 1:nfiles
     zoomFound = false;
     if presentSbx(i) 
         load([filepaths{i}, filenamesSbx{i}], 'info')
-        dims(i,:) = [info.d1, info.d2];
+        if isfield(info, 'd1')
+            dims(i,:) = [info.d1, info.d2];
+        else
+            dims(i,:) = info.sz([2 1]);
+        end
         
         if isfield(info, 'scaleUm')
             scaleUmOldSbx(i) = info.scaleUm;
@@ -108,7 +112,7 @@ for i = 1:nfiles
         
         if isfield(info, 'config') && isfield(info.config, 'magnification')
             zoomLevels(i) = str2double(info.config.magnification_list(info.config.magnification, :));
-            scaleUms(i) = info.d1 / (umAt1xZoom / zoomLevels(i)); % original number of pixels / µm full width of FOV
+            scaleUms(i) = (umAt1xZoom / zoomLevels(i)) / dims(i,1); % original number of pixels / µm full width of FOV
             zoomFound = true;
         end
     end

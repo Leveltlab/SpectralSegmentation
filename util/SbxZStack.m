@@ -14,12 +14,10 @@
 % 2018-10-15
 %
 
-fov = 1000; % amount of um the microscope images with 1x zoom
-zoom = 1.6; % MICROSCOPE ZOOM LEVEL, FROM LOGBOOK
-
 [fn, pn] = uigetfile('%.mat', 'get info file of sbx z stack file');
 filename = [pn fn];
-load(filename)
+load(filename, 'info')
+
 
 %% OPTION 1: OPTOTUNE  COMPATIBLE % % % % % % %
 % Optotune stacks are created by going through the different depths of the
@@ -27,14 +25,15 @@ load(filename)
 % 
 % 
 % Number of splits
-if ~isfield(info, 'Slices')
-    try
-        ndepths = info.otparam(3);
-    catch
-        answ = inputdlg('How many Slices?', 'Slice info!!...', [1 40],  {'1'});
-        ndepths = str2double(answ{1});
-    end
+if isfield(info, 'Slices')
+    ndepths = info.Slices;
+elseif isfield(info, 'otparam') && ~isempty(info.otparam)
+    ndepths = info.otparam(3);
+else
+    answ = inputdlg('How many Slices?', 'Slice info!!...', [1 40],  {'1'});
+    ndepths = str2double(answ{1});
 end
+
 % Number of frames
 if isfield(info, 'max_idx')
     nframes = info.max_idx;
@@ -84,11 +83,6 @@ dataGre2(dataGre2<lim1) = lim1;
 dataGre2(dataGre2>lim2) = lim2;
 dataGre2 = dataGre2-min(dataGre2(:))/range(dataGre2(:));
 
-scalexy = (fov/zoom) / dims(2); % µm images / number of pixels DEPENDS ON ZOOM
-
-x = [1:dims(2)]*scalexy; % The position of pixels in um
-y = [1:dims(1)]*scalexy;
-z = info.otwave_um; % [1:dims(3)]*scalexz % scale 
 
 
 %% OPTION 2: KNOBBY STACK % % % % %% 
@@ -145,17 +139,47 @@ dataGre2(dataGre2<lim1) = lim1;
 dataGre2(dataGre2>lim2) = lim2;
 dataGre2 = dataGre2-min(dataGre2(:))/range(dataGre2(:));
 
-% According to the website 1mm->1000µm is the standard FOV
-scalexy = (fov/zoom) / wid; % µm images / number of pixels | DEPENDS ON ZOOM
-
-x = [1:wid]*scalexy; % The position of pixels in um
-y = [1:heig]*scalexy;
-% z = 1:5:5*92; % z scale | INFO FROM LOGBOOK
-z = (1:ndepths).*2; % z scale | INFO FROM LOGBOOK
+dims = size(dataGre);
 
 
+%% Get the scale of the recording
+
+fov = 1000; % amount of um the microscope images with 1x zoom
+if isfield(info, 'scaleUm')
+    scaleX = info.scaleUm;
+    if isfield(info, 'pixelAspectRatio')
+        scaleY = info.scaleUm * info.pixelAspectRatio;
+    else
+        scaleY = info.scaleUm;
+    end
+    zoom = (fov/scaleX) / dims(2);
+else % MANUAL ZOOM LEVEL!!
+    % According to the website 1mm->1000µm is the standard FOV
+    zoom = 1.3; % MICROSCOPE ZOOM LEVEL, FROM LOGBOOK
+    
+    scaleX = (fov/zoom) / dims(2); % µm images / number of pixels DEPENDS ON ZOOM
+    scaleY = scaleX;
+end
+
+x = (1:dims(2))*scaleX; % The position of pixels in um
+y = (1:dims(1))*scaleY;
+z = info.otwave_um; % [1:dims(3)]*scalexz % scale     
+
+scales = [scaleY, scaleX, mean(diff(z))];
 
 %% Plot the Z-stack
+
+greXZ = squeeze(max(dataGre2,[],1))';
+redXZ = squeeze(max(dataRed2,[],1))';
+RGBXZ = CreateRGB({redXZ, greXZ}, 'r g');
+
+greXY = squeeze(max(dataGre2,[],3));
+redXY = squeeze(max(dataRed2,[],3));
+RGBXY = CreateRGB({redXY, greXY}, 'r g');
+
+greZY = squeeze(max(dataGre2,[],2));
+redZY = squeeze(max(dataRed2,[],2));
+RGBZY = CreateRGB({redZY, greZY}, 'r g');
 
 m = 0.05; % margin to the sides of the figure (relative)
 ys = double(max(y)); % dimensions of the stack in um
@@ -164,82 +188,65 @@ zs = double(max(z));
 h = (ys + zs);
 w = (xs + zs); % Total width of the image when they are plotted next to each other
 
+% Figure size
+m2 = 70; % A margin for where to plot the figure (pixels)
+screenSize = get(0,'screensize'); % Set the aspect ratio of the figure correctly!
+if screenSize(3)<(w+m2) || screenSize(4)<(h+m2) % reduce size of screen if fig too large
+    scaleImg = min((screenSize(3)/(w+m2*2)), (screenSize(4)/(h+m2*3)));
+    figPos = [m2, m2, w*scaleImg h*scaleImg];
+else
+    figPos = [m2 m2 w h];
+end
+
 % position = [horstart, vertstart, width, height] (start at bottomleft)
 position1 = [m,    ys/h, xs/w-m, zs/h-m]; % The first vertical slice on top of the x direction
 position2 = [m,    m,    xs/w-m, ys/h-m]; % The image as we usually see it.
 position3 = [xs/w, m,    zs/w-m, ys/h-m]; % The vertical slice 90 degrees rot of 1st one
 
+handvat = gobjects(1,3);
+handvatSub = gobjects(3,3);
+
 % Plot the figure with both red and green colorchannel____________________
 clearvars subplot % No tight subplotting please. But manual subplot coordinates
-handvat = figure();
-handvat.Units = 'pixels';
-m2 = 100; % A margin for where to plot the figure (pixels)
-screenSize = get(0,'screensize'); % Set the aspect ratio of the figure correctly!
-if screenSize(3)<(w+m2) || screenSize(4)<(h+m2) % reduce size of screen if fig too large
-    scaleImg = min((screenSize(3)/(w+m2*2)), (screenSize(4)/(h+m2*2)));
-    handvat.InnerPosition = [m2, m2, w*scaleImg h*scaleImg];
-else
-    handvat.InnerPosition = [m2 m2 w h];
-end
-subplot('position', position1)
-greXZ = log1p(squeeze(max(dataGre2,[],1)))';
-redXZ = log1p(squeeze(max(dataRed2,[],1)))';
-RGBXZ = CreateRGB({redXZ, greXZ}, 'r g');
+handvat(1) = figure();
+handvatSub(1,1) = subplot('position', position1);
 imagesc(x,z,RGBXZ)
 title('max projections of zstack, axis in µm')
-subplot('position', position2)
-greXY = squeeze(max(dataGre2,[],3));
-redXY = squeeze(max(dataRed2,[],3));
-RGBXY = CreateRGB({redXY, greXY}, 'r g');
+handvatSub(2,1) = subplot('position', position2);
 imagesc(x,y,RGBXY)
-subplot('position', position3)
-greZY = squeeze(max(dataGre2,[],2));
-redZY = squeeze(max(dataRed2,[],2));
-RGBZY = CreateRGB({redZY, greZY}, 'r g');
+handvatSub(3,1) = subplot('position', position3);
 imagesc(z,y,RGBZY)
 
 % Plot only the red channel__________________________________________
-handvat = figure();
-handvat.Units = 'pixels';
-m2 = 100; % A margin for where to plot the figure (pixels)
-screenSize = get(0,'screensize'); % Set the aspect ratio of the figure correctly!
-if screenSize(3)<(w+m2) || screenSize(4)<(h+m2) % reduce size of screen if fig too large
-    scaleImg = min((screenSize(3)/(w+m2*2)), (screenSize(4)/(h+m2*2)));
-    handvat.InnerPosition = [m2, m2, w*scaleImg h*scaleImg];
-else
-    handvat.InnerPosition = [m2 m2 w h];
-end
-subplot('position', position1)
+handvat(2) = figure();
+handvatSub(1,2) = subplot('position', position1);
 imagesc(x,z,redXZ)
 title('max projections of zstack, axis in µm')
-subplot('position', position2)
+handvatSub(2,2) = subplot('position', position2);
 imagesc(x,y,redXY)
-subplot('position', position3)
+handvatSub(3,2) = subplot('position', position3);
 imagesc(z,y,redZY)
 colormap(cmapL([1 1 1; 1 0.5 0; 0.8 0 0; 0.3 0 0; 0 0 0],256))
 
 % Plot only the green channel__________________________________________
-handvatSub = gobjects(3,1);
-handvat = figure();
-handvat.Units = 'pixels';
-m2 = 100; % A margin for where to plot the figure (pixels)
-screenSize = get(0,'screensize'); % Set the aspect ratio of the figure correctly!
-if screenSize(3)<(w+m2) || screenSize(4)<(h+m2) % reduce size of screen if fig too large
-    scaleImg = min((screenSize(3)/(w+m2*2)), (screenSize(4)/(h+m2*2)));
-    handvat.InnerPosition = [m2, m2, w*scaleImg h*scaleImg];
-else
-    handvat.InnerPosition = [m2 m2 w h];
-end
-handvatSub(1) = subplot('position', position1);
+handvat(3) = figure();
+handvatSub(1,3) = subplot('position', position1);
 imagesc(x,z,greXZ)
 title('max projections of zstack, axis in µm')
-handvatSub(2) = subplot('position', position2);
+handvatSub(2,3) = subplot('position', position2);
 imagesc(x,y,greXY)
-handvatSub(3) = subplot('position', position3);
+handvatSub(3,3) = subplot('position', position3);
 imagesc(z,y,greZY)
 colormap(cmapL([1 1 0.5; 0 0.7 0; 0 0 0],256))
-linkaxes([handvatSub(1) handvatSub(2)], 'x')
-linkaxes([handvatSub(2) handvatSub(3)], 'y')
+
+% Set position of figures
+set(handvat, 'Units', 'pixels', 'InnerPosition', figPos);
+
+% Make axes better
+linkaxes([handvatSub(1,:) handvatSub(2,:)], 'x')
+linkaxes([handvatSub(2,:) handvatSub(3,:)], 'y')
+set(handvatSub(3,:), 'YTickLabel', [])
+set(handvatSub(1,:), 'XTickLabel', [])
 
 %% Save figure
 SaveImg('png')
@@ -248,7 +255,7 @@ SaveImg('png')
 
 [saveName, saveFolder] = uiputfile([fn(1:end-4), '_StackData.mat'], 'where to save stack data');
 save([saveFolder, saveName], 'dataGre', 'dataRed', 'greXY', 'redXY', 'RGBXY',...
-                             'x', 'y', 'z', 'zoom', '')
+                             'x', 'y', 'z', 'zoom', 'scaleX', 'scaleY')
 
 %% Colorful depth image like in Glas, Goltstein 2019: miniaturized 2P imaging in mouse V
 
@@ -263,6 +270,7 @@ zLabels = cell(length(hand.Ticks), 1);
 zLabels([1 end]) = {num2str(z(1)), num2str(z(end))};
 hand.TickLabels = zLabels;
 title(hand, 'depth')
+% SaveImg('png', sprintf('%s_img_coloredDepth-Green', fn(1:end-4)))
 
 figure
 imagesc(CreateRGB2_mat(dataRed2, colorsDep))
@@ -271,17 +279,17 @@ colormap(colorsDep)
 hand = colorbar;
 hand.TickLabels = zLabels;
 title(hand, 'depth')
-
+% SaveImg('png', sprintf('%s_img_coloredDepth-Red', fn(1:end-4)))
 
 %% plot 3 slices of the data
-depthsQuest = [40 100 160]; % Requested depths to plot
+depthsQuest = [135 200 274]; % Requested depths to plot
 index = zeros(1,3);
 for i = 1:3 % Find closest imaged plane
     [~, index(i)] = min(abs(double(z)-depthsQuest(i)));
 end
 depthmu = double(z(index));
 
-subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0], [0.05 0.05], [0.05 0.05]);
+subplot = @(m,n,p) subtightplot (m, n, p, [0.05 0.07], [0.075 0.05], [0.075 0.05]);
 
 handvat = gobjects(1,5);
 figure
@@ -307,6 +315,7 @@ imagesc(x,y,imgDepth3)
 title(sprintf('depth %d um', depthmu(3)))
 colormap(cmapL([1 1 1; 0 0.8 0; 0 0 0],256))
 linkaxes(handvat,'x')
+set(handvat([1 3 4]), 'XTickLabel', [])
 
 %% clear some variables
 clearvars i j k m h lim1 lim2 position1 position2 position3 zs xs ys w h m2
@@ -317,19 +326,19 @@ clearvars handvat hand handvatSub colorsDep depthmu depthQuest
 %% Slice up the Zstack with red and green images (choose one at a time)
 
 % Green green-channel, red red-channel
-ViewVolumeRGB1({dataRed2, dataGre2}, scalexy, z)
+ViewVolumeRGB1({dataRed2, dataGre2}, scales, z)
 
 % White red-channel
-ViewVolumeRGB1(dataRed2, scalexy, z)
+ViewVolumeRGB1(dataRed2, scales, z)
 
 % Redlike red-channel
-ViewVolumeRGB1({log1p(dataRed2), dataRed2, dataRed2}, scalexy, z)
+ViewVolumeRGB1({log1p(dataRed2), dataRed2, dataRed2}, scales, z)
 
 % Greenlike green-channel
-ViewVolumeRGB1({dataGre2, log1p(dataGre2), dataGre2}, scalexy, z)
+ViewVolumeRGB1({dataGre2, log1p(dataGre2), dataGre2}, scales, z)
 
 % Green green-channel, purple(magenta) red-channel
-ViewVolumeRGB1({log1p(dataRed2), dataGre2, dataRed2}, scalexy, z)
+ViewVolumeRGB1({log1p(dataRed2), dataGre2, dataRed2}, scales, z)
 
 
 
