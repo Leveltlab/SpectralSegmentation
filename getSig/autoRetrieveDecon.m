@@ -33,5 +33,6 @@ decToSave ={'deconCorrected'};
 for i = 1:nfiles
     % retrievesignals([filepaths{i},  filenames{i}]);
     % SealSignals([filepaths{i},  filenames{i}]);
+    ZscoreSignals([filepaths{i},  filenames{i}])
     DeconvolveSignals([filepaths{i},  filenames{i}], doParamEstimation, sigToLoad, decToSave);
 end
