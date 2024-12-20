@@ -1,4 +1,4 @@
-function [infoSigPar, par] = DeconvolveSignals(filename, varargin)
+function infoSigPar = DeconvolveSignals(filename, varargin)
 % Deconvolves requested, or sigCorrected (default) variables which are in 
 % the file and saves the results to that file.
 % 
@@ -23,9 +23,9 @@ function [infoSigPar, par] = DeconvolveSignals(filename, varargin)
 %            default = 'deconCorrected', or the input sigNames with decon 
 %               in front of name and the original first letter capitalized.
 % 
-% Output: 
+% Output: Updated SPSIG file.
 %   - infoSigPar (struct): info on Signal retrieval Parameters
-%   - Updated SPSIG file.
+%
 %
 % Can also be executed as a script/ without input, in that case a filename
 % and whether to use parameter estimation will be requested.
