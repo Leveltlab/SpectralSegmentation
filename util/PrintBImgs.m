@@ -3,6 +3,7 @@ function [s, m] = PrintBImgs(filepath, filename, filepathImg, zoom, varargin)
 % with their actual resolution
 % BImgAverage, BImgMax and BImgRGB are created by FluorescenceImgSbx.m
 % 
+% See also: PrintBImgsSbx
 % 
 % Leander de Kraker
 % 2022-10-20
@@ -31,7 +32,6 @@ if ~isempty(delimeterPos)
     filename = filename(1:delimeterPos{1}-1);
 end
 
-lineShiftCorrection = 0;
 
 %% Scale bar
 
@@ -40,15 +40,10 @@ dims = size(BImgMax);
 % Set these parameters manually!
 fov = 1000; % amount of um the microscope images with 1x zoom
 scale =  dims(2) / (fov/zoom); % number of pixels / µm images (depends on zoom)
-um = 100; % How big you want your scalebar
+scaleBarUm = 100; % How big you want your scalebar
+scaleBarSize = scaleBarUm * scale;
 
-scaleBar = round(scale*um);
-
-scaleBary = round(dims(1)*0.9); % Set vertical position of scalebar
-scaleBary = scaleBary:scaleBary+2; % Set thickness of scalebar
-scaleBarx = round(dims(2)*0.9); % Setting the x position of scalebar
-scaleBarx = scaleBarx-scaleBar+1:scaleBarx;
-scaleBar = {scaleBarx, scaleBary};
+[scaleBarx, scaleBary] = BurnScaleBarIdx(dims, scaleBarSize);
 
 
 %% Image settings
@@ -65,13 +60,13 @@ pos = GetCenteredFigPos(dims([2 1])); % figure that does not get saved
 limsPerc = [0.1, 99.99];
 saveName = [baseName, '_maxFluorescence_', filename, '.png'];
 img = MidtoneBalance(BImgMax, 0.3);
-[rgb, s, m] = PrintBImg(img, limsPerc, colors,  doPlotForOurEyes, saveName, scaleBar, doPerc, doLineShift, pos);
+[rgb, s, m] = PrintBImg(img, limsPerc, colors,  doPlotForOurEyes, saveName, scaleBarSize, doPerc, doLineShift, pos);
 
 
 %% BImgAverage (average fluorescence projection)
 limsPerc = [0.1, 99.99];
 saveName = [baseName, '_averageFluorescence_', filename, '.png'];
-rgb = PrintBImg(BImgAverage, limsPerc, colors,  doPlotForOurEyes, saveName, scaleBar, doPerc, doLineShift, pos);
+rgb = PrintBImg(BImgAverage, limsPerc, colors,  doPlotForOurEyes, saveName, scaleBarSize, doPerc, doLineShift, pos);
 
 
 %% Spectral image
@@ -82,7 +77,7 @@ if sum(rgb(:)==-inf)>0
     vals = unique(rgb(:));
     rgb(rgb==-inf) = vals(2);
 end
-rgb = PrintBImg(rgb, limsPerc, gray(256),  doPlotForOurEyes, saveName, scaleBar, doPerc, doLineShift, pos);
+rgb = PrintBImg(rgb, limsPerc, gray(256),  doPlotForOurEyes, saveName, scaleBarSize, doPerc, doLineShift, pos);
 
 
 %% colored spectral image

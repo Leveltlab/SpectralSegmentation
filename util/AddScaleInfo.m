@@ -19,12 +19,12 @@
 %% 1. Navigate to mouse folder and collect sbx files
 removeDuplicates = false;
 searchDepth = 1;
-[filepaths, filenames] = CollectResFiles(removeDuplicates, '\*.sbx', searchDepth);
+[filepaths, filenames] = CollectResFiles(removeDuplicates, '.sbx', searchDepth);
 nfiles = length(filenames);
 
 clear removeDuplicates searchDepth
 %% 1. Or navigate to mouse folder and collect SPSIG files
-[filepaths, filenames] = CollectResFiles(false, '\*SPSIG.mat', 1);
+[filepaths, filenames] = CollectResFiles(false, 'SPSIG.mat', 1);
 nfiles = length(filenames);
 
 
@@ -111,6 +111,22 @@ for i = 1:nfiles
         end
         
         if isfield(info, 'config') && isfield(info.config, 'magnification')
+            if ~isfield(info.config, 'magnification_list')
+                info.config.magnification_list = [  '1.0 ';...
+                                                    '1.3 ';...
+                                                    '1.6 ';...
+                                                    '2.0 ';...
+                                                    '2.5 ';...
+                                                    '3.2 ';...
+                                                    '4.0 ';...
+                                                    '5.0 ';...
+                                                    '6.3 ';...
+                                                    '8.0 ';...
+                                                    '10.1';...
+                                                    '12.7';...
+                                                    '16.0'];
+                fprintf('added leveltlab gaia imaging standard magnification_list to info.config\n')
+            end
             zoomLevels(i) = str2double(info.config.magnification_list(info.config.magnification, :));
             scaleUms(i) = (umAt1xZoom / zoomLevels(i)) / dims(i,1); % original number of pixels / µm full width of FOV
             zoomFound = true;
@@ -147,7 +163,7 @@ for i = 1:nfiles
     
     % Recalculate ROI roundedness based on pixelaspect ratio
     sameRoundedness = false;
-    if presentSPSIG(i) && isfield(spsig, 'PP')
+    if presentSPSIG(i) && isfield(spsig, 'PP') && false
         oldRoundedness = spsig.PP.Roundedness;
         for r = 1:spsig.PP.Cnt
             xr = spsig.PP.Con(r).x;

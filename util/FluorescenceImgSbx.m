@@ -1,5 +1,5 @@
 function [BImgMax, BImgAverage] = FluorescenceImgSbx(varargin)
-% Create GFP channel images from long recording
+% Create GFP channel images from long recording and save them to SPSIG file
 % 
 % FluorescenceImgSbx(sbxName, spigfileName);
 % FluorescenceImgSbx(sbxName, spigfileName, percentageToUse);
