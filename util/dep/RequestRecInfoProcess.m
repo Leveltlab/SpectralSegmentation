@@ -2,7 +2,7 @@ function info = RequestRecInfoProcess(info, hz, scaleUm, FOVum, pixelAspectRatio
 % Put the answers from RequestRecInfo into info
 % 
 % Input: 
-%   - info (struct): with field info.Shap, which contains width and height
+%   - info (struct): with field info.Shape, which contains width and height
 %                                          of recording in pixels
 %   - hz (double): Imaging frequency
 %   - scaleUm (double or empty): the width of one pixel in micrometer (um)
@@ -26,14 +26,14 @@ function info = RequestRecInfoProcess(info, hz, scaleUm, FOVum, pixelAspectRatio
 % Leander de Kraker
 % 2024-10-30
 
-if ~isempty(hz)
-    if ~isfield(info, 'Freq')
-        info.Freq = hz;
-    elseif info.Freq ~= hz
-        warning('info.Freq was already present. %.2fHz. Overwritten with %.2fHz',...
-            info.Freq, hz)
-    end
-end
+% if ~isempty(hz)
+%     if ~isfield(info, 'Freq')
+%         info.Freq = hz;
+%     elseif info.Freq ~= hz
+%         warning('info.Freq was already present. %.2fHz. Overwritten with %.2fHz',...
+%             info.Freq, hz)
+%     end
+% end
 
 if ~isempty(scaleUm)
     info.scaleUm = scaleUm;

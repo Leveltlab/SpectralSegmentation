@@ -31,7 +31,7 @@ nfiles = length(filenames);
 %% 1. Or find SPSIG files via chronic file
 [chronicName, chronicPath] = uigetfile('*chronic.mat');
 load([chronicPath, chronicName], 'filepaths', 'filenames', 'filedates', 'nfiles')
-filenames = strrep(filenames, '.mat', '_Res.mat');
+% filenames = strrep(filenames, '.mat', '_Res.mat');
 
 
 %% 2. Collect accompanying files
@@ -53,7 +53,7 @@ else
     filenamesSPSIG = filenames;
     filenamesSbx = strrep(filenamesSPSIG, '_SPSIG.mat', '.mat');
     
-    presentSPSIG = false(nfiles, 1);
+    presentSPSIG = true(nfiles, 1);
     presentSbx = false(nfiles, 1);
     for i = 1:nfiles
         presentSbx(i) = exist([filepaths{i}, filenamesSbx{i}], 'file')==2;
@@ -76,7 +76,7 @@ changed  = true(nfiles, 1); % Has new info been found?
 scaleUms = nan(nfiles, 1); % pixel sizes filled into each file
 asRats   = nan(nfiles, 1); % aspect ratios filled into each file
 freqs    = nan(nfiles, 1); % sampling rate Hz
-dims      = nan(nfiles, 2); % size of image according to sbx info
+dims      = nan(nfiles, 2); % size of image
 zoomLevels = nan(nfiles, 1); % zoomlevels according to sbx info
 scaleUmOldSbx = nan(nfiles, 1);
 asRatsOldSbx  = nan(nfiles, 1);
@@ -84,12 +84,13 @@ scaleUmOldSpsig = nan(nfiles, 1);
 asRatsOldSpsig  = nan(nfiles, 1);
 % Preallocate question dialog variables
 defInput = {};
-defInput{4} = pixelAspectRatioExpected;
+defInput{5} = pixelAspectRatioExpected;
 FOVum = cell(nfiles, 1);
 squareFOV = cell(nfiles, 1);
 
 for i = 1:nfiles
     fprintf('\nFile %d: %s\n', i, filepaths{i})
+    defInput{6} = filenamesSbx{i};
     % Forget previous iteration a bit.
     clear info
     
@@ -134,7 +135,7 @@ for i = 1:nfiles
     end
     
     if presentSPSIG(i)
-        spsig = load([filepaths{i}, filenamesSPSIG{i}], 'scaleUm', 'freq', 'pixelAspectRatio', 'PP');
+        spsig = load([filepaths{i}, filenamesSPSIG{i}], 'scaleUm', 'freq', 'pixelAspectRatio', 'PP', 'BImg');
         freqs(i) = spsig.freq;
         defInput{1} = spsig.freq;
         if isfield(spsig, 'pixelAspectRatio')
@@ -148,16 +149,22 @@ for i = 1:nfiles
                 defInput{2} = spsig.scaleUm;
             end
         end
+        
+        if ~presentSbx(i)
+            dims(i,:) = [size(spsig.BImg, 2), size(spsig.BImg, 1)];
+        end
     end
     
     asRats(i) = pixelAspectRatioExpected;
     
     % If not sure about zoom ask. (can overwrite pixel aspect ratio)
     if ~zoomFound
-        sAnswer = struct();
         [hzi, scaleUmi, FOVum{i}, pixelAspectRatioi, squareFOV{i}, defInput] = RequestRecInfo(defInput);
+        sAnswer = struct('Shape', dims(i,:), 'Freq', hzi);
         sAnswer = RequestRecInfoProcess(sAnswer, hzi, scaleUmi, FOVum{i}, pixelAspectRatioi, squareFOV{i});
-        asRats(i) = sAnswer.pixelAspectRatio;
+        if isfield(sAnswer, 'pixelAspectRatio')
+            asRats(i) = sAnswer.pixelAspectRatio;
+        end
         scaleUms(i) = sAnswer.scaleUm;
     end
     
@@ -191,6 +198,7 @@ for i = 1:nfiles
         fprintf('t(%d)=%.2f, p=%.4f\n', stats.df, stats.tstat, p)
         sameRoundedness = all(oldRoundedness == spsig.PP.Roundedness);
     end
+    
     % If not info has been changed don't save
     changed(i) = (asRats(i) ~= asRatsOldSpsig(i) & asRats(i) ~= asRatsOldSbx(i))...
                 | (scaleUms(i) ~= scaleUmOldSpsig(i) & scaleUms(i) ~= scaleUmOldSbx(i))...
@@ -207,7 +215,7 @@ for i = 1:nfiles
             save([filepaths{i}, filenamesSbx{i}], 'info', '-append')
             fprintf('Saved updated info to Sbx\n')
         end
-
+        
         if presentSPSIG(i)
             spsig.scaleUm = scaleUms(i);
             spsig.pixelAspectRatio = asRats(i);

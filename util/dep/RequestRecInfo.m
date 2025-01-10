@@ -3,7 +3,8 @@ function [hz, scaleUm, FOVum, pixelAspectRatio, squareFOV, answers] = RequestRec
 % information of a recording
 % 
 % Input (optional): 
-%   - defInput ([5x1] cell array): default input to the 5 questions.
+%   - defInput ([6x1] cell array): default input to the 5 questions. and
+%                                  the filename
 %   - dimensions of image ([2x1] double): To propose aspect ratio
 % 
 % Output:
@@ -52,7 +53,11 @@ questions = {'Framerate for this dataset? (Hz)';...
              '[optional]   Width of imaged field of view  (um)';...
              '[optional]   Aspect ratio of one pixel (how much higher than wide) (can be calculated if field is square = yes)';...
              '[yes / no]   Imaged field is square in reality?'};
-dlgTitle = 'Give info of recording';
+dlgTitle = 'Give info of recording ';
+if length(defInput)==6 && ischar(defInput{6})
+    recTitle = strsplit(defInput{6}, '.mat');
+    dlgTitle = [dlgTitle, recTitle{1}];
+end
 inDim = [ones(5,1), 120*ones(5,1)];
 
 answers = inputdlg(questions, dlgTitle, inDim, defInput);
