@@ -28,14 +28,14 @@ scaleUm = NaN;
 pixelAspectRatio = NaN;
 fnBase = strsplit(fn, {'_DecTrans'});
 fnBase = fnBase{1};
-if exist([pn fnBase '.mat'], 'file')==2
-    load([pn fnBase '.mat'], 'info')
-    if exist('info', 'var')
-        if isfield(info, 'scaleUm')
-            scaleUm = info.scaleUm;
+if exist([fp fnBase '.mat'], 'file')==2
+    sbxinfo = load([fp fnBase '.mat'], 'info');
+    if isfield(sbxinfo, 'info')
+        if isfield(sbxinfo.info, 'scaleUm')
+            scaleUm = sbxinfo.info.scaleUm;
         end
-        if isfield(info, 'pixelAspectRatio')
-            pixelAspectRatio = info.pixelAspectRatio;
+        if isfield(sbxinfo.info, 'pixelAspectRatio')
+            pixelAspectRatio = sbxinfo.info.pixelAspectRatio;
         end
     end
 end

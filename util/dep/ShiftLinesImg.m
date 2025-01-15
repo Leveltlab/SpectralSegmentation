@@ -51,6 +51,10 @@ if trans
 end
 
 dims = size(img);
+% If the image is a 3D double, just use the first image...
+if length(dims)==3
+    img = img(:,:,1);
+end
 dimsTake = [floor(dims(1)./2)*2, dims(2)]; % for check
 dimsScheck = [floor(dims(1)/2), dims(2)];
 dimsS = [ceil(dims(1)/2), dims(2)];

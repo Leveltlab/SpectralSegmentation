@@ -12,7 +12,7 @@ function DecimateTrans(varargin)
 %   1: strfp: (string): folder and filename of the trans.dat file that will be
 %           decimated
 %   2: freqDec: (double 1x1): frequency in Hz to decimate data to. default
-%                                                                0.5 Hz
+%                                                                1.0 Hz
 % 
 % Chris v.d. Togt
 % 2020-7-25

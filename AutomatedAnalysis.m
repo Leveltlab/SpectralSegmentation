@@ -328,14 +328,21 @@ end
 if timed
     % File in which timing info is stored
     timedFile = 'D:\2Pdata\spectralTimed.mat'; % Default timedFile name! % % % 
+    timedFileLinePos = dbstack;
     if ~isfile(timedFile) % Creating new file for timing data
         warning('%s does not exist! please say which file to add the timing data to!', timedFile)
-        [timedFile, timedFilePath] = uiputfile('*.mat', 'Where to save timing file', 'spectralTimed.mat');
-        if timedFile==0 % User didn't select a file so forget about saving timed data
+        [timedFileName, timedFilePath] = uiputfile('*.mat', 'Where to save timing file', 'spectralTimed.mat');
+        timedFile = [timedFilePath timedFileName];
+        if timedFileName==0 % User didn't select a file so forget about saving timed data
             timed = false;
-        else % Save new requested file
+        elseif ~isfile(timedFile) % Save new requested file
             timedFile = [timedFilePath, timedFile];
-            fprintf('\nPlease change default timedFile name (line 330) to the new file for future use:\n%s\n', timedFile)
+            if isscalar(timedFileLinePos) && isscalar(timedFileLinePos.line)
+                fprintf('\nPlease change default timedFile name (line %d) to the new file for future use:\n%s\n',...
+                    timedFileLinePos.line-1, timedFile)
+            else
+                fprintf('\nPlease change default timedFile name to the new file for future use:\n%s\n', timedFile)
+            end
             timedData = struct('computerName',{},'fileSize',[],'filePath', [], 'fileName',{},...
                          'nSplits', [], 'normcorrT',[],'transposeT',[],'decimatT',[],...
                          'spectralT',[],'fluorescenceT',[], 'backSubT', [], 'getRoisT', [],...
@@ -537,11 +544,12 @@ for i = 1:nfiles
     
     
     %% DECIMATE DATASETS % % % % % %  
-    fprintf('Decimating the %d datasets to 1Hz!\n', nSlices)
+    freqDec = 1;
+    fprintf('Decimating the %d datasets to %.1fHz!\n', nSlices, freqDec)
     filenameDecTrans = cell(nSlices,1);
     decTic = tic;
     for j = 1:nSlices
-        DecimateTrans(filenameTrans{j}, 1)
+        DecimateTrans(filenameTrans{j}, freqDec)
         filenameDecTrans{j} = [pno filenameNormcorr{j} '_DecTrans.dat'];
     end
     dectoc = toc(decTic);

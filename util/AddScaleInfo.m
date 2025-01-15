@@ -224,3 +224,4 @@ for i = 1:nfiles
         end
     end
 end
+fprintf('Done\n')
