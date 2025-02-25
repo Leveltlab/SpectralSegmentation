@@ -11,7 +11,13 @@ pos = regexp(str, '\d');
 a=diff(pos);
 b=find([a inf]>1);
 c=diff([0 b]); % length of the sequences
-d=cumsum(c);   % endpoints of the sequences
-good = pos(d(c==n));
+good = pos(b(c==n));
 
-strOut = str(good-n+1:good);
+if isscalar(good)
+    strOut = str(good-n+1:good);
+else
+    strOut = [];
+end
+
+
+
