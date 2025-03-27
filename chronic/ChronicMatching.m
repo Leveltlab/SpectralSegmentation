@@ -190,7 +190,7 @@ clearvars vals mini maxi i img RGB
 %% Register images with manual GUI.
 
 %% Register images automatically (optional: run multiple times)
-referenceNum = 6; % which background image to take as reference
+referenceNum = 3; % which background image to take as reference
 lockRecs =  []; % Lock certain recordings (to the reference), do not move them
 
 buf = 40; % Buffer to remove around the to-register image
@@ -409,7 +409,13 @@ title(sprintf('Image correlation with rec %d', referenceNum))
 ylabel('Correlation coefficient r')
 xlabel('Rotation (degrees)'), xlim([min(rotations),max(rotations)])
 
-
+% Check for missing ROIs
+for i = 1:nfiles
+    missingROIs = find(diff(unique(Masks{i}))>1);
+    if ~isempty(missingROIs)
+        warning('%d ROIs has fallen off the FOV because of rotation! Ask Leander for better software', length(missingROIs))
+    end
+end
 
 %% Re-draw all ROI contours.
 % ROI contours are hard to register same as the images, since the contours
@@ -442,157 +448,16 @@ elseif thres < 0.3
     warning('low threshold may introduce errors in the linked ROIs')
 end
 
-% Checking overlap between the ROIs
-% inRoi:  column1: linked ROI of other mask
-%         column3: number of pixels overlap
-%         column4: percentage overlap of this ROI with other ROI
-nmasks = 1:nfiles;
-inRoi = {1,length(nmasks)};
-fprintf('Calculating every ROI overlap from every recording to all recordings...\n')
-for m = nmasks % all masks
-    
-    otherMasks = nmasks;
-    % for each mask, save info for each ROI
-    inRoi{m} = cell(PPs(m).Cnt, length(otherMasks)); 
-    for r = 1:PPs(m).Cnt % for the ROIs in this mask
-        
-        roipos = Masks{m}==r;
-        for c = otherMasks % Check with all other Masks
-            % Save which ROIs are in ROI n, how many pixels overlap and fraction overlap
-            overlap = Masks{c}(roipos);
-            [vals, ~, idx] = unique(overlap); % which ROIs in this ROI?
-            inRoi{m}{r,c} = [vals, accumarray(idx, 1)]; % number of pixels overlap
-            inRoi{m}{r,c}(:,3) = inRoi{m}{r,c}(:,2)./sum(inRoi{m}{r,c}(:,2)); % frac overlap
-            inRoi{m}{r,c}(inRoi{m}{r,c}==0,:) = []; % delete overlap with non-ROIs
-        end
-    end
-end
 
+% Checking overlap between the ROIs of all recording pairs
+inRoi = CalcRoiOverlap(Masks);
 
-% linked1: column 1: ROI of mask i, 
-%          column 2: linked ROI of other mask
-%          column 3: number of pixels overlap
-%          column 4: percentage overlap of this ROI with other ROI
-fprintf('linking ROIs overlapping above threshold...\n')
-linked1 = cell(nfiles);
-for m = nmasks % m = current mask
-    otherMasks = nmasks(nmasks~=m); % Skip own overlap
-    for c = otherMasks % c = compared to
-        for r = 1:PPs(m).Cnt % r = each ROI
-            link = inRoi{m}{r,c}(:,3)>thres;
-            if any(link)
-                thisLink = [ones(sum(link),1).*r, inRoi{m}{r,c}(link,:)];
-                linked1{m, c} = [linked1{m, c}; thisLink];
-            end
-        end
-    end
-end
+% Linking overlapping ROIs between all recording pairs above threshold,
+[linked, linked1] = LinkOverlappingRois(inRoi, thres);
 
-clearvars i j k m n c r roipos otherMasks thisLink link iteration vals idx
+% Squishing linked ROIs into one link matrix
+linkMat = SquishLinkedRois(linked);
 
-%__________________________________________________________________________
-% Creating consistent links by looking at how much % the ROIs overlap,
-% viewing from both the masks, instead of 1 towards the other
-
-linked = cell(nfiles);
-fprintf('Checking whether ROI overlap is high enough between the two recordings...\n')
-% linked: column 1: ROI of recording m, corresponds to row nr. 
-%         column 2: linked ROI of other recording, corresponds to column nr.
-%         column 3: percentage overlap of this ROI with other ROI
-%         column 4: percentage overlap of other ROI with this ROI
-%         column 5: percentage overlap for both the ROIs
-for m = nmasks
-    otherMasks = nmasks(nmasks~=m);
-    for c = otherMasks
-        for i = 1:size(linked1{m,c},1)
-            r = linked1{m,c}(i,1); %  roi of mask
-            rc = linked1{m,c}(i,2); % r was linked with roi from other mask
-            overlap1 = linked1{m,c}(i,4);
-            % Overlap looking from other recording
-            found = inRoi{c}{rc, m}(inRoi{c}{rc, m}(:,1)==r, :); 
-            
-            overlap2 = found(3);
-            overlap = (overlap1 + overlap2) ./ 2;
-            if overlap > thres % true if mutual overlap is large enough!
-                linked{m,c} = [linked{m,c}; [r, rc, overlap1, overlap2, overlap]];
-            end
-        end
-    end
-end
-% Now combine the linked ROIs from recording 1-> recording 2 and 2->1 etc
-% to one array
-for c = nmasks
-    otherMasks = c+1:nmasks(end);
-    for m = otherMasks
-        % Switch columns to match the order from other recording comparison
-        if ~isempty(linked{m,c})
-            linked{m,c} = [linked{m,c}(:,2),linked{m,c}(:,1),linked{m,c}(:,4),linked{m,c}(:,3),linked{m,c}(:,5)];
-            linked{c,m} = [linked{c,m}; linked{m,c}];
-            linked{m,c} = [];
-            [~, sorted]  = sort(linked{c,m}(:,1));
-            linked{c,m} = linked{c,m}(sorted,:);
-            linked{c,m} = unique(linked{c,m},'rows');
-        end
-    end
-end
-clearvars found check overlap overlap1 overlap2 otherMasks i c r m rc rows sorted
-
-% all links in a matrix
-fprintf('Compressing link data into match matrix...\n')
-linkMatV1 = cell(nfiles-1, 1);
-for m = 1:nfiles-1
-    otherMasks = m+1:nmasks(end);
-    linkMatV1{m} = zeros(1,nfiles);
-    for c = otherMasks
-        if ~isempty(linked{m,c})
-            own = linked{m,c}(:,1);
-            compared = linked{m,c}(:,2);
-            overlap = linked{m,c}(:,5);
-            linkMatV1{m}(end+1:end+length(own), [m, c]) = [own, compared];
-        end
-    end
-    linkMatV1{m}(1,:) = [];
-    % Sort to the neuron of current m
-    [~, idx] = sort(linkMatV1{m}(:,m));
-    linkMatV1{m} = linkMatV1{m}(idx,:);
-end
-
-
-% Compress the matrix m so the neuron of mask m only appears once
-linkMat = cell(nfiles-1, 1);
-for m = 1:nfiles-1
-    [rois, limits] = unique(linkMatV1{m}(:,m));
-    limits(end+1) = size(linkMatV1{m},1)+1;
-    linkMat{m} = zeros(length(rois), nfiles);
-    for j = 1:length(rois) % for each roi. put others in one row
-        linkMat{m}(j,:) = max(linkMatV1{m}(limits(j):limits(j+1)-1,:),[],1);
-    end
-end
-linkMat = cell2mat(linkMat);
-
-% Sort & squish the matrix
-for i = 2:nfiles
-    [~,sorted] = sort(linkMat(:,i));
-    linkMat = linkMat(sorted,:);
-    [rois, limits] = unique(linkMat(:,i));
-    if length(limits) > 1
-        limits(end+1) = size(linkMat,1)+1;
-        dif = diff(limits); % number of elements with ROI j
-        % If one of the recordings matched another ROI keep it. So even if
-        % the matched ROI is not found via some of the recordings, it can still
-        % get linked with those recordings.
-        for j = 2:length(rois)
-            if dif(j) > 1
-                rows = limits(j):(limits(j)+dif(j)-1);
-                linkMat(limits(j),:) = max(linkMat(rows,:));
-            end
-        end
-        % Now we made sure we don't lose any links, squish the matrix
-        linkMat = linkMat([1:limits(2), limits(3:end-1)'],:);
-    end
-end
-
-clearvars i j r c m dif vals idx thisLink limits rois own compared otherMasks sorted rows
 fprintf('\ndone matching ROIs\n')
 
 
@@ -602,16 +467,18 @@ fprintf('\ndone matching ROIs\n')
 if ~exist('toplot','var'); toplot=1:nfiles;end
 if ~exist('colors','var'); colors=flipud(cmapL([0 0 1; 0 1 1; 0 1 0; 1 0.7 0; 1 0 0; 0.7 0 1], nfiles));end
 
-
+% Clean the linkMat of single ROI matches (those appear after editing in ChronicViewer)
 nLinks = sum(linkMat~=0,2);
 linkMat(nLinks==1,:)=[];
 nLinks = sum(linkMat~=0,2);
 
+nMatches = size(linkMat, 1);
+
 % The 'OVERLAP SCORE' is based on the pixel overlap between the linked ROIs. 
 % This also takes into account the ROIs which are not officially linked with
 % each other, but were linked together because of mutual links.
-score = zeros(length(linkMat),1);
-for i = 1:length(linkMat)
+score = zeros(nMatches,1);
+for i = 1:nMatches
     score(i) = OverlapScore(inRoi, linkMat, i);
 end
 
