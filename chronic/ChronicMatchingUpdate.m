@@ -17,7 +17,6 @@ function data = main()
 
     plotImagestFormBulk(data.cleanImg, [noChange, bImgOptimise.netTForm(:)'], fileInfo.filenamesShort);
     plotImagestFormBulk(data.binaryMask, [noChange, bImgOptimise.netTForm(:)'], fileInfo.filenamesShort);
-
 end
 
 function outputTable = fetchData(fileNames, filePaths, vars, nFiles)
@@ -115,41 +114,6 @@ function [cleanImg, minVal, maxVal] = cleanImage(Img)
     [minVal, maxVal] = bounds(cleanImg(~infMask)); % check the bounds of the values not at inf
     cleanImg(infMask) = minVal; % clean inf values with true min vals
     cleanImg = (cleanImg - minVal) ./ range([minVal, maxVal]); % normalise image to have range [0, .., 1]
-end
-
-function [filenames, filepaths] = selectFolder()
-    arguments (Output)
-        filenames (:, :) cell
-        filepaths (:, :) cell
-    end
-    fileInfo = dir(uigetdir());
-    fileInfo([fileInfo.isdir]) = [];
-
-    filenames = {fileInfo.name}';
-    filepaths = {fileInfo.folder}';
-end
-
-function fileInfo = FetchFilesAndDates()
-    arguments (Output)
-        fileInfo table
-    end
-    
-    [filenames, filepaths] = selectFolder();
-    nFiles = length(filenames);
-    if nFiles == 1
-        error("the selected folder only contained one valid file");
-    end
-
-    filedates = NaT(nFiles, 1);
-
-    for i=1:nFiles
-        filedates(i) = FindDate(filepaths{i}, filenames{i});
-    end
-    
-    filenamesShort = ShortenFileNames(filenames, 1, filedates);
-    fileInfo = table(filenames, filepaths, filedates, filenamesShort);
-    fileInfo = sortrows(fileInfo, 'filedates');   
-    
 end
 
 function finalImgRef = getLargestImgRef(ImgRefs)
@@ -566,6 +530,15 @@ function [outputTable, finalTForm] = optimisePyramids(metric, optimizer, fixed, 
 end
 
 data = main();
+
+function data = main2()
+    fileInfo = FetchFilesAndDates(); 
+    nfiles = height(fileInfo);
+
+    data = fetchData(fileInfo.filenames, fileInfo.filepaths, {'Mask', 'PP', 'BImg'}, nfiles);
+    data = [data, cleanMultImg(data.BImg), binarifyMultMask(data.Mask)];
+
+end
 
 %{
           --------------------- TODO: ----------------------
