@@ -117,15 +117,28 @@ end
 
 % Load the data
 data = load(filename, sigNames{:}, 'freq', 'infoSigPar');
-infoSigPar = data.infoSigPar;
+if isfield(data, 'infoSigPar')
+    infoSigPar = data.infoSigPar;
+else % Is the really old name infoSigRetrieval present?
+    data2 = load(filename, 'infoSigRetrieval');
+    if isfield(data2, 'infoSigRetrieval')
+        infoSigPar = data2.infoSigRetrieval;
+    else
+        infoSigPar = struct([]);
+    end
+end
+% Struct with info of how the retrieved signal is done
+infoSigPar(1).deconv = 'MLspike';
+infoSigPar.deconParEstimated = doParEstimation;
+
 freq = data.freq;
 nrois = size(data.(sigNames{1}), 2);
 nt = size(data.(sigNames{1}), 1);
 t = (1:nt+1)/freq;
 
 if ~doParEstimation % parameters from file, please check params with G = spk_demoGUI
-    % parFile = 'MLpest20180927.mat';
-    parFile = 'MLPest20210313.mat';
+    parFile = 'MLpest20180927.mat';
+    % parFile = 'MLPest20210313.mat';
     load(parFile, 'par'); % load par
 else % pre-allocate variables for parameter estimation
     par = tps_mlspikes('par'); 
@@ -210,11 +223,6 @@ for s = 1:nsigs
     
     decon.(deconNames{s}) = deconS;
 end
-
-
-% Struct with info of how the retrieved signal is done
-infoSigPar.deconv = 'MLspike';
-infoSigPar.deconParEstimated = doParEstimation;
 
 decon.infoSigPar = infoSigPar;
 

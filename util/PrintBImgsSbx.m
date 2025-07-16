@@ -23,7 +23,7 @@ clear removeDuplicates searchDepth
 %%  Where to save the pictures?
 
 % % Save in designated folder
-picFolders = '\\mvp2nin\Projects\PLInterneurons\14.90\Timor\figs\FluorescenceImgs\';
+picFolders = '\\mvp2nin\Projects\PLInterneurons\17.20.12\Saturn\pictures_fluorescence\';
 picFolders = repmat({picFolders}, nfiles);
 
 % % Save in original folder
@@ -35,10 +35,10 @@ picFolders = repmat({picFolders}, nfiles);
 scaleBarUm = 100; % How big you want your scalebar (0 for no scalebar)
 
 percentageToUse = 5; % minumum 2 percent of recording used
-maxChunks = 25; % maximum number of chunks to take (takes more time)
-chunkSize = 50; % number of frames per chunk
+maxChunks = 30; % maximum number of chunks to take (takes more time)
+chunkSize = 40; % number of frames per chunk
 
-limsPerc = [0.1, 99.98]; % percentile to cut brightness values of
+limsPerc = [0.1, 99.983]; % percentile to cut brightness values of
 doPlotForOurEyes = false;
 doLineShift = true; % cannot hurt
 
@@ -46,7 +46,8 @@ doLineShift = true; % cannot hurt
 
 strChannelNames = {'green', 'red'};
 
-picNames = cell(nfiles, 2);
+picNamesAverage = cell(nfiles, 2);
+picNamesMax = cell(nfiles, 2);
 dims = zeros(nfiles, 2);
 nColors  = zeros(nfiles, 1);
 nchunks = zeros(nfiles, 1);
@@ -58,14 +59,15 @@ nFramesRead = zeros(nfiles, 1);
 percentageRead = zeros(nfiles, 1);
 s = nan(nfiles, 1); % line shift applied on images
 m = nan(nfiles, 1); 
-lims = nan(nfiles, 2);
+limsAverage = nan(nfiles, 2);
+limsMax = nan(nfiles, 2);
 
 colors = {cmapL('greenFancy', 256);...
           cmapL([1 1 1; 1 0.2 0; 0 0 0], [50 206])};
 
 %%
 tic
-for i = 11:nfiles
+for i = 1:nfiles
     %% Calculate the fluorescence images    
     clearvars info
     clearvars -global info
@@ -95,6 +97,7 @@ for i = 11:nfiles
     
     % Calculate average projection
     img = zeros(dims(i, 1), dims(i, 2), nColors(i));
+    imgMax = zeros(dims(i, 1), dims(i, 2), nColors(i));
     for j = 1:nchunks(i)
         imgj = sbxread(filei, toRead(j), chunkSize);
         if permBad
@@ -102,6 +105,7 @@ for i = 11:nfiles
         end
         imgj = mean(double(imgj), 4);
         img = img + imgj;
+        imgMax = max(imgMax, imgj);
     end
     img = img ./ nchunks(i);
 
@@ -109,6 +113,7 @@ for i = 11:nfiles
     % Correct aspect ratioi = 
     if aspRats(i)~=1
         img = imresize(img, [dims(i,1)*aspRats(i), dims(i,2)]);
+        imgMax = imresize(imgMax, [dims(i,1)*aspRats(i), dims(i,2)]);
     end
     
     scaleBarSize = scaleBarUm * scales(i);
@@ -116,7 +121,7 @@ for i = 11:nfiles
         imgc = img(:,:,c);
         % the edges can have artifacts that fuck up brightness measurement
         imgBrightnessCheck = imgc(50:end-50, 150:end-50); 
-        lims(i,:) = prctile(imgBrightnessCheck(:), limsPerc);
+        limsAverage(i,:) = prctile(imgBrightnessCheck(:), limsPerc);
         doPerc = false; % the values for lims represent percentile
         
         % picNames{i,c} = sprintf('%sFile%d_-_%s_-_%d-frames_average_-_%s_-_%d-%dfluorescence.png',...
@@ -125,15 +130,25 @@ for i = 11:nfiles
         picNames{i,c} = sprintf('%sFile%d_-_%s_-_%d-frames_average_-_%s.png',...
                         picFolders{i}, i, filenames{i}(1:end-4), nFramesRead(i), strChannelNames{c});
         
-        [rgb, s(i,:), m(i,:)] = PrintBImg(imgc, lims(i,:), colors{c},...
+        [rgb, s(i,:), m(i,:)] = PrintBImg(imgc, limsAverage(i,:), colors{c},...
                         doPlotForOurEyes, picNames{i,c}, scaleBarSize,...
                         doPerc, doLineShift);
+        
     end
+
+    imgBrightnessCheck = imgMax(50:end-50, 150:end-50); 
+    limsMax(i,:) = prctile(imgBrightnessCheck(:), limsPerc);
+    picNamesMax{i} = strrep(picNames{i,1}, 'average', 'max');
+    [rgbMax] = PrintBImg(imgMax, limsMax(i,:), colors{1},...
+                    doPlotForOurEyes, picNamesMax{i}, scaleBarSize,...
+                    doPerc, doLineShift);
+    
+    
     fprintf('Done with %d/%d. ETA %.1f minutes\n', i, nfiles, ETA(i, nfiles, toc/60))
 end
 
 %% save some variables
 save([picFolders{1}, 'imageDataProperties.mat'], 'filepaths', 'filenames', 'nfiles',...
-                                                 's', 'm', 'lims', 'scales', 'perms', 'aspRats',...
+                                                 's', 'm', 'limsAverage', 'scales', 'perms', 'aspRats',...
                                                  'nFramesRead', 'percentageRead')
 

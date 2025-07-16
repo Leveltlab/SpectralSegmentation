@@ -1,8 +1,14 @@
 % Retrieve signal and deconvolve for as many files as you want. 
-%  
-% Press 'cancel' when done selecting.
 % 
 % 
+% 
+
+%% SELECTION option 1: Collect all files
+removeDuplicate = false;
+[filepaths, filenames] = CollectResFiles(removeDuplicate, 'SPSIG.mat', 1);
+nfiles = length(filenames);
+
+%% SELECTION option 2: pop-up, Press 'cancel' when done selecting.
 
 filenames = {};
 filepaths = {};
@@ -28,11 +34,11 @@ clearvars selecting
 
 doParamEstimation = false; % estimate parameters for deconvolution?
 sigToLoad = {'sigCorrected'};
-decToSave ={'deconCorrected'};
+decToSave = {'deconCorrected'};
 
 for i = 1:nfiles
     % retrievesignals([filepaths{i},  filenames{i}]);
     % SealSignals([filepaths{i},  filenames{i}]);
-    ZscoreSignals([filepaths{i},  filenames{i}])
+    % ZscoreSignals([filepaths{i},  filenames{i}])
     DeconvolveSignals([filepaths{i},  filenames{i}], doParamEstimation, sigToLoad, decToSave);
 end

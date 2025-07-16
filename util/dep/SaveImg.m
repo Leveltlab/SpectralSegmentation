@@ -63,22 +63,22 @@ if any(strcmp(requested, 'fig'))
 end
 if any(strcmp(requested, 'epsc'))
     h.Renderer = 'opengl';
-    saveas(h, savename, 'epsc')
+    saveas(h, [savename, 'epsc'], 'epsc')
     fprintf('saved current figure (%d) as colored vector graphics epsc\nin: %s\n\n', nr, savename)
 end
 if any(strcmp(requested, 'eps'))
     h.Renderer = 'opengl';
-    saveas(h, savename, 'eps')
+    saveas(h, [savename, 'eps'], 'eps')
     fprintf('saved current figure (%d) as grayscale vector graphics eps\nin: %s\n\n', nr, savename)
 end
 if any(strcmp(requested, 'svg'))
     h.Renderer = 'painters';
-    saveas(h, savename, 'svg')
+    saveas(h, [savename, '.svg'], 'svg')
     fprintf('saved current figure (%d) as Scalable Vector Graphics SVG\nin: %s\n\n', nr, savename)
 end
 if any(strcmp(requested, 'pdf'))
     h.Renderer = 'opengl';
-    saveas(h, savename, 'pdf')
+    saveas(h, [savename, 'pdf'], 'pdf')
     fprintf('saved current figure (%d) as PDF\nin: %s\n\n', nr, savename)
 end
 

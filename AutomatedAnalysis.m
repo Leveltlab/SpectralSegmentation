@@ -47,7 +47,7 @@ filepaths = filepaths';
 nfiles = length(filenames);
 
 for i = 1:nfiles
-    filenames{i} = strsplit(filenames{i}, '.sbx');
+    filenames{i} = strsplit(filenames{i}, {'.sbx', '.mat'});
     filenames{i} = filenames{i}{1};
 end
 clearvars selecting i
@@ -141,7 +141,6 @@ end
 if doLineShift
     im = sbxread([filepaths{1}, filenames{1}], 5, 100);
     lineShift = ShiftLinesCheck(im, doLineShiftTrans, true);
-%     lineShift = inputdlg('shift by how much');
 end
 
 
@@ -336,7 +335,6 @@ if timed
         if timedFileName==0 % User didn't select a file so forget about saving timed data
             timed = false;
         elseif ~isfile(timedFile) % Save new requested file
-            timedFile = [timedFilePath, timedFile];
             if isscalar(timedFileLinePos) && isscalar(timedFileLinePos.line)
                 fprintf('\nPlease change default timedFile name (line %d) to the new file for future use:\n%s\n',...
                     timedFileLinePos.line-1, timedFile)
