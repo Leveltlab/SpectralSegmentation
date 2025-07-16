@@ -1,5 +1,5 @@
 function [img, s, m] = PrintBImg(img, varargin)
-% rgb = PrintBImg(img, lims, colors, doplot, saveName, {scaleBarX, scaleBarY}, doPerc);
+% rgb = PrintBImg(img, lims, colors, doplot, saveName, {scaleBarX, scaleBarY}, doPerc, doLineShift, pos);
 % 
 % Apply brightness limits and colormap and Try to shift uneven lines so 
 % they align best with the even lines of img. And Save the img in its 
@@ -7,17 +7,17 @@ function [img, s, m] = PrintBImg(img, varargin)
 % 
 % 
 % input. All optional except first. All may be left empty except first
-%   img (2D double).
-%   limsPerc ([2 x 1] double). minimum and maximum brightness values.
+%   - img (2D double).
+%   - limsPerc ([2 x 1] double). minimum and maximum brightness values.
 %                              Outside these values the brightness is cut
-%   colors ([n x 3 double]). colormap to apply to img
-%   doplot (boolean). Plot it in MATLAB for your eyes?
-%   saveName (string). filename for picture (with folder) .
+%   - colors ([n x 3 double]). colormap to apply to img
+%   - doplot (boolean). Plot it in MATLAB for your eyes?
+%   - saveName (string). filename for picture (with folder) .
 %                      if empty, image will not be saved
-%   scalebar ([2 x 1] cell with doubles idx inside).
-%   doPerc (boolean). Calculate percentile using the lims input?
-%   doLineShift (boolean).
-%   pos
+%   - scalebar ([2 x 1] cell with doubles idx inside).
+%   - doPerc (boolean).: Calculate percentile using the lims input?
+%   - doLineShift (boolean): Calculate a line shift correction?
+%   - pos ([1 x 4] double): position of the figure on the screen
 % 
 % Values above this percentile will be max color value. 2p data brightness 
 % can be highly skewed % this causes most pixels to be dark. This is not
@@ -29,6 +29,8 @@ function [img, s, m] = PrintBImg(img, varargin)
 % Leander de Kraker
 % 2023-8-17
 % 
+
+dims = size(img);
 
 if exist('varargin', 'var') && nargin>1 && ~isempty(varargin{1})
     lims = varargin{1};
@@ -50,9 +52,8 @@ if exist('varargin', 'var') && nargin>4 && ~isempty(varargin{4})
 else
     saveName = [];
 end
-if exist('varargin', 'var') && nargin>5 && ~isempty(varargin{5})
-    scaleBarx = varargin{5}{1};
-    scaleBary = varargin{5}{2};
+if exist('varargin', 'var') && nargin>5 && ~isempty(varargin{5}) && varargin{5}~=0
+    [scaleBarx, scaleBary]= BurnScaleBarIdx(dims, varargin{5});
     doScalebar = true;
 else    
     doScalebar = false;
@@ -70,7 +71,6 @@ end
 if exist('varargin', 'var') && nargin>8
     pos = varargin{8};
 else
-    dims = size(img);
     pos = GetCenteredFigPos(dims([2 1])); % figure that does not get saved
 end
 
@@ -83,7 +83,7 @@ end
 
 if doLineShift
     [img, s,  m]      = ShiftLinesImg(img);
-    [img, s(2), m(2)] = ShiftLinesImg(img);
+    % [img, s(2), m(2)] = ShiftLinesImg(img);
 else
     s = [NaN, NaN]; m = [NaN, NaN];
 end

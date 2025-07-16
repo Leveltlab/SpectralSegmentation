@@ -1,4 +1,4 @@
-function ChronicViewer(BImgs, Masks, names, nLinksMask, linkMat, contours, score, inRoi)
+function ChronicViewer(BImgs, Masks, names, linkMat, contours, score, inRoi)
 % UI for going through chronically linked recordings
 % 
 % It is possible to edit the match matrix. Editing the match matrix will
@@ -390,7 +390,7 @@ function clickTableCallback(source, event)
     
     if size(clickedCells,1) == 1 % Only do things if clicked on one cell
 
-        if length(unique(selCells(:,1)))==1 && clickedCells(1)==1
+        if isscalar(unique(selCells(:,1)))&& clickedCells(1)==1
             % Add ROI into roiTable
             RoiToAdd = source.Data{clickedCells(1), clickedCells(2)};
             if RoiToAdd ~= 0
@@ -444,7 +444,7 @@ function UpdateView
                 hImg.CData = CreateRGB2(BImgs(sShow2), colors2);
             else % Mask view
                 MasksShow = Masks;
-                if rShow>1 & viewToggle == 2
+                if ~isempty(rShow) && any(rShow>1) && viewToggle == 2
                     for x = sShow2(:)' % ROI selection
                         idx = linkMat(rShow, x+1);
                         MasksShow{x}(~ismember(MasksShow{x},idx)) = 0;
@@ -466,11 +466,23 @@ function UpdateView
             
         elseif viewToggle == 4
             % Number of links image. color based on ROI number of links
-            hImg.CData = CreateRGB2(nLinksMask(sShow2), colors2);
+            linkMatAllRois = linkMat(2:end, 2:end-1); % get linkmat
+            linkMatAllRois = linkMatAllRois(:,sShow2); % of only visible recordings
+            nLinksAllRois = sum(linkMatAllRois>0, 2); % get how many links for those recordings
+            linkMatAllRois(nLinksAllRois<=1,:) = []; % remove matches with no links
+            linkMatAllRois = ExtendLinkMat(linkMatAllRois, [contours(sShow2).Cnt]); % add single ROIs
+            nLinksAllRois = sum(linkMatAllRois>0, 2); % recalculate the links
+            nLinksMask = CreateNLinksMask(Masks(sShow2), linkMatAllRois, nLinksAllRois);
             
+            colors3 = hot(length(sShow2));
+            colors3 = [0.5 0.5 0.5; colors3(1:end-1, :)];
+
+            hImg.CData = CreateRGB2(nLinksMask, colors3);
+
             % legend Text
             for x = 1:nfiles
-                if ismember(x,sShow2)
+                if x <= length(sShow2)
+                    hLegendText(x).Color = colors3(x,:);
                     hLegendText(x).String = sprintf('ROI found across %d recordings', x);
                 else
                     hLegendText(x).String = {''};
@@ -501,7 +513,7 @@ function UpdateView
         end
         
         % Put the normal colors if the view is not linkview 2
-        if viewToggle ~= 5
+        if ~ismember(viewToggle,[4 5])
             for x = 1:nfiles
                 hLegendText(x).Color = colors(x,:);
             end
@@ -523,8 +535,8 @@ function hImgDown(~,event)
     for i = 1:nfiles
         roi = Masks{i}(point(2), point(1));
         if roi>0
-            table = cell2mat(hRoisTable.Data(:,i+1));
-            row = find(table==roi);
+            tableMat = cell2mat(hRoisTable.Data(:,i+1));
+            row = find(tableMat==roi);
             hClickedTable.Data{1,i} = roi;
             if ~isempty(row)
     %             fprintf('recording %d, roi %d, row %d\n', i, roi, row)
@@ -539,7 +551,7 @@ end
 
 function RefreshInfoText
     % Refresh the info text
-    if length(unique(selCells(:,1)))==1 
+    if isscalar(unique(selCells(:,1)))
         str = sprintf('match   %4d   selected    ', selCells(1));
     else
         str = 'If you select one match ';
@@ -659,7 +671,8 @@ function SaveRois(source, ~)
     
     hSaveButton.String = 'saving the table';
     assignin('base', 'linkMat', linkMat(2:end, 2:end-1));
-    assignin('base', 'score', linkMat(:,1));
+    assignin('base', 'nLinks', linkMat(2:end, 1));
+    assignin('base', 'score', linkMat(2:end, end));
     
     try
         pause(1)

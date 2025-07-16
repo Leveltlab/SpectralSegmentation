@@ -1,4 +1,4 @@
-function [Con, A, F, Pin, roundedness] = getCon(Imgin, th, area, Rof, py, px, Iy, Ix)
+function [Con, A, F, Pin, roundedness] = getCon(Imgin, th, area, Rof, py, px, Iy, Ix, aspRat)
 % Chris van der Togt, 2017
 % Netherlands Institute for Neuroscience 
 
@@ -28,10 +28,10 @@ for j = 1:length(iv)
         At = polyarea(vx,vy);
         if At > area(1) 
             A = At;
-            roundedness = perimarea(vx, vy);
+            roundedness = perimarea(vx, vy*aspRat);
             if At < area(2) && roundedness > Rof
                 Con.x = vx;
-                Con.y = vy;            
+                Con.y = vy;
                 F(inpolygon(Ix,Iy,vx,vy)) = 1;
             end
         end

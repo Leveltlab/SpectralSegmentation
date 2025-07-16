@@ -30,7 +30,7 @@ function score = OverlapScore(inRoi, linkMat, i)
                 else
                     fprintf('Doubt for match %d: no overlap for neuron %d and %d\n', i, m, c)
                 end
-
+                
                 % Check overlap from roi i in recording c -> linked roi in
                 % recording m (which is the roi i in recording m)
                 found = inRoi{c}{linkMat(i,c),m};
@@ -42,9 +42,9 @@ function score = OverlapScore(inRoi, linkMat, i)
                         fprintf('Doubt for match %d: no overlap between %d and %d\n', i, c, m)
                     end
                 end
-
+                
                 counter = counter + 2;
-
+                
             end
         end
         score = score./counter; % calculate average overlap

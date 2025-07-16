@@ -10,10 +10,11 @@ function simonalign3(varargin)
 % 
 % 
 % Chris vd Togt,
-% Leander, 2021-11-11: Optional input to surpress pop-up. 
-%                      Bugfixes for non-rigid
+% Leander 2024-10-30: Added code to retrieve scale & aspect ratio of pixel
+% Leander 2021-11-11: Optional input to surpress pop-up. 
+%                     Bugfixes for non-rigid
 % 
-    
+
 global info
 
 disp(info.strfp)
@@ -110,6 +111,17 @@ if isfield(info, 'Freq')
 else
     infonew.Freq = info.resfreq/info.recordsPerBuffer/info.Slices;
 end
+if ~isfield(info, 'scaleUm')
+    if isfield(info, 'config') && isfield(info.config, 'magnification')
+        zoomLevel = str2double(info.config.magnification_list(info.config.magnification, :));
+        umAt1xZoom = 1000; % ! Assuming this number of micrometers when zoom=1  
+        infonew.scaleUm = info.d1 / (umAt1xZoom / zoomLevel); % original number of pixels / µm images
+    end
+end
+if ~isfield(info, 'pixelAspectRatio')
+    infonew.pixelAspectRatio = info.d1 / info.d2; % because the microscopes images a square FOV
+end
+
 infonew.max_idx = max_idx;
 
 infocopy = info;

@@ -23,6 +23,23 @@ else
 end
 mfn = strsplit(fn, '_DecTrans');
 
+% Try to find scale of pixels in the info of sbx file
+scaleUm = NaN;
+pixelAspectRatio = NaN;
+fnBase = strsplit(fn, {'_DecTrans'});
+fnBase = fnBase{1};
+if exist([fp fnBase '.mat'], 'file')==2
+    sbxinfo = load([fp fnBase '.mat'], 'info');
+    if isfield(sbxinfo, 'info')
+        if isfield(sbxinfo.info, 'scaleUm')
+            scaleUm = sbxinfo.info.scaleUm;
+        end
+        if isfield(sbxinfo.info, 'pixelAspectRatio')
+            pixelAspectRatio = sbxinfo.info.pixelAspectRatio;
+        end
+    end
+end
+
 [dim, freq, strType] = Zgetinfo(strfp);
 
 P = gcp;
@@ -149,7 +166,7 @@ SPic = shiftdim(SPic,1);
 SPic = padarray(SPic, [1 1 0]); %make original size by padding borders
 
 disp('Saving Spectral Components')
-save([fp mfn{1} '_SPSIG.mat'], 'SPic', 'Sax', 'freq')
+save([fp mfn{1} '_SPSIG.mat'], 'SPic', 'Sax', 'freq', 'scaleUm', 'pixelAspectRatio')
 toc
 
 %%

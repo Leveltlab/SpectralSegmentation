@@ -1,6 +1,6 @@
 function [image2, transformation] = Register2Imgs(reference,image2,varargin)
-% Register the second image to the first image, cut and/or pad image 2
-% to the same size as image 1
+% Register the second image to the reference image, cut and/or pad image 2
+% to the same size as reference
 % Uses the 2D cross-correlation then the 'check for best rotation'
 % technique.
 %

@@ -7,14 +7,10 @@ function varargout = RoiManagerGUI(varargin)
 % when no input is given the RoiManager will ask for the spectral file,
 %   and the transposed data file
 % In case that input is given, the input should be:
-% RoiManagerGUI(Mask, PP, SPic, Transfile, Sax)
-%   input 1: Mask, the 2D matrix which says which pixels are occupied by
-%               which ROI
-%   input 2: PP, struct with contour information, created by getspectrois.m
-%   input 3: SPic, SPectral images components, 3D matrix
-%   input 4: The filename of the transposed datafile
-%   input 5: Sax, the spectral axis, as created by spectral.m, that should
-%            correspond to the SPic variable
+% RoiManagerGUI(useFullTrans)
+%   - useFullTrans (boolean): if true. search for decimated file as usual
+%                             if false or empty, search for full transposed
+%                             file, to see more detail in signal over time.
 % 
 % 
 % The functionality of the RoiManager can be accessed with the 5 different
@@ -112,65 +108,35 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     % This function has no output args, see OutputFcn.
     % hObject    handle to figure
     
+    
+    [fn, pn] = uigetfile('*SPSIG.mat');
+    fprintf('Loading...\n')
+    SPSIGfile = [pn fn];
+    load(SPSIGfile,'Mask','PP','Sax','SPic', 'SpatialCorr', 'rmSliderSettings', 'pixelAspectRatio');
+    fprintf('Done loading\n')
+
+    if ~exist('pixelAspectRatio', 'var')
+        pixelAspectRatio = 1;
+    end
+    
+    % Try to find the 2P transposed datafile based on given SPSIG file
+    datafile = [pn fn(1:end-9) 'DecTrans.dat'];
+    
     % nargin == varargin + hObject, evendata and handles.
-    if ismember(nargin, [6 7 8 9])
-        % Use variables if given 
-        Mask = varargin{1};
-        PP = varargin{2};
-        SPic = varargin{3};
-        if nargin > 6
-            datafile = varargin{4};
-        else
-            [fn, pn] = uigetfile('*Trans*.dat', 'Select the file with 2P data');
-            datafile = [pn fn];
-        end
-        if nargin >= 8
-            Sax = varargin{5};
-        else
-            Sax = 1:size(SPic,3);
-        end
-        if nargin >= 9
-            SpatialCorr = varargin{6};
-        end
-        
-        % Little checks for variable correctness
-        if ~isstruct(PP) 
-            warning('\n\nWrong variables are given probably! PP should be struct\n\n'); return
-        end
-        if ~isnumeric(Mask)
-            warning('\n\nWrong variables are given probably! Mask should be numeric\n\n'); return
-        end
-        if ~isnumeric(SPic)
-            warning('\n\nWrong variables are given probably! SPic should be numeric\n\n'); return
-        end
-    else % load data otherwise
-        [fn, pn] = uigetfile('*SPSIG.mat');
-        fprintf('Loading...\n')
-        SPSIGfile = [pn fn];
-        load(SPSIGfile,'Mask','PP','Sax','SPic', 'SpatialCorr', 'rmSliderSettings');
-        fprintf('Done loading\n')
-        
-        % Try to find the 2P transposed datafile based on given SPSIG file
-        datafile = [pn fn(1:end-9) 'DecTrans.dat'];
-        if nargin == 4 % If RoiManagerGUI got false as only input, do not use decimated data
-            fprintf('one input given\n')
-            if varargin{1} == false
-                fprintf('selecting original transposed data\n')
-                datafile =  [pn fn(1:end-9) 'Trans.dat'];
-            else
-                fprintf('using decimated dataset\n')
-            end
-        end
-        if exist(datafile, 'file') ~= 2
+    if nargin == 4 % If RoiManagerGUI got false as only input, do not use decimated data
+        if varargin{1} == false
             datafile =  [pn fn(1:end-9) 'Trans.dat'];
-            if exist(datafile,'file') ~= 2 % if not found, request it
-                [fn, pn] = uigetfile('*Trans*.dat', 'Select the file with 2P data');
-                if any(fn ~= 0)
-                    datafile = [pn fn];
-                else
-                    fprintf('cannot run RoiRejecterGUI without transposed data file\n')
-                    return
-                end
+        end
+    end
+    if exist(datafile, 'file') ~= 2
+        datafile =  [pn fn(1:end-9) 'Trans.dat'];
+        if exist(datafile,'file') ~= 2 % if not found, request it
+            [fn, pn] = uigetfile('*Trans*.dat', 'Select the file with 2P data');
+            if any(fn ~= 0)
+                datafile = [pn fn];
+            else
+                fprintf('cannot run RoiRejecterGUI without transposed data file\n')
+                return
             end
         end
     end
@@ -315,6 +281,7 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     data.BImg(data.BImg<vals(2)) = vals(2);
     data.Mask = Mask;
     data.PP = PP;
+    data.pixelAspectRatio = pixelAspectRatio;
     data.SpatialCorr = SpatialCorr;
     data.pos = []; % pixel positions of a ROI that is being splitted
     data.corners = []; % Corner coordinates from which to start correlations
@@ -1106,7 +1073,7 @@ function CreateRoi(h, do)
             newRoi.Con.y = con.y + piecex(1) - 1;
             newRoi.A = sum(MaskTemp(:));
             newRoi.P = [x+piecey(1)-1; y+piecex(1)-1];
-            newRoi.Roundedness = perimarea(con.x, con.y);
+            newRoi.Roundedness = perimarea(con.x, con.y*data.pixelAspectRatio);
             
             % Plot the signal of the found ROI
             h.signalAx2.NextPlot = 'replacechildren';
@@ -1334,7 +1301,7 @@ function ManualRoi(pos, button, h)
             else
                 str{1} = sprintf('contour size = %d pixels <- Too small to apply', npixels);
             end
-            roundedness = perimarea(x, y);
+            roundedness = perimarea(x, y*data.pixelAspectRatio);
             if roundedness<0.4
                 str{2} = sprintf('roundedness=%.2f <- LOW!', roundedness);
             else
@@ -1398,7 +1365,7 @@ function applyManRoi_Callback(~, ~, h)
         % close the contour
         data.manRoi.Con.x = [data.manRoi.Con.x, data.manRoi.Con.x(1)];
         data.manRoi.Con.y = [data.manRoi.Con.y, data.manRoi.Con.y(1)];
-        roundedness = perimarea(data.manRoi.Con.x, data.manRoi.Con.y);
+        roundedness = perimarea(data.manRoi.Con.x, data.manRoi.Con.y * data.pixelAspectRatio);
         
         % Update the data
         data.Mask(data.Mask>0) = data.Mask(data.Mask>0) + 1;
@@ -1691,7 +1658,7 @@ function applyClustering_Callback(~, ~, h)
             % adddd more infoo
             PP.P = [[xmass; ymass], PP.P];
             PP.A = [sum(Mask(:)==i), PP.A];
-            PP.Roundedness = [perimarea(newCon.x, newCon.y), PP.Roundedness];
+            PP.Roundedness = [perimarea(newCon.x, newCon.y * data.pixelAspectRatio), PP.Roundedness];
             PP.creationMethod = [{'splitted'}; PP.creationMethod];
             
             % Calculate spectral profiles

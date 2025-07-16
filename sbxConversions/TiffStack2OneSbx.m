@@ -44,7 +44,7 @@ else
         'Where to save the sbx file');
     
     fileSbx = [filePathSbx, fileNameSbx];
-    Hz = str2double(inputdlg('What is the framerate for this image sequence? (Hz)'));
+    [hz, scaleUm, FOVum, pixelAspectRatio, squareFOV] = RequestRecInfo();
 end
 
 i = 1;
@@ -96,9 +96,9 @@ info.nsamples = info.sz(2) * info.sz(1) * 2 * info.nchan;
 info.simon = 1; %don't invert with intmax
 info.scanbox_version = 2.5;
 info.max_idx = nframes;
-info.Freq = Hz;
 info.recordsPerBuffer = 0;
 info.strfp = fileSbx(1:end-4);
+info = RequestRecInfoProcess(info, hz, scaleUm, FOVum, pixelAspectRatio, squareFOV);
 
 save([fileSbx(1:end-4) '.mat'], 'info');
 fprintf('done saving %s\n', fileNameSbx)

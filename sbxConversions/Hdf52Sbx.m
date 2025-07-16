@@ -17,6 +17,7 @@ fileNameH5 = {};
 filePathH5 = {};
 fileNameSbx = {};
 filePathSbx = {};
+defInput = {};
 selecting = true; % true as long as files are being selected
 i = 0;
 while selecting
@@ -29,10 +30,10 @@ while selecting
         fileNameH5(i) = [];
         filePathH5(i) = [];
         selecting = false;
-    else % Ask where to save the sbx file
+    else % Ask where to save the sbx file and other some info
         [fileNameSbx{i}, filePathSbx{i}] = uiputfile([filePathH5{i} fileNameH5{i}(1:end-3) '.sbx'],...
                 'Where to save the sbx file');
-        Hz(i) = str2double(inputdlg('What is the framerate for this dataset? (Hz)'));
+        [hz{i}, scaleUm{i}, FOVum{i}, pixelAspectRatio{i}, squareFOV{i}, defInput] = RequestRecInfo(defInput);
     end
 end
 nfiles = length(fileNameH5);
@@ -97,8 +98,8 @@ for i = 1:nfiles
     info.simon = 1; %don't invert with intmax
     info.scanbox_version = 2.5;
     info.max_idx = nframes;
-    info.Freq = Hz(i);
     info.recordsPerBuffer = 0;
+    info = RequestRecInfoProcess(info, hz{i}, scaleUm{i}, FOVum{i}, pixelAspectRatio{i}, squareFOV{i});
     info.strfp = [fileSbx(1:end-4)];
 
     save([fileSbx(1:end-4) '.mat'], 'info');

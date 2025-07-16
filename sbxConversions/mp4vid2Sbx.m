@@ -21,6 +21,10 @@ fileNameMP4 = {};
 filePathMP4 = {};
 fileNameSbx = {};
 filePathSbx = {};
+defInput = cell(5, 1); % default input for information request prompt
+defInput{4} = 1;
+defInput{5} = 'yes';
+
 selecting = true; % true as long as files are being selected
 i = 0;
 while selecting
@@ -37,11 +41,12 @@ while selecting
         [fileNameSbx{i}, filePathSbx{i}] = uiputfile([filePathMP4{i} fileNameMP4{i}(1:end-4) '.sbx'],...
             'Where to save the sbx file');
         reader = VideoReader([filePathMP4{i}, fileNameMP4{i}]);
-        Hz(i) = reader.FrameRate;
-        Hz(i) = str2double(inputdlg('What is the framerate for this dataset? (Hz)','framerate?',1,{num2str(Hz(i))}));
+        defInput{1} = reader.FrameRate; % hz info present in file
+        [hz{i}, scaleUm{i}, FOVum{i}, pixelAspectRatio{i}, squareFOV{i}, defInput] = RequestRecInfo(defInput);
+
     end
 end
-nfiles = length(fileNameMP4);
+nfiles = length(fileNameSbx);
 clearvars selecting
 
 i = 1;
@@ -91,8 +96,8 @@ for i = 1:nfiles
     info.simon = 1; %don't invert with intmax
     info.scanbox_version = 2.5;
     info.max_idx = nframes;
-    info.Freq = Hz(i);
     info.recordsPerBuffer = 0;
+    info = RequestRecInfoProcess(info, hz{i}, scaleUm{i}, FOVum{i}, pixelAspectRatio{i}, squareFOV{i});
     info.strfp = [fileSbx(1:end-4)];
     
     save([fileSbx(1:end-4) '.mat'], 'info');

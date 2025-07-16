@@ -1,10 +1,11 @@
-function ViewVolumeRGB1(img, scalexy, z)
-% ViewVolumeRGB1({mat1 mat2}, scalexc, z) visualizes the 3D matrixes
+function ViewVolumeRGB1(img, scales, z)
+% ViewVolumeRGB1({mat1 mat2}, scales, z) visualizes the 3D matrixes
 %
-% First input can either be one 3D matrix, or a cell array filled with
-% 3D matrices.
-% Second input: the scale of the pixels in x y direction in um. (a double)
-% Third input: the axis of the z direction in um. (vector)
+% Input:
+%  - img (3D double, or a cell array filled with 3D doubles)
+%  - scales (scalar double or [1 x 3] double): scale of pixels, or 
+%                 scale of pixels in height, width and depth
+%  - z ([ndepth x 1] double): The axis of the z direction in um
 % 
 % The first figure will show the max projection through the entire z-stacks
 % with the reference lines of where the zstack will be cut. 
@@ -57,8 +58,11 @@ function ViewVolumeRGB1(img, scalexy, z)
     end
     
     [heig, wid, ~]= size(img{1});
-    x = (1:wid)*scalexy; % The position of pixels in um
-    y = (1:heig)*scalexy;
+    if length(scales)==1
+        scales = scales([1 1]);
+    end
+    x = (1:wid)*scales(2); % The position of pixels in um
+    y = (1:heig)*scales(1);
 
     % Check z axis
     if length(z) ~= size(img{1},3)
@@ -71,7 +75,7 @@ function ViewVolumeRGB1(img, scalexy, z)
             return
         end
     end
-        
+    
     
     m = 0.05; % margin to the sides of the figure (relative)
     ys = double(max(y)); % dimensions of the stack in um
@@ -79,7 +83,7 @@ function ViewVolumeRGB1(img, scalexy, z)
     zs = double(max(z));
     h = (ys + zs);
     w = (xs + zs); % Total width of the image when they are plotted next to each other
-
+    
     % position = [horstart, vertstart, width, height] (start at bottomleft)
     position1 = [m,    ys/h, xs/w-m, zs/h-m]; % The first vertical slice on top of the x direction
     position2 = [m,    m,    xs/w-m, ys/h-m]; % The image as we usually see it.
@@ -104,7 +108,7 @@ function ViewVolumeRGB1(img, scalexy, z)
                   't: enlarge cut';... 
                   'g: smaller cut'};
     annotation('textbox', [xs/w, 1-m, zs/w, 0], 'string', strExplain)
-               
+    
     % The figure that has the sliced data
     % With this figure only slices are plotted, those are replaced every
     % update
@@ -116,6 +120,8 @@ function ViewVolumeRGB1(img, scalexy, z)
                    'ButtonDownFcn', {@axesXYfcn}, 'nextplot', 'replaceChildren');
     h2zy = subplot('position', axposition(3,:),...
                    'ButtonDownFcn', {@axesYZfcn}, 'nextplot', 'replaceChildren');
+    
+    set([h2zy h1zy], 'YTickLabel', [])
     
     % Default slice is the middle of the data
     % Cut is calculated based on mu
@@ -136,26 +142,23 @@ function ViewVolumeRGB1(img, scalexy, z)
     FindCutIdx
     
     % draw the xz maxprojection (top plot)
-    projections = {};
+    projections = cell(nimgs);
     for i = 1:nimgs
-        projection = squeeze(max(img{i}, [], 1))';
-        projections{end+1} = projection;
+        projections{i} = squeeze(max(img{i}, [], 1))';
     end
     RGBXZ = CreateRGB(projections, colors);
     imagesc(x,z,RGBXZ, 'Parent', h1xz, 'hittest', 'off')
     % draw the xy maxprojection (center plot)
-    projections = {};
+    
     for i = 1:nimgs
-        projection = squeeze(max(img{i}, [], 3));
-        projections{end+1} = projection;
+        projections{i} = squeeze(max(img{i}, [], 3));
     end
     RGBXY = CreateRGB(projections, colors);
     imagesc(x,y,RGBXY, 'Parent', h1xy, 'hittest', 'off')
     % draw the zy maxprojection (right plot)
-    projections = {};
+    
     for i = 1:nimgs
-        projection = squeeze(max(img{i}, [], 2));
-        projections{end+1} = projection;
+        projections{i} = squeeze(max(img{i}, [], 2));
     end
     RGBZY = CreateRGB(projections, colors);
     imagesc(z,y,RGBZY, 'Parent', h1zy, 'hittest', 'off')
@@ -190,15 +193,6 @@ function ViewVolumeRGB1(img, scalexy, z)
         
         xCut = round(eventdata.IntersectionPoint(1));
         yCut = round(eventdata.IntersectionPoint(2));
-        
-        % Make sure the click doesn't cause out of bound data selections
-        if xCut + cutSize >= wid
-            xCut = xCut - cutSize - 1;
-        end
-        if yCut + cutSize >= heig
-            yCut = yCut - cutSize - 1;
-        end
-        
         slicer
     end
 
@@ -210,15 +204,6 @@ function ViewVolumeRGB1(img, scalexy, z)
 
         xCut = round(eventdata.IntersectionPoint(1));
         zCut = round(eventdata.IntersectionPoint(2));
-        
-        % Make sure the click doesn't cause out of bound data selections
-        if xCut + cutSize >= wid
-            xCut = xCut - cutSize -1;
-        end
-        if zCut + cutSize >= length(z)
-            zCut = zCut - cutSize -1;
-        end
-        
         slicer
     end
 
@@ -230,15 +215,6 @@ function ViewVolumeRGB1(img, scalexy, z)
         
         zCut = round(eventdata.IntersectionPoint(1));
         yCut = round(eventdata.IntersectionPoint(2));
-        
-        % Make sure the click doesn't cause out of bound data selections
-        if zCut + cutSize >= length(z)
-            zCut = zCut - cutSize -1;
-        end
-        if yCut + cutSize >= heig
-            yCut = yCut - cutSize -1;
-        end
-        
         slicer
     end
 
@@ -271,15 +247,17 @@ function ViewVolumeRGB1(img, scalexy, z)
                     zCutIdx = zCutIdx + 1;
                 end
             case 't' % increase cutsize 
-                cutSize = cutSize + 1;
-                if xCutIdx + cutSize > wid
-                    xCutIdx = xCutIdx - 1;
-                end
-                if yCutIdx + cutSize > heig
-                    yCutIdx = yCutIdx - 1;
-                end
-                if zCutIdx + cutSize > length(z)
-                    zCutIdx = zCutIdx - 1;
+                if cutSize < min([wid, heig, length(z)]-1)
+                    cutSize = cutSize + 1;
+                    if xCutIdx + cutSize > wid
+                        xCutIdx = xCutIdx - 1;
+                    end
+                    if yCutIdx + cutSize > heig
+                        yCutIdx = yCutIdx - 1;
+                    end
+                    if zCutIdx + cutSize > length(z)
+                        zCutIdx = zCutIdx - 1;
+                    end
                 end
             case 'g' % decrease cutsize
                 if cutSize >= 1
@@ -307,6 +285,22 @@ function ViewVolumeRGB1(img, scalexy, z)
         [~, xCutIdx] = min(abs(x-xCut));
         [~, yCutIdx] = min(abs(y-yCut));
         [~, zCutIdx] = min(abs(z-zCut));
+        changed = false;
+        if xCutIdx > (wid-cutSize)
+            xCutIdx = wid-cutSize;
+            changed = true;
+        end
+        if yCutIdx > (heig-cutSize)
+            yCutIdx = heig-cutSize;
+            changed = true;
+        end
+        if zCutIdx > (length(z)-cutSize)
+            zCutIdx = length(z)-cutSize;
+            changed = true;
+        end
+        if changed
+            FindCut()
+        end
     end
 
     function FindCut
@@ -350,12 +344,11 @@ function ViewVolumeRGB1(img, scalexy, z)
         % Only update a slice if the data selection for it has changed
         
         % Calculate for the xz slice (top plot)
+        projections = cell(nimgs, 1);
         if (yCutIdx ~= yCutIdxOld) || (cutSize ~= cutSizeOld)
-            projections = {};
             for j = 1:nimgs
     %             projection = squeeze(img{j}(yCutIdx,:,:))';
-                projection = squeeze(max(img{j}(yCutIdx:yCutIdx+cutSize,:,:),[],1))';
-                projections{end+1} = projection;
+                projections{j} = squeeze(max(img{j}(yCutIdx:yCutIdx+cutSize,:,:),[],1))';
             end
             RGBXZ = CreateRGB(projections, colors);
             imagesc(x,z,RGBXZ, 'Parent', h2xz, 'hittest', 'off')
@@ -364,11 +357,9 @@ function ViewVolumeRGB1(img, scalexy, z)
         
         % draw the xy maxprojection (center plot)
         if (zCutIdx ~= zCutIdxOld) || (cutSize ~= cutSizeOld)
-            projections = {};
             for j = 1:nimgs
     %             projection = squeeze(img{j}(:,:,zCutIdx));
-                projection = squeeze(max(img{j}(:,:,zCutIdx:zCutIdx+cutSize),[],3));
-                projections{end+1} = projection;
+                projections{j} = squeeze(max(img{j}(:,:,zCutIdx:zCutIdx+cutSize),[],3));
             end
             RGBXY = CreateRGB(projections, colors);
             imagesc(x,y,RGBXY, 'Parent', h2xy, 'hittest', 'off')
@@ -377,11 +368,9 @@ function ViewVolumeRGB1(img, scalexy, z)
         
         % draw the zy maxprojection (right plot)
         if (xCutIdx ~= xCutIdxOld)  || (cutSize ~= cutSizeOld)
-            projections = {};
             for j = 1:nimgs
     %             projection = squeeze(img{j}(:,xCutIdx,:)); % simply select one
-                projection = squeeze(max(img{j}(:,xCutIdx:xCutIdx+cutSize,:), [], 2));
-                projections{end+1} = projection;
+                projections{j} = squeeze(max(img{j}(:,xCutIdx:xCutIdx+cutSize,:), [], 2));
             end
             RGBZY = CreateRGB(projections, colors);
             imagesc(z,y,RGBZY, 'Parent', h2zy, 'hittest', 'off')

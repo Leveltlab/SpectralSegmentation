@@ -62,7 +62,6 @@ for i = 1:nfiles
     fprintf('\nloading file %d...',i)
     data(i) = load([filepaths{i} filenames{i}], 'Mask', 'PP', 'BImg');
     fprintf('\nloaded "%s"\n', filenames{i})
-    
 end
 toc
 
@@ -156,8 +155,8 @@ end
 % Plot image of unregistered overlayed recordings
 figure('Units','Normalized', 'Position', [0.1766 0.1407 0.4203 0.7074]) 
 subplot('Position', [0 0 1 1])
-RGB = CreateRGB2(BImgs(toplot), colors(toplot,:));
-imagesc(RGB)
+rgb = CreateRGB2(BImgs(toplot), colors(toplot,:));
+imagesc(rgb)
 for i = 1:length(toplot)
     text(20, 20+i*17, datestr(filedates(toplot(i))),'color',colors(toplot(i),:),...
         'fontweight','bold','fontsize',12)
@@ -354,8 +353,8 @@ corrScoreMean(:,end+1) = [sum(corrScore)./(nfiles-1)]'; %#ok<NBRAK>
 figure('Units', 'normalized', 'Position',[0.15 0.1 0.65 0.75])
 % The registered images
 subplot('Position', [0.04 0.05 0.65 0.95])
-RGB = CreateRGB2(BImgs(toplot), colors);
-imagesc(RGB);
+rgb = CreateRGB2(BImgs(toplot), colors);
+imagesc(rgb);
 hold on
 for i = 1:PPs(referenceNum).Cnt
     plot(PPs(referenceNum).Con(i).x, PPs(referenceNum).Con(i).y, 'color', colors(referenceNum,:))
@@ -410,7 +409,13 @@ title(sprintf('Image correlation with rec %d', referenceNum))
 ylabel('Correlation coefficient r')
 xlabel('Rotation (degrees)'), xlim([min(rotations),max(rotations)])
 
-
+% Check for missing ROIs
+for i = 1:nfiles
+    missingROIs = find(diff(unique(Masks{i}))>1);
+    if ~isempty(missingROIs)
+        warning('%d ROIs has fallen off the FOV because of rotation! Ask Leander for better software', length(missingROIs))
+    end
+end
 
 %% Re-draw all ROI contours.
 % ROI contours are hard to register same as the images, since the contours
@@ -432,7 +437,7 @@ clearvars rotCorrel rotBest rotDiff correl BImgRot BImgRef rotations
 
 % Linking ROIs with each other, by checking if there is a certain percentage 
 % overlap between them
-thres = 0.525; % OVERLAP THRESHOLD.    range (0.5, 1) = 50% overlap - 100%
+thres = 0.6; % OVERLAP THRESHOLD.    range (0.5, 1) = 50% overlap - 100%
 
 if thres > 1
     warning('thres should be equal or smaller then 1')
@@ -443,157 +448,16 @@ elseif thres < 0.3
     warning('low threshold may introduce errors in the linked ROIs')
 end
 
-% Checking overlap between the ROIs
-% inRoi:  column1: linked ROI of other mask
-%         column3: number of pixels overlap
-%         column4: percentage overlap of this ROI with other ROI
-nmasks = 1:nfiles;
-inRoi = {1,length(nmasks)};
-fprintf('Calculating every ROI overlap from every recording to all recordings...\n')
-for m = nmasks % all masks
-    
-    otherMasks = nmasks;
-    % for each mask, save info for each ROI
-    inRoi{m} = cell(PPs(m).Cnt, length(otherMasks)); 
-    for r = 1:PPs(m).Cnt % for the ROIs in this mask
-        
-        roipos = Masks{m}==r;
-        for c = otherMasks % Check with all other Masks
-            % Save which ROIs are in ROI n, how many pixels overlap and fraction overlap
-            overlap = Masks{c}(roipos);
-            [vals, ~, idx] = unique(overlap); % which ROIs in this ROI?
-            inRoi{m}{r,c} = [vals, accumarray(idx, 1)]; % number of pixels overlap
-            inRoi{m}{r,c}(:,3) = inRoi{m}{r,c}(:,2)./sum(inRoi{m}{r,c}(:,2)); % frac overlap
-            inRoi{m}{r,c}(inRoi{m}{r,c}==0,:) = []; % delete overlap with non-ROIs
-        end
-    end
-end
 
+% Checking overlap between the ROIs of all recording pairs
+inRoi = CalcRoiOverlap(Masks);
 
-% linked1: column 1: ROI of mask i, 
-%          column 2: linked ROI of other mask
-%          column 3: number of pixels overlap
-%          column 4: percentage overlap of this ROI with other ROI
-fprintf('linking ROIs overlapping above threshold...\n')
-linked1 = cell(nfiles);
-for m = nmasks % m = current mask
-    otherMasks = nmasks(nmasks~=m); % Skip own overlap
-    for c = otherMasks % c = compared to
-        for r = 1:PPs(m).Cnt % r = each ROI
-            link = inRoi{m}{r,c}(:,3)>thres;
-            if any(link)
-                thisLink = [ones(sum(link),1).*r, inRoi{m}{r,c}(link,:)];
-                linked1{m, c} = [linked1{m, c}; thisLink];
-            end
-        end
-    end
-end
+% Linking overlapping ROIs between all recording pairs above threshold,
+[linked, linked1] = LinkOverlappingRois(inRoi, thres);
 
-clearvars i j k m n c r roipos otherMasks thisLink link iteration vals idx
+% Squishing linked ROIs into one link matrix
+linkMat = SquishLinkedRois(linked);
 
-%__________________________________________________________________________
-% Creating consistent links by looking at how much % the ROIs overlap,
-% viewing from both the masks, instead of 1 towards the other
-
-linked = cell(nfiles);
-fprintf('Checking whether ROI overlap is high enough between the two recordings...\n')
-% linked: column 1: ROI of recording m, corresponds to row nr. 
-%         column 2: linked ROI of other recording, corresponds to column nr.
-%         column 3: percentage overlap of this ROI with other ROI
-%         column 4: percentage overlap of other ROI with this ROI
-%         column 5: percentage overlap for both the ROIs
-for m = nmasks
-    otherMasks = nmasks(nmasks~=m);
-    for c = otherMasks
-        for i = 1:size(linked1{m,c},1)
-            r = linked1{m,c}(i,1); %  roi of mask
-            rc = linked1{m,c}(i,2); % r was linked with roi from other mask
-            overlap1 = linked1{m,c}(i,4);
-            % Overlap looking from other recording
-            found = inRoi{c}{rc, m}(inRoi{c}{rc, m}(:,1)==r, :); 
-            
-            overlap2 = found(3);
-            overlap = (overlap1 + overlap2) ./ 2;
-            if overlap > thres % true if mutual overlap is large enough!
-                linked{m,c} = [linked{m,c}; [r, rc, overlap1, overlap2, overlap]];
-            end
-        end
-    end
-end
-% Now combine the linked ROIs from recording 1-> recording 2 and 2->1 etc
-% to one array
-for c = nmasks
-    otherMasks = c+1:nmasks(end);
-    for m = otherMasks
-        % Switch columns to match the order from other recording comparison
-        if ~isempty(linked{m,c})
-            linked{m,c} = [linked{m,c}(:,2),linked{m,c}(:,1),linked{m,c}(:,4),linked{m,c}(:,3),linked{m,c}(:,5)];
-            linked{c,m} = [linked{c,m}; linked{m,c}];
-            linked{m,c} = [];
-            [~, sorted]  = sort(linked{c,m}(:,1));
-            linked{c,m} = linked{c,m}(sorted,:);
-            linked{c,m} = unique(linked{c,m},'rows');
-        end
-    end
-end
-clearvars found check overlap overlap1 overlap2 otherMasks i c r m rc rows sorted
-
-% all links in a matrix
-fprintf('Compressing link data into match matrix...\n')
-linkMatV1 = cell(nfiles-1, 1);
-for m = 1:nfiles-1
-    otherMasks = m+1:nmasks(end);
-    linkMatV1{m} = zeros(1,nfiles);
-    for c = otherMasks
-        if ~isempty(linked{m,c})
-            own = linked{m,c}(:,1);
-            compared = linked{m,c}(:,2);
-            overlap = linked{m,c}(:,5);
-            linkMatV1{m}(end+1:end+length(own), [m, c]) = [own, compared];
-        end
-    end
-    linkMatV1{m}(1,:) = [];
-    % Sort to the neuron of current m
-    [~, idx] = sort(linkMatV1{m}(:,m));
-    linkMatV1{m} = linkMatV1{m}(idx,:);
-end
-
-
-% Compress the matrix m so the neuron of mask m only appears once
-linkMat = cell(nfiles-1, 1);
-for m = 1:nfiles-1
-    [rois, limits] = unique(linkMatV1{m}(:,m));
-    limits(end+1) = size(linkMatV1{m},1)+1;
-    linkMat{m} = zeros(length(rois), nfiles);
-    for j = 1:length(rois) % for each roi. put others in one row
-        linkMat{m}(j,:) = max(linkMatV1{m}(limits(j):limits(j+1)-1,:),[],1);
-    end
-end
-linkMat = cell2mat(linkMat);
-
-% Sort & squish the matrix
-for i = 2:nfiles
-    [~,sorted] = sort(linkMat(:,i));
-    linkMat = linkMat(sorted,:);
-    [rois, limits] = unique(linkMat(:,i));
-    if length(limits) > 1
-        limits(end+1) = size(linkMat,1)+1;
-        dif = diff(limits); % number of elements with ROI j
-        % If one of the recordings matched another ROI keep it. So even if
-        % the matched ROI is not found via some of the recordings, it can still
-        % get linked with those recordings.
-        for j = 2:length(rois)
-            if dif(j) > 1
-                rows = limits(j):(limits(j)+dif(j)-1);
-                linkMat(limits(j),:) = max(linkMat(rows,:));
-            end
-        end
-        % Now we made sure we don't lose any links, squish the matrix
-        linkMat = linkMat([1:limits(2), limits(3:end-1)'],:);
-    end
-end
-
-clearvars i j r c m dif vals idx thisLink limits rois own compared otherMasks sorted rows
 fprintf('\ndone matching ROIs\n')
 
 
@@ -603,16 +467,19 @@ fprintf('\ndone matching ROIs\n')
 if ~exist('toplot','var'); toplot=1:nfiles;end
 if ~exist('colors','var'); colors=flipud(cmapL([0 0 1; 0 1 1; 0 1 0; 1 0.7 0; 1 0 0; 0.7 0 1], nfiles));end
 
-
+% Clean the linkMat of single ROI matches (those appear after editing in ChronicViewer)
 nLinks = sum(linkMat~=0,2);
 linkMat(nLinks==1,:)=[];
 nLinks = sum(linkMat~=0,2);
+nrois = [PPs.Cnt];
+
+nMatches = size(linkMat, 1);
 
 % The 'OVERLAP SCORE' is based on the pixel overlap between the linked ROIs. 
 % This also takes into account the ROIs which are not officially linked with
 % each other, but were linked together because of mutual links.
-score = zeros(length(linkMat),1);
-for i = 1:length(linkMat)
+score = zeros(nMatches,1);
+for i = 1:nMatches
     score(i) = OverlapScore(inRoi, linkMat, i);
 end
 
@@ -636,56 +503,34 @@ legend({'match score','average score','threshold'},...
     'location','southeast')
 
 %__________________________________________________________________________
-linkMatAllRois = linkMat; % Extend linkMatrix with ROIs that didn't find any matches
-for i = 1:nfiles
-    % keep roi numbers which are not members of this linkmat column
-    allRoisi = 1:PPs(i).Cnt;
-    singlesi = allRoisi(~ismember(allRoisi, linkMat(:,i)));
-    linkMatAllRois(end+1:end+length(singlesi), i) = singlesi;
-end
-% extend scores with 0: there is no overlap for single neurons
-scoreAllRois = score;
-scoreAllRois(end+1:length(linkMatAllRois)) = 0; 
+linkMatAllRois = ExtendLinkMat(linkMat, nrois);
+% scoreAllRois   = ExtendScore(score, size(linkMatAllRois, 1));
 
 % calculate number of links and plot histogram
-nLinks = sum(linkMatAllRois~=0, 2); % number of roi links in each row
+nLinksAllRois = sum(linkMatAllRois~=0, 2); % number of roi links in each row
 
-figure('Position', [105 755 560 222])
-h = histogram(nLinks);
-% h.BinCounts = h.BinCounts.*(1:nfiles);
-title(sprintf('number of roi links in each row thres = %.2f, actual neuron count',... 
+figure('Units', 'Normalized', 'Position', [0.05 0.7 0.3 0.2])
+h = histogram(nLinksAllRois);
+hax = gca;
+set(hax, 'XTick', 1:nfiles)
+title(sprintf('Number of ROI links in each row. Minimum overlap thres = %.2f',... 
     thres))
 ylabel('n neurons')
 xlabel('found back')
 
-% ________________________________________________________________________
-% TABLE
-% Find the number- and % of neurons in each recording that were found back
-nFoundBackMat = zeros(nfiles+1);
-nameCol = cell(1,nfiles);
-for i = 1:nfiles
-    present = nLinks(linkMatAllRois(:,i)>0);
-    % Count how many neurons with 1:nfiles matches recording i has
-    nFoundBackMat(i,1:nfiles) = histc(present, 1:nfiles);
-    nameCol{i} = sprintf('%d links',i);
-end
-nameCol{1} = 'single';
-nFoundBackMat(nfiles+1,:) = sum(nFoundBackMat, 1);
-nFoundBackMat(:,nfiles+1) = sum(nFoundBackMat, 2);
 
-% Percentage wise confusion matrix
-n = double(repmat([PPs.Cnt]', [1, nfiles]));
-n = [n; sum(n, 1)];
-n = [n, repmat(n(nfiles+1,1),[nfiles+1,1])];
-nFoundBackPercMat = round(nFoundBackMat ./ n .* 100);
+% ________________________________________________________________________
+% TABLES
+% Find the number- and % of neurons in each recording that were found back
+[nFoundBack, nFoundBackPerc, nameCol] = CalcFoundBack(linkMatAllRois, nLinksAllRois, nrois);
 
 figure('name','number of ROIs matched per recording')
-h = uitable('Data',nFoundBackMat,'Units', 'Normalized', 'Position', [0, 0.5, 1, 0.4]);
+h = uitable('Data',nFoundBack,'Units', 'Normalized', 'Position', [0, 0.5, 1, 0.4]);
 h.ColumnName = [nameCol 'summed ROIs'];
 h.RowName = [filenamesShort; {'summed ROIs'}];
 annotation('textbox', [0, 0.95, 1, 0], 'string', 'Specific number of ROIs which are in a match with that amount of linked ROIs')
 
-h = uitable('Data',round(nFoundBackPercMat,1), 'Units','Normalized', 'Position', [0, 0, 1, 0.4]);
+h = uitable('Data',round(nFoundBackPerc,1), 'Units','Normalized', 'Position', [0, 0, 1, 0.4]);
 h.ColumnName = [nameCol, {'mean'}];
 h.RowName = [filenamesShort; {'mean'}];
 annotation('textbox', [0, 0.45, 1, 0], 'string', 'Percentage of ROIs which are in a match with that amount of linked ROIs')
@@ -693,24 +538,13 @@ annotation('textbox', [0, 0.45, 1, 0], 'string', 'Percentage of ROIs which are i
 
 %__________________________________________________________________________
 % TABLE figure 2. confusionlike matrix
-% Find how much ROIs recording i linked with recording j
-confusionFoundMat = zeros(nfiles+1);
-for i = 1:nfiles
-    for j = 1:nfiles
-        confusionFoundMat(i,j) = sum(linkMatAllRois(:,i)>0 & linkMatAllRois(:,j)>0);
-    end
-end
-confusionFoundMat(nfiles+1,1:end-1) = round(mean(confusionFoundMat(1:end-1,1:end-1),1));
-confusionFoundMat(1:end-1,nfiles+1) = round(mean(confusionFoundMat(1:end-1,1:end-1),2));
+[confusionFoundMat, confusionFoundMatPerc] = CalcConfusionFoundMat(linkMatAllRois, nrois);
 
 figure
 h = uitable('Data', confusionFoundMat, 'Units', 'Normalized', 'Position', [0, 0.5, 1, 0.4]);
 h.ColumnName = [filenamesShort; {'mean'}];
 h.RowName = [filenamesShort; {'mean'}];
 annotation('textbox', [0, 0.95, 1, 0], 'string', 'Between which recordings ROIs are linked')
-
-n = double(repmat([PPs.Cnt]', [1, nfiles]));
-confusionFoundMatPerc = round(confusionFoundMat(1:nfiles, 1:nfiles) ./ n * 100);
 
 h = uitable('Data', confusionFoundMatPerc, 'Units', 'Normalized', 'Position', [0, 0, 1, 0.4]);
 h.ColumnName = filenamesShort;
@@ -720,28 +554,22 @@ annotation('textbox', [0, 0.45, 1, 0], 'string', 'Between which recordings ROIs 
 % 
 %__________________________________________________________________________
 % Use number of ROIs connected to a ROI to create new image
-nLinksMask = cell(1, nfiles);
-for i = 2:nfiles
-    rois = linkMatAllRois(nLinks==i,:); % rois with i linked rois
-    nLinksMask{i} = zeros(size(Masks{i}));
-    for j = 1:nfiles
-        roij = rois(:,j);
-        roij(roij==0) = [];
-        idx = ismember(Masks{j}, roij);
-    	nLinksMask{i}(idx) = nLinksMask{i}(idx) + 1;
-    end
-end
+nLinksMask = CreateNLinksMask(Masks, linkMatAllRois, nLinksAllRois);
 
-RGB = CreateRGB2(nLinksMask(toplot), colors);
+colors2 = hot(nfiles);
+colors2 = [0.5 0.5 0.5; colors2(1:end-1,:)];
+
 figure
-imagesc(RGB)  
-text(20, 450, filenames{1}(1:14),'color',[1 1 1])
-for i = 2:nfiles
-    text(20, 20+i*10, sprintf('%d links', i), 'color',colors(i,:), 'fontweight','bold')
-    text(20, 440+i*10, filenames{i}(1:14), 'color',[1 1 1])
+rgb = CreateRGB2(nLinksMask, colors2);
+imagesc(rgb)
+for i = 1:nfiles
+    text(20, 20+i*17, sprintf('%d links', i), 'color',colors2(i,:), 'fontweight','bold')
+    text(size(rgb,2)-10, size(rgb,1)-(nfiles+1)*15+i*15, filenamesShort{i}, 'color', [1 1 1], 'HorizontalAlignment','right')
 end
-title(sprintf('number of links=%d, threshold = %.2f',size(linkMat,1),thres))
+title(sprintf('number of links=%d, threshold = %.2f', size(linkMat,1), thres))
 
+
+%__________________________________________________________________________
 % Sort the matrix and scores so the most links, with the highest scores are
 % on the top of the matrices
 nLinks = sum(linkMat > 0, 2);
@@ -750,12 +578,11 @@ linkMat = linkMat(sorted,:);
 score = score(sorted);
 nLinks = nLinks(sorted);
 
-clearvars keep idx i j n matchedMasks h h1 RGB rois spaces sorted i nameCol nmasks roij
-clearvars singlesi allRoisi
+clearvars i j h h1  rois sorted i nameCol
 
 %% Chronic viewer checker UI
 
-ChronicViewer(BImgs, Masks, filenamesShort, nLinksMask, linkMat, PPs, score, inRoi)
+ChronicViewer(imgs.BImgR, Masks, filenamesShort, linkMat, PPs, score, inRoi)
 % If you saved changes in linkMat with the ChronicViewer, rerun previous
 % section to recalculate statistics!!!!
 
@@ -778,7 +605,7 @@ fprintf('saving\n')
 cd(pathname)
 save(filename, 'nfiles', 'BImgs', 'Masks', 'PPs', 'filenames', 'filenamesShort', 'filepaths', 'filedates',...
     'transformed', 'thres', 'inRoi', 'linked', 'linkMat', 'score', 'nLinks', 'nLinksMask',...
-    'nFoundBackMat','nFoundBackPercMat', 'confusionFoundMat')
+    'nFoundBack','nFoundBackPerc', 'confusionFoundMat')
 fprintf('saved %s\n', filename)
 
 

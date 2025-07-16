@@ -54,10 +54,11 @@ if ~isempty(varargin)
     end
 end
 
+aspRat = 1; % aspect
 if length(varargin) > 1
     sbxt = varargin{2}; %memory mapped file to transposed image data
-    freq = varargin{3}; %frequency of transposed images
-    SC = varargin{4}; % SpatialCorr
+    SC = varargin{3}; % SpatialCorr
+    aspRat = varargin{4};
 end
 
 % Get reasonable maxima sorted on height
@@ -113,7 +114,7 @@ for i = 1:Nmp
             NwA = [];
             Ro = [];
             while ~bval && it < 10
-                [Con, A, F, Pin, Ro] = getCon(If, th, area, PAf*0.9, py, px, Iy, Ix);
+                [Con, A, F, Pin, Ro] = getCon(If, th, area, PAf*0.9, py, px, Iy, Ix, aspRat);
                 if ~isempty(Con) %valid contour: contains point and has valid roundedness
                     if DISPLAY == 1
                         figure(2), hold off, imagesc(I), colormap gray, hold on
@@ -151,7 +152,7 @@ for i = 1:Nmp
                     if bval
                         yrange = lyw:hyw;
                         xrange = lxw:hxw;                             
-                        [NwCon, NwA, NwF, NwV, Ro, Rvar] = PixelCor(size(Mask), F, sbxt, py, px, Iy, Ix, yrange, xrange, cutOffCorr);
+                        [NwCon, NwA, NwF, NwV, Ro, Rvar] = PixelCor(size(Mask), F, sbxt, py, px, Iy, Ix, yrange, xrange, cutOffCorr, aspRat);
                         if ~isempty(NwCon) &&  NwA > area(1) && Ro >= PAf % Exists and area greater than minimum, and roundedness > roundedness factor
                             Con = NwCon;
                             Con.y = Con.y + lyw - 1;
