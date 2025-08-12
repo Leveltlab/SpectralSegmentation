@@ -36,6 +36,13 @@ Options to either save the transform object, or the transformed images are possi
 The scripts can either be run independently, or via the provided GUI. The GUI enables easy integration of the configuration settings, with customisability to allow for different image formats, optimisation settings and more.
 An integrated image tab allows you to verify the optimisation as well as selectively refine unsatisfactory registrations.
 
+## hardcoded:
+
+- for the NIN: 
+    save function will assume "Mask" is given. As such this is then used to unify ROI's between images.
+    
+    save function will return the final unified Masks, and transformed Images
+
 ## Coming Soon:
 
 - Automatic integrated ROI selection to enable tracking of neuron activity between recordings.

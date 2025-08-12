@@ -1,33 +1,29 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="1544238813" file="C:\Users\augus\NIN_Stuff\SpectralSegmentation\chronic\ImageRegistrationApp\ImageReg2P.prj" location="C:\Users\augus\NIN_Stuff\SpectralSegmentation\chronic\ImageRegistrationApp" name="ImageReg2P" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="203555659" file="C:\Users\augus\NIN_Stuff\SpectralSegmentation\chronic\ImageRegistrationApp\ImageReg2P.prj" location="C:\Users\augus\NIN_Stuff\SpectralSegmentation\chronic\ImageRegistrationApp" name="ImageReg2P" target="target.mlapps" target-name="Package App">
     <param.appname>ImageReg2P</param.appname>
     <param.authnamewatermark>Augustijn Vrolijk</param.authnamewatermark>
-    <param.email>a.vrolijk@nin.knaw.nl</param.email>
-    <param.company>Nederlandse Herseninstituut</param.company>
+    <param.email>augustijn.vrolijk@gmail.com</param.email>
+    <param.company>N/A</param.company>
     <param.icon />
     <param.icons />
-    <param.summary>GUI enabling automatic image registration for two-photon microscopy recordings</param.summary>
+    <param.summary>GUI for registering two-photon imaging recordings.</param.summary>
     <param.description />
     <param.screenshot />
-    <param.version>1.0</param.version>
-    <param.products.name>
-      <item>Image Processing Toolbox</item>
-    </param.products.name>
-    <param.products.id>
-      <item>17</item>
-    </param.products.id>
-    <param.products.version>
-      <item>24.2</item>
-    </param.products.version>
+    <param.version>1.1</param.version>
+    <param.products.name />
+    <param.products.id />
+    <param.products.version />
     <param.platforms />
     <param.output>${PROJECT_ROOT}\finished_app</param.output>
-    <param.guid>7febb115-2cee-4f77-8d72-9c52b2b2eae6</param.guid>
+    <param.guid>16033fa5-8357-42f9-8e52-d7a0aafcfc2f</param.guid>
     <unset>
       <param.icon />
       <param.icons />
       <param.description />
       <param.screenshot />
-      <param.version />
+      <param.products.name />
+      <param.products.id />
+      <param.products.version />
       <param.platforms />
     </unset>
     <fileset.main>
