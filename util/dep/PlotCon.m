@@ -1,5 +1,5 @@
-function [h, cons] = PlotCon(PP, colors, varargin)
-% [h, cons] = PlotCon(PP, colors, xshift, yshift);
+function [h, cons] = PlotCon(PP, colors, xshift, yshift, idx)
+% [h, cons] = PlotCon(PP, colors, xshift, yshift, idx);
 % PlotCon(PP, colors)
 % 
 % Quickly plot the ROI contours
@@ -14,6 +14,7 @@ function [h, cons] = PlotCon(PP, colors, varargin)
 % Optional:
 % - xshift: shift to apply to data
 % - yshift: shift to apply to data
+% - idx ([n x 1] double) which ROIs to plot
 % 
 % 
 % Ouput:
@@ -24,18 +25,21 @@ function [h, cons] = PlotCon(PP, colors, varargin)
 % 2023-4-3
 % 
 
-if nargin>2
-    xshift = varargin{1};
-    yshift = varargin{2};
-else
-    xshift = 0;
-    yshift = 0;
+arguments
+    PP struct
+    colors
+    xshift (1,1) = 0;
+    yshift (1,1) = 0;
+    idx = 1:PP.Cnt
+end
+if size(idx, 2)==1 && size(idx, 1)>1
+    idx = idx';
 end
 
 cons = struct();
 cons.x = [];
 cons.y = [];
-for r = 1:PP.Cnt
+for r = idx
     cons.x = cat(2, cons.x, [PP.Con(r).x, NaN]);
     cons.y = cat(2, cons.y, [PP.Con(r).y, NaN]);
 end

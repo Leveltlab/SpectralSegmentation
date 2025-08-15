@@ -31,7 +31,11 @@ if exist('varargin', 'var')
     if nargin>2 && ~isempty(varargin{2})
         bestMethod = varargin{2};
     else
-        bestMethod = 1;
+        if isempty(bestS) % Try all methods for registration
+            bestMethod = [1 2]; 
+        else % Assume shift is done with simple shifting
+            bestMethod = 1;
+        end
     end
     if nargin==4 && ~isempty(varargin{3})
         plotting = varargin{3};
@@ -55,59 +59,67 @@ dims = size(img);
 if length(dims)==3
     img = img(:,:,1);
 end
-dimsTake = [floor(dims(1)./2)*2, dims(2)]; % for check
-dimsScheck = [floor(dims(1)/2), dims(2)];
-dimsS = [ceil(dims(1)/2), dims(2)];
 
 if isempty(bestS) % Do check of how best to shift the lines
+    buf = min(30, floor(dims(2)/2)); % buffer to ignore
+    imgTest = img(:,buf:end-buf);
+    dimsTest = size(imgTest);
     s = -5:5;
     b = max(s);
     bt = b*2;
     n = length(s);
     p = zeros(n, 2);
     
-    imgRest = img(2:2:end, bt:end-bt);
+    imgRest = imgTest(2:2:end, bt:end-bt);
     dimsRest = size(imgRest);
+    dimsTake = [floor(dimsTest(1)./2)*2, dimsTest(2)]; % for check
+    dimsScheck = [floor(dimsTest(1)/2), dimsTest(2)];
     
     % shifting simply
-    for i = 1:n
-        imgS = img(1:2:dimsTake(1), s(i)+bt:end-bt+s(i));
-        p(i,1) = corr(imgRest(:), imgS(:));
-        
-        if plotting
-            imgRecon = zeros(dimsTake(1), dimsRest(2));
-            imgRecon(2:2:end, :) = imgRest;  imgRecon(1:2:end, :) = imgS;
-            subplot(4,1,[1 3]); imagesc(imgRecon(1:end/3,:))
-            title(sprintf('shifting %d', s(i)))
-            subplot(4,1,4); imagesc(s, [1 2], p');
-            title(p(i,1))
+    if ismember(1, bestMethod)
+        for i = 1:n
+            imgS = imgTest(1:2:dimsTake(1), s(i)+bt:end-bt+s(i));
+            p(i,1) = corr(imgRest(:), imgS(:));
+            
+            if plotting
+                imgRecon = zeros(dimsTake(1), dimsRest(2));
+                imgRecon(2:2:end, :) = imgRest;  imgRecon(1:2:end, :) = imgS;
+                subplot(4,1,[1 3]); imagesc(imgRecon(1:end/3,:))
+                title(sprintf('shifting %d', s(i)))
+                subplot(4,1,4); imagesc(s, [1 2], p');
+                title(p(i,1))
+            end
         end
     end
-    % Resizing to the right
-    imgRest = img(2:2:end, :);
-    for i = 1:b+1
-        imgS = imresize(img(1:2:dimsTake(1), 1:end+s(i)), dimsScheck);
-        p(i,2) = corr(imgRest(:), imgS(:));
     
-        if plotting
-            imgRecon = zeros(dimsTake); imgRecon(2:2:end, :) = imgRest; imgRecon(1:2:end, :) = imgS;
-            subplot(4,1,[1 3]); imagesc(imgRecon(1:end/3,:))
-            title(sprintf('resizing to right %d', -s(i)))
-            subplot(4,1,4); imagesc(s, [1 2], p'); colorbar
-            title(p(i,2)); pause
+    % Shifting via resizing
+    imgRest = imgTest(2:2:end, :);
+    if ismember(2, bestMethod)
+        % Resizing to the right
+        for i = 1:b+1
+            imgS = imresize(imgTest(1:2:dimsTake(1), 1:end+s(i)), dimsScheck);
+            p(i,2) = corr(imgRest(:), imgS(:));
+            
+            if plotting
+                imgRecon = zeros(dimsTake); imgRecon(2:2:end, :) = imgRest; imgRecon(1:2:end, :) = imgS;
+                subplot(4,1,[1 3]); imagesc(imgRecon(1:end/3,:))
+                title(sprintf('resizing to right %d', -s(i)))
+                subplot(4,1,4); imagesc(s, [1 2], p'); colorbar
+                title(p(i,2)); pause
+            end
         end
-    end
-    % Resizing to the left
-    for i = 1:b
-        imgS = imresize(img(1:2:dimsTake(1), 1+i:end), dimsScheck);
-        p(i+b+1, 2) = corr(imgRest(:), imgS(:));
-    
-        if plotting
-            imgRecon = zeros(dimsTake); imgRecon(2:2:end, :) = imgRest; imgRecon(1:2:end, :) = imgS;
-            subplot(4,1,[1 3]); imagesc(imgRecon(1:end/3,:))
-            title(sprintf('resizing to left %d', s(b+i+1)))
-            subplot(4,1,4); imagesc(s, [1 2], p'); colorbar
-            title(p(i+b+1,2)); pause
+        % Resizing to the left
+        for i = 1:b
+            imgS = imresize(imgTest(1:2:dimsTake(1), 1+i:end), dimsScheck);
+            p(i+b+1, 2) = corr(imgRest(:), imgS(:));
+            
+            if plotting
+                imgRecon = zeros(dimsTake); imgRecon(2:2:end, :) = imgRest; imgRecon(1:2:end, :) = imgS;
+                subplot(4,1,[1 3]); imagesc(imgRecon(1:end/3,:))
+                title(sprintf('resizing to left %d', s(b+i+1)))
+                subplot(4,1,4); imagesc(s, [1 2], p'); colorbar
+                title(p(i+b+1,2)); pause
+            end
         end
     end
     
@@ -116,6 +128,7 @@ if isempty(bestS) % Do check of how best to shift the lines
     bestS = s(bestS);
 end
 
+% Apply the shifting
 if bestS~=0
     if bestMethod == 1 % Using shifting
         if bestS<0
@@ -124,6 +137,7 @@ if bestS~=0
             img(1:2:end, 1:end-bestS) = img(1:2:end, 1+bestS:end);
         end
     else % Using shifting-resizing
+        dimsS = [ceil(dims(1)/2), dims(2)];
         if bestS<0
             img(1:2:end, :) = imresize(img(1:2:end, 1:end+bestS), dimsS);
         else
