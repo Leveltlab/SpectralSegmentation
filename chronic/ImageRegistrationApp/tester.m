@@ -48,7 +48,7 @@ title(['Detected ', num2str(max(idx)), ' ROIs using DBSCAN']);
 
 %% 
 
-allMasks = cat(3, registration_data.warpedImg{:});
+allMasks = cat(3, registration_data.Mask_warped{:});
 
 % Sum over the 3rd dimension to get the combined mask
 unifiedMask = sum(allMasks, 3);
@@ -92,15 +92,17 @@ function showImages(images)
     imagesc(finalImg);
 end
 
-masks = fetchMasks(tester.filepath);
+fileNames = registration_data.("Path") + registration_data.("Name");
+masks = fetchMasks(fileNames);
 
 t1 = warpImages(registration_data.tForm, masks);
 
+figure
 showImages(t1)
 
 %%
 
-[linkmat, UnifiedMasks] = createUnifiedMask(tester.filepath, tester.transform);
+[linkmat, UnifiedMasks] = createUnifiedMask(fileNames, registration_data.tForm);
 %%
 [n_Rois, nVars] = size(linkmat);
 
@@ -115,4 +117,5 @@ for j = 1:nVars  % loop over each mask (column)
 end
 
 %%
-clean_unified_masks = warpImages(tester.transform, UnifiedMasks);
+clean_unified_masks = warpImages(registration_data.tForm, UnifiedMasks);
+showImages(clean_unified_masks)

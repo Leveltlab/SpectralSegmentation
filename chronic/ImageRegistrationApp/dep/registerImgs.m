@@ -1,4 +1,7 @@
 function imgTForms = registerImgs(inputImages, inputFixed, metric, optimizer, options)
+    % Augustijn Vrolijk
+    % 2025-7
+    
     arguments (Input)
         inputImages (:, 1) cell
         inputFixed (1, 1) cell = {0}
