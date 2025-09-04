@@ -1,4 +1,8 @@
 function finalTForm = PyramidRegisterPair(fixed, moving, metric, optimizer, progress, options)
+    % 
+    % Augustijn Vrolijk
+    % 2025-4
+    % 
     arguments (Input)
         fixed (:, :) double 
         moving (:, :) double
@@ -12,11 +16,12 @@ function finalTForm = PyramidRegisterPair(fixed, moving, metric, optimizer, prog
     arguments (Output)
         finalTForm affinetform2d
     end
+    
     defaultProg = struct('iter',1,'total',1,'progressBar',0);
     progress = mergeStructs(defaultProg, progress);
     %LOOK into a default check function, for all the optimise funcs, which
     %does the optimizer/metric/levels/transform checking
-
+    
     [defaultOptimizer, defaultMetric] = imregconfig("monomodal");
     if isempty(optimizer)
         optimizer = defaultOptimizer;
@@ -27,10 +32,10 @@ function finalTForm = PyramidRegisterPair(fixed, moving, metric, optimizer, prog
     if options.levels < 1
         error("Must select a level strength greater than or equal to 1")
     end    
-
+    
     pyramidImgTable = table('Size', [options.levels, 2], 'VariableTypes',{'cell', 'cell'}, 'VariableNames',{'fixed', 'moving'});
     [pyramidImgTable.fixed{1}, pyramidImgTable.moving{1}] = trimToSize(fixed, moving);
-
+    
     for i=2:options.levels
         pyramidImgTable.fixed{i} = impyramid(pyramidImgTable.fixed{i-1}, "reduce");
         pyramidImgTable.moving{i} = impyramid(pyramidImgTable.moving{i-1}, "reduce");
@@ -42,7 +47,7 @@ function finalTForm = PyramidRegisterPair(fixed, moving, metric, optimizer, prog
         updateWaitbar(level);
     end  
     curTForm = imregcorr(pyramidImgTable.moving{options.levels},pyramidImgTable.fixed{options.levels},options.crossCTransform);
-
+    
     for i = options.levels-1:-1:1
         if ~isequal(progress.progressBar, 0)
             level = options.levels+1 - i;
@@ -51,10 +56,10 @@ function finalTForm = PyramidRegisterPair(fixed, moving, metric, optimizer, prog
         nextTForm = pyramidUpTform(curTForm); %scale up transform for the next pyramid layer
         curTForm = imregtform(pyramidImgTable.moving{i}, pyramidImgTable.fixed{i}, options.transform, optimizer, metric, PyramidLevels=1, InitialTransformation=nextTForm);
     end
-
+    
     finalTForm = curTForm;
-
-
+    
+    
     function tformUp = pyramidUpTform(inputTForm)
         %{
         I BELIEVE EVERYTHING SCALES OTHER THAN THE TRANSLATION, if its a 3x3
@@ -66,9 +71,8 @@ function finalTForm = PyramidRegisterPair(fixed, moving, metric, optimizer, prog
         transformMatrix([1,2], 3) = 2*transformMatrix([1,2], 3);
         tformUp = affinetform2d(transformMatrix);
     end
-
+    
     function [fixedTrimmed, movingTrimmed] = trimToSize(fixed, moving)
-      
         fixedSize = size(fixed);
         movingSize = size(moving);
         minrow = min(fixedSize(1), movingSize(1)); 
@@ -76,9 +80,8 @@ function finalTForm = PyramidRegisterPair(fixed, moving, metric, optimizer, prog
     
         fixedTrimmed = fixed(1:minrow, 1:mincol);
         movingTrimmed = moving(1:minrow, 1:mincol);
-    
     end
-
+    
     function updateWaitbar(tLevel)
         progressPercent = ((progress.iter - 1) * options.levels + tLevel) / (progress.total * options.levels);
         message = sprintf('Registering image pair: %d/%d on pyramid level: %d/%d', ...

@@ -1,4 +1,6 @@
 function imgTForms = registerImgs(inputImages, inputFixed, metric, optimizer, options)
+    % 
+    % 
     % Augustijn Vrolijk
     % 2025-7
     
@@ -22,7 +24,7 @@ function imgTForms = registerImgs(inputImages, inputFixed, metric, optimizer, op
         progExist = false;
         options.progressBar = waitbar(0, "Initialising ...");
     end
-
+    
     [defaultOptimizer, defaultMetric] = imregconfig("monomodal");
     if isempty(optimizer)
         optimizer = defaultOptimizer;
@@ -30,14 +32,13 @@ function imgTForms = registerImgs(inputImages, inputFixed, metric, optimizer, op
     if isempty(metric)
         metric = defaultMetric;
     end
+    
 
     [fixedCell, movingCell, isPivot] = resolveImagePairs(inputFixed, inputImages);
     nImages = length(movingCell);
-
     imgTForms((nImages + 1), 1) = affinetform2d(); %one extra to include the fixed image, it will have a blank transform
     
     for i=1:nImages
-      
         [fixedWarp, movingWarp] = warpPair(fixedCell{i}, movingCell{i}, imgTForms(i), isPivot);
 
         progress = struct('iter',i,'total',nImages,'progressBar',options.progressBar);
@@ -47,13 +48,13 @@ function imgTForms = registerImgs(inputImages, inputFixed, metric, optimizer, op
             crossCTransform=options.crossCTransform);
         
         nextTForm = affinetform2d(imgTForms(i).A*newTForm.A);
-
         imgTForms(i+1) = nextTForm;
     end
     
     if ~progExist
         close(options.progressBar)
     end
+    
 
     function [fixedClean, movingClean, isPivot] = resolveImagePairs(fixed, images)
         %{
@@ -70,7 +71,6 @@ function imgTForms = registerImgs(inputImages, inputFixed, metric, optimizer, op
         %FLAG IS GIVEN AS THE MAIN LOOP NEEDS TO ACT DIFFERENTLY IF THE
         %PIVOT  IS ALWAYS THE SAME OR NOT, otherwise it registers to a
         %basearray of actually unregistered images.
-
         if length(fixed) >= 2
             error("only one image can be selected as the 'pivot'");
         elseif isequal(fixed{1}, 0)

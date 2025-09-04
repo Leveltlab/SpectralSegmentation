@@ -1,5 +1,4 @@
 classdef basicQueue < handle
-
     %THIS IS A VERY BASIC CIRCULAR QUEUE WHICH IS NOT OPTIMISED
     %EACH TIME THE QUEUE IS SHORTENED OR LENGHTENED THE ARRAY GETS
     %REWRITTEN FULLY
@@ -8,6 +7,23 @@ classdef basicQueue < handle
     %LIST, THEREFORE IF WE DYNAMICALLY SHORTEN AND LENGTHEN IT DOESN'T LOSE
     %TRACK OF WHERE THE "USABLE" LIST SHOULD LOOP BACK TO, ESPECIALLY WHEN
     %NOT YOU JUST ASSIGN AND IT LOOPS BACK AROUND THE QUEUE
+    % 
+    %QUEUE CAN DO 4 THINGS
+    %ADD, assign the next val as what we want, if we reached the queue limit
+    %then loop back around and overwrite, therefore we first return the current
+    %value at that idx
+    %
+    %POP, (a specific value, therefore we must reallocate the length of the
+    %queue)
+    %
+    %LENGTHEN, increase the size of the queue and add new vals at the head
+    %
+    %SHORTEN, shorten the size of the queue and return the last added value
+    %
+    % MAYBE IMPLEMENT IT AS A LINKED LIST INSTEAD OF A QUEUE?
+    % 
+    % Augustijn Vrolijk
+    % 2025-6
     properties (Access = public)
         vals = [];
         back = 0; %back of queue, oldest vals
@@ -32,7 +48,7 @@ classdef basicQueue < handle
             for iter = 1:tLen
                 tempVals(iter) = obj.pop();
             end
-
+            
             obj.vals = tempVals;
             obj.back = 1;
             obj.front = tLen;
@@ -105,7 +121,12 @@ classdef basicQueue < handle
             state.len = obj.len;
         end
 
-        function retVal = enqueue(obj, val)
+        function retVal = enqueue(obj, val, removeSide)
+            arguments
+                obj
+                val
+                removeSide = 'pop';
+            end
             retVal = 0;
             
             if obj.size == 0
@@ -113,7 +134,11 @@ classdef basicQueue < handle
             end
 
             if obj.len == obj.size
-                retVal = obj.pop();
+                if strcmp(removeSide, 'pop')
+                    retVal = obj.pop();
+                else
+                    retVal = obj.dequeue();
+                end
             end
 
             obj.add(val);
@@ -123,7 +148,7 @@ classdef basicQueue < handle
             %increase length of queue by adding giving an array of vals to
             %add to the head
             arguments
-                obj 
+                obj
                 val double = 0 %array of vals 
             end
             obj.rewrite(obj.size + length(val));
@@ -132,7 +157,7 @@ classdef basicQueue < handle
                 obj.add(val(i));
             end
         end
-
+        
         function retVal = setLen(obj, val)
             %increase length of queue by specifying new max length
             retVal = 0;
@@ -150,7 +175,7 @@ classdef basicQueue < handle
                 obj.len = tLen;
             end
         end
-
+        
         function retVal = shorten(obj, n)
             arguments
                 obj 
@@ -160,9 +185,8 @@ classdef basicQueue < handle
             if newSize < 0
                 error("shortened queue is smaller than zero")
             end
-
+            
             toCut = obj.len - newSize;
-
             retVal = zeros(toCut,1);
             
             for i=1:toCut
@@ -172,28 +196,40 @@ classdef basicQueue < handle
             %"back" param based on the object size
             obj.rewrite(newSize);
         end
-
+        
         function val = pop(obj)
             %pop oldest value
             if obj.isempty()
                 val = 0;
                 return 
             end
-
+            
             val = obj.vals(obj.back);
             obj.vals(obj.back) = 0;
             obj.len = obj.len - 1;
             obj.back = mod(obj.back, obj.size) + 1;
+        end
 
+        function val = dequeue(obj)
+            % remove newest value
+            if obj.isempty()
+                val = 0;
+                return
+            end
+            
+            val = obj.vals(obj.front);
+            obj.vals(obj.front) = 0;
+            obj.len = obj.len - 1;
+            obj.front = obj.front - 1;
         end
 
         function remove(obj, val)
-            %remove selected value
+            % remove selected value
             if val == 0
                 error("can't remove 0 from the queue")
             end
             obj.rewrite()
-
+            
             idx = find(obj.vals == val);
             if length(idx) > 1
                 error("duplicate values in the queue")
@@ -201,7 +237,6 @@ classdef basicQueue < handle
                 warning("the given value was not found in the queue")
                 return
             end
-
             
             obj.vals(idx) = [];
             obj.len = obj.len - 1;
@@ -211,17 +246,3 @@ classdef basicQueue < handle
 end
 
 
-
-%QUEUE CAN DO 4 THINGS
-%ADD, assign the next val as what we want, if we reached the queue limit
-%then loop back around and overwrite, therefore we first return the current
-%value at that idx
-
-%POP, (a specific value, therefore we must reallocate the length of the
-%queue)
-
-%LENGTHEN, increase the size of the queue and add new vals at the head
-
-%SHORTEN, shorten the size of the queue and return the last added value
-
-%MAYBE IMPLEMENT IT AS A LINKED LIST INSTEAD OF A QUEUE?
