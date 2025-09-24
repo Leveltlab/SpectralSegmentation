@@ -1,6 +1,38 @@
-
-
-
+% The second part of the chronic matching process. Using the registered
+% masks to calculate ROI overlap and matches
+% 
+% Leander de Kraker
+% 2020-2-24
+% 2025-9-24: Added ability to import registration_data
+% 
+%% Use output of the ImageReg2P app
+if exist('registration_data', 'var')
+    filepaths = cellstr(registration_data.Path);
+    filenames = cellstr(registration_data.Name);
+    filenamesShort = cellstr(registration_data.IDName);
+    filedates = cat(1, registration_data.Date{:});
+    colors = registration_data.imgColor;
+    Masks = registration_data.Mask_warped;
+    transformed.method = 'affine2D';
+    transformed.transforms = registration_data.tForm;
+    BImgs = registration_data.Image_warped;
+    nfiles = length(filenames);
+    
+    PPs = struct('P', [],  'A', [], 'Cnt', [], 'Con', []);
+    Masks = cell(nfiles, 1);
+    for i = 1:nfiles
+        load([filepaths{i}, filenames{i}], 'PP', 'Mask');
+        PPs(i).A = PP.A;
+        PPs(i).Cnt = PP.Cnt;
+        PPs(i).Con = PP.Con;
+        PPs(i).P = PP.P;
+        Masks{i} = Mask;
+    end
+    Masks = warpImagesfromTforms(transformed.transforms, Masks);
+    for i = 1:nfiles
+        PPs(i) = PPfromMask(Masks{i}, [], PPs(i));
+    end
+end
 
 %% Checking how ROIs overlap. % % % % % % % %  MATCHING ROIS
 
@@ -151,7 +183,7 @@ clearvars i j h h1  rois sorted i nameCol
 
 %% Chronic viewer checker UI
 
-ChronicViewer(imgs.BImgR, Masks, filenamesShort, linkMat, PPs, score, inRoi)
+ChronicViewer(BImgs, Masks, filenamesShort, linkMat, PPs, score, inRoi)
 % If you saved changes in linkMat with the ChronicViewer, rerun previous
 % section to recalculate statistics!!!!
 
