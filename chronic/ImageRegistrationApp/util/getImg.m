@@ -7,20 +7,19 @@ function images = getImg(filenames, filepaths)
         images (:, 1) cell
     end
     fetchStr = 'BImg';
-
+    
     images = cell(length(filenames), 1);
     rawImagesTable = fetchData(filenames, filepaths, {fetchStr});
     
     for i = 1:length(filenames)
         images{i} = cleanImage(rawImagesTable.(fetchStr){i});
     end
-
+    
     function cleanImg = cleanImage(Img)
         isClean = false;
         cleanImg = Img;
         
         while not (isClean) %trim outer image border
-    
             isClean = true;
             if isequal(cleanImg(1,:),cleanImg(end,:))
                 cleanImg = cleanImg(2:end-1,:);

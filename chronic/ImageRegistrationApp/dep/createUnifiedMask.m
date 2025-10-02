@@ -2,7 +2,7 @@ function [linkMat, unifiedMasks] = createUnifiedMask(filepaths, transforms)
     
     function masks = fetchMasks(filepaths)
         fetchStr = 'Mask';
-           
+        
         nFiles = length(filepaths);    
         masks = cell(size(filepaths));
         for i = 1:nFiles
@@ -26,7 +26,7 @@ function [linkMat, unifiedMasks] = createUnifiedMask(filepaths, transforms)
             doubled_mask(cur_mask == 0) = 0;
             masks{i} = doubled_mask;
         end
-
+        
         unifiedMasks = cell(size(masks));
         for j=1:nVars
             cur_mask = masks{j};
@@ -40,12 +40,12 @@ function [linkMat, unifiedMasks] = createUnifiedMask(filepaths, transforms)
             unifiedMasks{j} = cur_mask;
         end
     end
-
+    
     raw_masks = fetchMasks(filepaths);
     warped_masks = warpImagesfromTforms(transforms, raw_masks);
-            
+    
     thres = 0.6; % OVERLAP THRESHOLD.    range (0.5, 1) = 50% overlap - 100%
-
+    
     % Checking overlap between the ROIs of all recording pairs
     inRoi = CalcRoiOverlap(warped_masks);
     
@@ -54,9 +54,9 @@ function [linkMat, unifiedMasks] = createUnifiedMask(filepaths, transforms)
     
     % Squishing linked ROIs into one link matrix
     linkMat = SquishLinkedRois(linked);
-
+    
     [n_Rois, nVars] = size(linkMat);
-
+    
     is_valid = true; % flag to track validity
     for j = 1:nVars  % loop over each mask (column)
         col_vals = linkMat(:, j);

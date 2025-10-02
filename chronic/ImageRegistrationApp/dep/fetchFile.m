@@ -1,10 +1,13 @@
-function [filenames, filepaths] = fetchFile()
+function [filenames, filepaths] = fetchFile(filter)
+    arguments (Input)
+        filter (:, 1) string = '';
+    end
     arguments (Output)
         filenames (:, 1) string
         filepaths (:, 1) string
     end
     
-    [rawNames, rawPaths] = uigetfile("MultiSelect","on");
+    [rawNames, rawPaths] = uigetfile(filter, "MultiSelect","on");
     
     if ischar(rawNames)
         nFiles = 1;

@@ -34,8 +34,10 @@ function config = createConfig(name)
     config.register.crossCTransform = "translation"; 
     %options include: "translation", "rigid", "similarity"
     
-    config.data.ExtraColumns = {"IDName = getIDName(Name, Date)", "Date = getDate(Name)"};  
-    config.data.FetchDataCols = {"Image = getImg(Name, Path)", "Mask = getMask(Name, Path)"};
+    config.data.ExtraColumns = {"IDName = getIDName(Name, Date)",...
+                                "Date   = getDate(Name)"};  
+    config.data.FetchDataCols = {"Image = getImg(Name, Path)",...
+                                 "Mask  = getMask(Name, Path)"};
     
     if ispref('imageReg2P', name)
         rmpref('imageReg2P', name)

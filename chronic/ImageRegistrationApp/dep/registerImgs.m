@@ -33,21 +33,21 @@ function imgTForms = registerImgs(inputImages, inputFixed, metric, optimizer, op
         metric = defaultMetric;
     end
     
-
+    
     [fixedCell, movingCell, isPivot] = resolveImagePairs(inputFixed, inputImages);
     nImages = length(movingCell);
     imgTForms((nImages + 1), 1) = affinetform2d(); %one extra to include the fixed image, it will have a blank transform
     
     for i=1:nImages
         [fixedWarp, movingWarp] = warpPair(fixedCell{i}, movingCell{i}, imgTForms(i), isPivot);
-
+        
         progress = struct('iter',i,'total',nImages,'progressBar',options.progressBar);
-
+        
         newTForm = PyramidRegisterPair(fixedWarp, movingWarp, metric, optimizer, ...
             progress,levels=options.levels,transform=options.transform, ...
             crossCTransform=options.crossCTransform);
         
-        nextTForm = affinetform2d(imgTForms(i).A*newTForm.A);
+        nextTForm = affinetform2d(imgTForms(i).A * newTForm.A);
         imgTForms(i+1) = nextTForm;
     end
     

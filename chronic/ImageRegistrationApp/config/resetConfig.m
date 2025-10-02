@@ -1,4 +1,6 @@
 function config = resetConfig()
+    % Setting config for ImageReg2P app
+    % Augustijn Vrolijk
 
     config = struct;
     [optimiser, metric]  = imregconfig('monomodal');
@@ -12,8 +14,10 @@ function config = resetConfig()
     
     
     config.data = struct;
-    config.data.ExtraColumns = {"IDName = getIDName(Name, Date)", "Date = getDate(Name)"};
-    config.data.FetchDataCols = {"Image = getImg(Name, Path)", "Mask = getMask(Name, Path)"};
+    config.data.ExtraColumns = {"IDName = getIDName(Name, Date)",...
+                                "Date = getDate(Name)"};
+    config.data.FetchDataCols = {"Image = getImg(Name, Path)",...
+                                 "Mask = getMask(Name, Path)"};
     
     if ispref('imageReg2P', 'default_config')
         rmpref('imageReg2P', 'default_config')
