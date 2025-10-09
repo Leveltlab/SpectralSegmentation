@@ -47,7 +47,7 @@ function imgTForms = registerImgs(inputImages, inputFixed, metric, optimizer, op
             progress,levels=options.levels,transform=options.transform, ...
             crossCTransform=options.crossCTransform);
         
-        nextTForm = affinetform2d(imgTForms(i).A * newTForm.A);
+        nextTForm = affinetform2d(newTForm.A * imgTForms(i).A);
         imgTForms(i+1) = nextTForm;
     end
     
