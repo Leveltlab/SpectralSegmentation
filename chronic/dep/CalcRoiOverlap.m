@@ -11,7 +11,6 @@ function inRoi = CalcRoiOverlap(Masks)
 nfiles = length(Masks);
 nmasks = 1:nfiles;
 inRoi = cell(1,nfiles);
-fprintf('Calculating every ROI overlap from every recording to all recordings...\n')
 
 for m = nmasks % all masks
     % for each mask, save info for each ROI

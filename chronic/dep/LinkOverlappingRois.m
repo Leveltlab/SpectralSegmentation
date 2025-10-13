@@ -20,7 +20,6 @@ nfiles = length(inRoi);
 nrois = cellfun(@size, inRoi, repmat({1}, size(inRoi)));
 linked1 = cell(nfiles);
 nmasks = 1:nfiles;
-fprintf('linking ROIs overlapping above threshold...\n')
 
 for m = nmasks % m = current mask
     otherMasks = nmasks(nmasks~=m); % Skip own overlap
@@ -39,8 +38,6 @@ end
 % Creating consistent links by looking at how much % the ROIs overlap,
 % viewing from both the masks, instead of 1 towards the other
 linked = cell(nfiles);
-fprintf('Checking whether ROI overlap is high enough between the two recordings...\n')
-
 for m = nmasks
     otherMasks = nmasks(nmasks~=m);
     for c = otherMasks

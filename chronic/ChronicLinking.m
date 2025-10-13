@@ -51,12 +51,15 @@ end
 
 
 % Checking overlap between the ROIs of all recording pairs
+fprintf('Calculating every ROI overlap from every recording to all recordings...\n')
 inRoi = CalcRoiOverlap(Masks);
 
 % Linking overlapping ROIs between all recording pairs above threshold,
+fprintf('linking ROIs overlapping above threshold...\n')
 [linked, linked1] = LinkOverlappingRois(inRoi, thres);
 
 % Squishing linked ROIs into one link matrix
+fprintf('Compressing link data into match matrix...\n')
 linkMat = SquishLinkedRois(linked);
 
 fprintf('\ndone matching ROIs\n')

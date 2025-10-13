@@ -7,7 +7,7 @@ arguments
     inRoi
     nLinks double = sum(linkMat~=0,2)
     thres (1,1) double = NaN
-    doPlot (1,1) boolean = true
+    doPlot (1,1) logical = true
 end
 
 nMatches = size(linkMat, 1);

@@ -20,7 +20,7 @@ function ChronicViewer(BImgs, Masks, names, linkMat, contours, score, inRoi)
 % 
 % n = number of linked recordings
 % 
-% 
+%  
 % The masks view only shows masks that are chronically linked to another
 % ROI in at least 1 other recording.
 % 
@@ -476,9 +476,9 @@ function UpdateView
             
             colors3 = hot(length(sShow2));
             colors3 = [0.5 0.5 0.5; colors3(1:end-1, :)];
-
+            
             hImg.CData = CreateRGB2(nLinksMask, colors3);
-
+            
             % legend Text
             for x = 1:nfiles
                 if x <= length(sShow2)

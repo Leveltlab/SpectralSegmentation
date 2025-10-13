@@ -9,7 +9,6 @@ nfiles = size(linked, 2);
 nmasks = 1:nfiles;
 
 % all links in a matrix
-fprintf('Compressing link data into match matrix...\n')
 linkMatV1 = cell(nfiles-1, 1);
 for m = 1:nfiles-1
     otherMasks = m+1:nmasks(end);
