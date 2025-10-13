@@ -1,10 +1,11 @@
-function [nFoundBack, nFoundBackPerc, nameCol] = CalcFoundBack(linkMatAllRois, nLinksAllRois, nrois)
+function [nFoundBack, nFoundBackPerc, nameCol] = CalcFoundBack(linkMatAllRois, nLinksAllRois, nrois, doPlot)
 % Calculate how many matches have a specific number of links
 % 
 % input: 
 %   - linkMatAllRois
 %   - nLinksAllRois
-%   - nrois ([1 x nfiles] double). total number of ROIs for each recording
+%   - nrois ([1 x nfiles] double). total number of ROIs for each recording\
+%   - toplot (boolean)
 % 
 % output: 
 %   - nFoundBack ([nfiles+1 x nfiles+1] double): the number of ROIs of
@@ -41,3 +42,16 @@ n = double(repmat(nrois', [1, nfiles]));
 n(end+1,:) = sum(nrois);
 n(:,end+1) = sum(nrois);
 nFoundBackPerc = round(nFoundBack ./ n .* 100);
+
+if doPlot
+    figure('name','number of ROIs matched per recording')
+    h = uitable('Data',nFoundBack,'Units', 'Normalized', 'Position', [0, 0.5, 1, 0.4]);
+    h.ColumnName = [nameCol 'summed ROIs'];
+    h.RowName = [filenamesShort; {'summed ROIs'}];
+    annotation('textbox', [0, 0.95, 1, 0], 'string', 'Specific number of ROIs which are in a match with that amount of linked ROIs')
+    
+    h = uitable('Data',round(nFoundBackPerc,1), 'Units','Normalized', 'Position', [0, 0, 1, 0.4]);
+    h.ColumnName = [nameCol, {'mean'}];
+    h.RowName = [filenamesShort; {'mean'}];
+    annotation('textbox', [0, 0.45, 1, 0], 'string', 'Percentage of ROIs which are in a match with that amount of linked ROIs')
+end

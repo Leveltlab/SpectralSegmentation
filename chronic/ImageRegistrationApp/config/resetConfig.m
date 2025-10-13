@@ -31,4 +31,4 @@ function config = resetConfig()
     addpref('imageReg2P', 'config_name', name)
     
     clc
-    enda
+end

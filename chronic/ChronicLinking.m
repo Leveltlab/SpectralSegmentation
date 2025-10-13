@@ -67,6 +67,7 @@ fprintf('\ndone matching ROIs\n')
 
 if ~exist('toplot','var'); toplot=1:nfiles;end
 if ~exist('colors','var'); colors=flipud(cmapL([0 0 1; 0 1 1; 0 1 0; 1 0.7 0; 1 0 0; 0.7 0 1], nfiles));end
+doPlot = true;
 
 % Clean the linkMat of single ROI matches (those appear after editing in ChronicViewer)
 nLinks = sum(linkMat~=0,2);
@@ -74,34 +75,8 @@ linkMat(nLinks==1,:)=[];
 nLinks = sum(linkMat~=0,2);
 nrois = [PPs.Cnt];
 
-nMatches = size(linkMat, 1);
-
-% The 'OVERLAP SCORE' is based on the pixel overlap between the linked ROIs. 
-% This also takes into account the ROIs which are not officially linked with
-% each other, but were linked together because of mutual links.
-score = zeros(nMatches,1);
-for i = 1:nMatches
-    score(i) = OverlapScore(inRoi, linkMat, i);
-end
-
-% Plot scores of the ROIs
-h = figure; hold on
-plot(nLinks+(rand(length(nLinks),1)./5-0.1), score, 'o')
-% plot(nLinks+(score2-0.5), score2, 'o')
-h.Children.XTick = 2:nfiles;
-ylim([0 1])
-title(sprintf('overlap scores for chronic matched ROIs. thr=%.2f',thres))
-xlabel('ROI found in n recordings')
-ylabel('score (% pixel overlap average)')
-% Average score per number of links in the match
-scoreMean = zeros(1,nfiles-1);
-for i = 2:nfiles
-    scoreMean(i-1) = mean(score(nLinks==i));
-end
-plot(2:nfiles, scoreMean,'ro-')
-line([1.5 nfiles+0.5],[thres, thres],'color',[0 0 0 0.4],'linestyle','--')
-legend({'match score','average score','threshold'},...
-    'location','southeast')
+% Overlap score of the matches
+score = OverlapScoreRun(linkMat,inRoi, nLinks, thres, doPlot);
 
 %__________________________________________________________________________
 linkMatAllRois = ExtendLinkMat(linkMat, nrois);
@@ -123,18 +98,8 @@ xlabel('found back')
 % ________________________________________________________________________
 % TABLES
 % Find the number- and % of neurons in each recording that were found back
-[nFoundBack, nFoundBackPerc, nameCol] = CalcFoundBack(linkMatAllRois, nLinksAllRois, nrois);
-
-figure('name','number of ROIs matched per recording')
-h = uitable('Data',nFoundBack,'Units', 'Normalized', 'Position', [0, 0.5, 1, 0.4]);
-h.ColumnName = [nameCol 'summed ROIs'];
-h.RowName = [filenamesShort; {'summed ROIs'}];
-annotation('textbox', [0, 0.95, 1, 0], 'string', 'Specific number of ROIs which are in a match with that amount of linked ROIs')
-
-h = uitable('Data',round(nFoundBackPerc,1), 'Units','Normalized', 'Position', [0, 0, 1, 0.4]);
-h.ColumnName = [nameCol, {'mean'}];
-h.RowName = [filenamesShort; {'mean'}];
-annotation('textbox', [0, 0.45, 1, 0], 'string', 'Percentage of ROIs which are in a match with that amount of linked ROIs')
+[nFoundBack, nFoundBackPerc, nameCol] = CalcFoundBack(linkMatAllRois, nLinksAllRois, nrois,...
+                                                      filenamesShort, doPlot);
 
 
 %__________________________________________________________________________
