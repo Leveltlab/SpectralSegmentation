@@ -1,11 +1,13 @@
-function [nFoundBack, nFoundBackPerc, nameCol] = CalcFoundBack(linkMatAllRois, nLinksAllRois, nrois, doPlot)
+function [nFoundBack, nFoundBackPerc, nameCol] = CalcFoundBack(linkMatAllRois, nLinksAllRois, nrois, filenamesShort, doPlot)
 % Calculate how many matches have a specific number of links
 % 
 % input: 
-%   - linkMatAllRois
-%   - nLinksAllRois
-%   - nrois ([1 x nfiles] double). total number of ROIs for each recording\
-%   - toplot (boolean)
+%   - linkMatAllRois ([nmatches x nfiles] double)
+%   - nLinksAllRois ([nmatches x 1] double)
+%   - nrois ([1 x nfiles] double). total number of ROIs for each recording
+%   Optional:
+%   - filenamesShort (cell array with strings)
+%   - doPlot (boolean)
 % 
 % output: 
 %   - nFoundBack ([nfiles+1 x nfiles+1] double): the number of ROIs of
@@ -19,10 +21,22 @@ function [nFoundBack, nFoundBackPerc, nameCol] = CalcFoundBack(linkMatAllRois, n
 %       Right margin contains percentage of ROIs in this recording compared
 %       to total number of ROIs in the dataset.
 %       Bottom margin contains 
-%       
+%   - nameCol ([nfiles, 1] cell with strings)
+% 
 % Leander de Kraker
 % 2025-4-2
 % 
+arguments
+    linkMatAllRois
+    nLinksAllRois
+    nrois
+    filenamesShort cell = {}
+    doPlot logical = false
+end
+if size(nrois,1)>1
+    nrois = nrois';
+end
+
 
 nfiles = size(linkMatAllRois, 2);
 nFoundBack = zeros(nfiles+1);

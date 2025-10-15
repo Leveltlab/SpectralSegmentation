@@ -16,6 +16,9 @@ function [confusionFoundMat, confusionFoundMatPerc] = CalcConfusionFoundMat(link
 % 
 % Leander de Kraker
 % 2025-4-2
+if size(nrois, 1)>1
+    nrois = nrois';
+end
 
 nfiles = size(linkMatAllRois, 2);
 confusionFoundMat = zeros(nfiles);
