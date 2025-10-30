@@ -6,7 +6,7 @@ function imgTForms = registerImgs(imgs, pivot, metric, optimizer, options)
     
     arguments (Input)
         imgs (:, 1) cell
-        pivot (1, 1) double = []
+        pivot double = []
         metric = []
         optimizer = []
         options.levels double = 4
