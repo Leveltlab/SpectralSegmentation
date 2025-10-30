@@ -34,11 +34,11 @@ function imgTForms = registerImgs(imgs, pivot, metric, optimizer, options)
     end
     
     nImages = length(imgs);
-    
-    if isempty(pivot)
+    % Get which recording to use as reference and which to move for every image
+    if isempty(pivot) % Serially registering
         refs   = 1:(nImages-1);
         toMove = 2:nImages;
-    else
+    else % Registering against fixed reference image
         refs   = pivot*ones(nImages-1, 1);
         toMove = 1:nImages;
         toMove(pivot) = [];
@@ -48,7 +48,12 @@ function imgTForms = registerImgs(imgs, pivot, metric, optimizer, options)
     imgTForms(nImages, 1) = affinetform2d(); %one extra to include the fixed image, it will have a blank transform
     
     for i=1:nToMove
-        [fixedImg, movingImg] = warpPair(imgs{refs(i)}, imgs{toMove(i)}, imgTForms(refs(i)));
+        % Using the transform of the reference to build upon it
+        fixedView = affineOutputView(size(imgs{refs(i)}), imgTForms(refs(i)),"BoundsStyle","FollowOutput");
+        movingView = affineOutputView(size(imgs{toMove(i)}), imgTForms(refs(i)),"BoundsStyle","FollowOutput");
+        outView = getLargestImgRef([fixedView, movingView]);
+        fixedImg = imwarp(imgs{refs(i)}, imgTForms(refs(i)), "OutputView", outView);
+        movingImg = imwarp(imgs{toMove(i)}, imgTForms(refs(i)), "OutputView", outView);
         
         progress = struct('iter',i,'total',nImages,'progressBar',options.progressBar);
         
@@ -58,23 +63,10 @@ function imgTForms = registerImgs(imgs, pivot, metric, optimizer, options)
                                         transform=options.transform, ...
                                         crossCTransform=options.crossCTransform);
         
-        imgTForms(toMove(i)) = affinetform2d(imgTForms(toMove(i)).A * newTForm.A);
+        imgTForms(toMove(i)) = affinetform2d(newTForm.A * imgTForms(refs(i)).A);
     end
     
     if ~progExist
         close(options.progressBar)
-    end
-    
-    function [fixedImg, movingImg] = warpPair(fixed, moving, tForm, isPivot)
-        noChange = affinetform2d();
-        fixedView = affineOutputView(size(fixed),noChange,"BoundsStyle","FollowOutput");
-        movingView = affineOutputView(size(moving),tForm,"BoundsStyle","FollowOutput");
-        finalOutputView = getLargestImgRef([fixedView, movingView]);
-        if isPivot
-            fixedImg = imwarp(fixed, noChange, "OutputView", finalOutputView);
-        else
-            fixedImg = imwarp(fixed, tForm, "OutputView", finalOutputView);
-        end
-        movingImg = imwarp(moving, tForm, "OutputView", finalOutputView);     
     end
 end
