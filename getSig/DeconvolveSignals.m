@@ -53,7 +53,7 @@ else
 end
 varNames = who('-file', filename);
 
-if asFunction && nargin==2 && ~isempty(varargin{1}) % to do estimation of parameters is given
+if asFunction && nargin>=2 && ~isempty(varargin{1}) % to do estimation of parameters is given
     doParEstimation = varargin{1};
 elseif asFunction % Not given as input but executed as function. Use standard option
     doParEstimation = false;
@@ -68,7 +68,7 @@ else
 end
 
 % Sigs to deconvolve
-if asFunction && nargin==3
+if asFunction && nargin>=3
     sigNames = varargin{2};
     sigNamesGiven = true;
     if iscell(sigNames) % multiple sig names were given
