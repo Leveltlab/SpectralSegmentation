@@ -23,7 +23,7 @@ function varargout = RoiManagerGUI(varargin)
 %             needs to be split.           TAB 'Split ROIs'
 %	creation: click on a place in the image and the computer will try
 %             to find a contour, the contour will be based on the
-%             current background image in the RoiRejecter, in case that
+%             current background image in the RoiManager, in case that
 %             that is a color image it will average the three colorchannels
 %             to create a grayscale image. TAB 'Create ROI'
 %	manual creation: manually draw a ROI by clicking on the main
@@ -52,7 +52,7 @@ function varargout = RoiManagerGUI(varargin)
 %       by selection the 'chronic' option in the background view option 
 %       in the TAB 'show data'. The background images in the chronic
 %       file will be averaged together, and then registered to the current
-%       background image in the RoiRejecter.
+%       background image in the RoiManager.
 %   the ROIs can be made colorful by selecting 'inner ROI corr' in the
 %       background view option in the TAB 'show data'. This will do the
 %       same analysis that 'Split ROIs' will do, for every ROI. Calculation
@@ -80,7 +80,7 @@ function varargout = RoiManagerGUI(varargin)
 % Made by: Leander de Kraker
 % 2018-2020
 
-% Last Modified by GUIDE v2.5 05-Sep-2022 14:20:45
+% Last Modified by GUIDE v2.5 06-Nov-2025 14:22:25
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -135,7 +135,7 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
             if any(fn ~= 0)
                 datafile = [pn fn];
             else
-                fprintf('cannot run RoiRejecterGUI without transposed data file\n')
+                fprintf('cannot run RoiManagerGUI without transposed data file\n')
                 return
             end
         end
@@ -261,10 +261,8 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     
     % Data to keep accessable in every function
     data = struct();
-    if exist('SPSIGfile','var')
-        data.SPSIGfile = SPSIGfile; % filename to save data to
-        set(h.hGUI, 'name', sprintf('RoiManagerGUI: %s', SPSIGfile(1:end-4)))
-    end
+    data.SPSIGfile = SPSIGfile; % filename to save data to
+    set(h.hGUI, 'name', sprintf('RoiManagerGUI: %s', SPSIGfile(1:end-4)))
     data.xas = (1:dim(1))./freq;
     data.dim = dim;
     data.freq = freq;
@@ -690,7 +688,7 @@ function SelectROI(pos, h, do)
                 idx.White(id) = mod(idx.White(id)+1,2); % Toggle ROI to whitelist
                 if idx.Black(id) == 1 % Get out of blacklist
                     idx.Black(id) = 0;
-                end                
+                end
         end
     end
     
@@ -2538,21 +2536,21 @@ function Help_Callback(~, eventdata, h)
             str{15} = 'Mask: shows the mask, brightest ROIs have the lowest ROI nr.';
             str{17} = ['chronic1: imports BImg2 from a chronic.mat file, averages the '...
                        'different BImg (representative spectral images) from all the recordings'...
-                       ' and then registers that average projection to the current recording in the "RoiRejecterGUI"'...
+                       ' and then registers that average projection to the current recording in the "RoiManagerGUI"'...
                        ' The current spectral is shown in green, and the registered chronic in red'];
             str{19} = 'Chronic 2: same as chronic 1 but does not show the current spectral image';
             str{21} = 'Chronic 3: shows the images from chronic, different color per day. red=1st day';
             str{23} = 'Chronic 4: heatmap of the registered chronic ROI mask';
             str{25} = ['peak frequency: Every ROI has its highest spectral density at a specific frequency'...
                        'the lower frequencies are shown in blue, higher frequency ROIs in red (colormap jet (rainbow))'];
-            str{27} = 'variable from workspace: import any variable of the correct background size into the RoiRejecter';
+            str{27} = 'variable from workspace: import any variable of the correct background size into the RoiManager';
             
         case 'manRoiHelp' % in tab Manual ROI
             strTitle = 'ROI drawing help';
             str = {'Left click to create a corner point for the new ROI contour.'};
             str{2} = ['If you want to stop drawing the ROI, keep right clicking until no '...
                       'line segments/ corner points remain.'];
-            str{3} = ['If you would completely overwrite an existing ROI, the RoiRejecterGUI '...
+            str{3} = ['If you would completely overwrite an existing ROI, the RoiManagerGUI '...
                        'will refuse to create your requested ROI.'];
             str{4} = 'Large ROIs can be slow to edit because a lot of signal has to be retrieved.';
             
@@ -2613,26 +2611,28 @@ function Help_Callback(~, eventdata, h)
             
         case 'saveHelp' % Main Save button
             strTitle = 'Save/ general info';
-            str = {['If the "RoiManagerGUI" was called with input, the save function will only save'...
-            	' the PP, Mask and SpatialCorr variables to the workspace.']};
-            str{3} = [' If the "RoiManagerGUI" has loaded a SPSIG.mat file the save button will ALSO save'...
-            	' the PP, Mask and SpatialCorr variables to the SPSIG, overwriting existing ones.'];
-            
-            % Also say which SPSIG file is loaded
-            data = getappdata(h.hGUI, 'data');
-            if isfield(data, 'SPSIGfile')
-                str{5} = ['loaded file: ' data.SPSIGfile];
-            end
+            str = {['If the "RoiManagerGUI" has loaded a SPSIG.mat file the save button will save'...
+            	' the PP, Mask and SpatialCorr variables to the SPSIG, overwriting existing ones.']};
             
             sbxt = getappdata(h.hGUI, 'sbxt');
-            str{7} = ['memorymapped transposed data file: ' sbxt.Filename]; 
+            str{4} = ['Memorymapped transposed data file: ' sbxt.Filename]; 
             
-            str{9}  = 'hotkeys can be used:';
-            str{10}  = 'z = toggle zoom (shift click to zoom out)';
-            str{11} = 'g = grab/pan image';
-            str{12} = 'd = datacursor (pretty useless)';
-            str{13} = '"enter"  can be used to apply ROI creation or splitting';
-            str{14} = '"delete" remove local time trace correlation overlay image';
+            str{7}  = 'Hotkeys can be used in this GUI!';
+            str{8}  = '"mousewheel scrolling": zooming in main axes or zooming x axis of signal axis';
+            str{9} = 'arrow keys: Change position of the main plot';
+            str{10} = '"k": scroll left on the signal axes';
+            str{11} = '"l": scroll right  on the signal axes';
+            str{12} = '"enter": Can be used to apply ROI creation or splitting';
+            str{13} = '"w": Toggle ROI white listing';
+            str{14} = '"b": Toggle ROI black listing';
+            str{15} = '"delete": Remove local time trace correlation overlay image';
+            str{16} = '"z": Toggle zoom (shift click to zoom out)';
+            str{17} = '"g": Grab/pan image';
+            str{18} = '"d": Datacursor (pretty useless)';
+            str{20} = ['They hotkeys only work if you have not selected a different functionality using the mouse',...
+                '(e.g. you clicked on zooming functionality of the plotting)'];
+            str{21} = ['If the hotkeys are still not working, click next to the axis or on the figure bar to put the figure',...
+                ' better into focus for MATLAB'];
             
         otherwise
             strTitle = 'otherwise is an error';
@@ -2663,25 +2663,21 @@ function saveButton_Callback(~, ~, h)
             fprintf('GUI is closed probably.\n')
         end
     else
-        h.saveButton = TurnOn(h.saveButton);
         
         % If at least one of the sliders is edited, save their settings
         saveSliders = mean(struct2array(switches.sliderSettings), 'omitnan')~=0;
         
-        if isfield(data, 'SPSIGfile')
-            h.saveButton.String = {'to SPSIG file'};
-            pause(0.01)
-            if saveSliders
-                rmSliderSettings = switches.sliderSettings;
-                save(data.SPSIGfile, 'PP', 'Mask', 'BImg', 'SpatialCorr', 'rmSliderSettings', '-append')
-            else
-                save(data.SPSIGfile, 'PP', 'Mask', 'BImg', 'SpatialCorr', '-append')
-            end
-            % TODO: update the SpatialCorr!!!
-            disp('Changes saved to SPSIG file & workspace')
+        h.saveButton = TurnOn(h.saveButton);
+        h.saveButton.String = {'to SPSIG file'};
+        pause(0.01)
+        if saveSliders
+            rmSliderSettings = switches.sliderSettings;
+            save(data.SPSIGfile, 'PP', 'Mask', 'BImg', 'SpatialCorr', 'rmSliderSettings', '-append')
         else
-            h.saveButton.String = {'to workspace'};
+            save(data.SPSIGfile, 'PP', 'Mask', 'BImg', 'SpatialCorr', '-append')
         end
+        % TODO: update the SpatialCorr!!!
+        disp('Changes saved to SPSIG file & workspace')
         
         assignin('base', 'Mask', Mask);
         assignin('base', 'PP', PP);
@@ -2696,7 +2692,7 @@ function saveButton_Callback(~, ~, h)
         setappdata(h.hGUI,'switches',switches);
         
         try
-            pause(1)
+            pause(0.01)
             h.saveButton.String = {'Saved'};
             pause(2)
             h.saveButton.String = {'Save'};
@@ -2715,6 +2711,7 @@ function myKeyPressFcn(hObject, eventdata, h)
 %     h.im % Handles are fickle. Check if im is still present.
     key = eventdata.Key;
     resetFcn = false;
+    moveAmount = 0.1; % for arrow key movements
     switch key
         case 'z' % toggle zoom
             zoom
@@ -2740,6 +2737,66 @@ function myKeyPressFcn(hObject, eventdata, h)
             if isfield(h, 'correl')
                 delete(h.correl)
             end
+        case 'w' % Toggle white listing on and off
+            % Switch to major panel ROI rejector panel if not activated
+            switches = getappdata(h.hGUI, 'switches');
+            if switches.currentMajor ~= 1
+                hImitiationObject.Tag = '1';
+                majorToggles_Callback(hImitiationObject, [], h)
+            end
+            % Act as if the white listing button was pressed
+            h.whiteButton.Value = ~h.whiteButton.Value;
+            minorToggles_Callback(h.whiteButton, [], h)
+        case 'b' % Toggle black listing on and off
+            % Switch to major panel ROI rejector panel if not activated
+            switches = getappdata(h.hGUI, 'switches');
+            if switches.currentMajor ~= 1
+                hImitiationObject.Tag = '1';
+                majorToggles_Callback(hImitiationObject, [], h)
+            end
+            % Act as if the white listing button was pressed
+            h.blackButton.Value = ~h.blackButton.Value;
+            minorToggles_Callback(h.blackButton, [], h)
+        case 'leftarrow'
+            xLims = h.mainAx.XLim;
+            if xLims(1)>0
+                 % Moving amount is based on current zoomlevel
+                 h.mainAx.XLim = xLims - diff(xLims).*moveAmount;
+            end
+        case 'rightarrow'
+            xLims = h.mainAx.XLim;
+            xmax = size(h.im.CData, 2);
+            if xLims(2)<xmax
+                 h.mainAx.XLim = xLims + diff(xLims).*moveAmount;
+            end
+        case 'uparrow'
+            yLims = h.mainAx.YLim;
+            if yLims(1)>0
+                 h.mainAx.YLim = yLims - diff(yLims).*moveAmount;
+            end
+        case 'downarrow'
+            yLims = h.mainAx.YLim;
+            ymax = size(h.im.CData, 1);
+            if yLims(2)<ymax
+                 h.mainAx.YLim = yLims + diff(yLims).*moveAmount;
+            end
+        case 'k' % Move the active signal axes to the left
+            switches = getappdata(h.hGUI, 'switches');
+            sigAxStr = sprintf('signalAx%d', switches.activeSignalAx);
+            data = getappdata(h.hGUI, 'data');
+            h.(sigAxStr).XLim = h.(sigAxStr).XLim - (diff(h.(sigAxStr).XLim)*moveAmount/3);
+            if h.(sigAxStr).XLim(1)<data.xas(1)
+                h.(sigAxStr).XLim = h.(sigAxStr).XLim - (h.(sigAxStr).XLim(1) - data.xas(1));
+            end
+        case 'l'
+            switches = getappdata(h.hGUI, 'switches');
+            sigAxStr = sprintf('signalAx%d', switches.activeSignalAx);
+            data = getappdata(h.hGUI, 'data');
+            h.(sigAxStr).XLim = h.(sigAxStr).XLim + (diff(h.(sigAxStr).XLim)*moveAmount/3);
+            if h.(sigAxStr).XLim(2)>data.xas(end)
+                h.(sigAxStr).XLim = h.(sigAxStr).XLim - (h.(sigAxStr).XLim(2) - data.xas(end));
+            end
+
     end
     
     if resetFcn
@@ -2758,3 +2815,51 @@ function myKeyPressFcn(hObject, eventdata, h)
 end
 
 
+% --- Executes on scroll wheel click while the figure is in focus.
+function hGUI_WindowScrollWheelFcn(~, eventdata, h)
+    % hObject    handle to hGUI (see GCBO)
+    % eventdata  structure with the following fields (see MATLAB.UI.FIGURE)
+    % 	VerticalScrollCount: signed integer indicating direction and number of clicks
+    % 	VerticalScrollAmount: number of lines scrolled for each click
+    % handles    structure with handles and user data (see GUIDATA)
+    switches = getappdata(h.hGUI, 'switches');
+    
+    % Find where scroll happened in relation to main axes
+    mouseMainAxLoc =get(h.mainAx,'CurrentPoint');
+    mouseMainAxLocX = mouseMainAxLoc(1, 1);
+    mouseMainAxLocY = mouseMainAxLoc(1, 2);
+    xlimsMain = h.mainAx.XLim;
+    ylimsMain = h.mainAx.YLim;
+    inMainX = xlimsMain(1)<mouseMainAxLocX && mouseMainAxLocX<xlimsMain(2);
+    inMainY = ylimsMain(1)<mouseMainAxLocY && mouseMainAxLocY<ylimsMain(2);
+    
+    % Find where scroll happened in relation to the active signal axes
+    sigAxStr = sprintf('signalAx%d', switches.activeSignalAx);
+    mouseSigAxLoc =get(h.(sigAxStr),'CurrentPoint');
+    mouseSigAxLocX = mouseSigAxLoc(1, 1);
+    mouseSigAxLocY = mouseSigAxLoc(1, 2);
+    xlimsSig = h.(sigAxStr).XLim;
+    ylimsSig = h.(sigAxStr).YLim;
+    inSigX = xlimsSig(1)<mouseSigAxLocX && mouseSigAxLocX<xlimsSig(2);
+    inSigY = ylimsSig(1)<mouseSigAxLocY && mouseSigAxLocY<ylimsSig(2);
+    
+    if inMainX && inMainY % Zoom main axes
+        h.mainAx.XLim = ZoomImage(mouseMainAxLocX, xlimsMain, [0 size(h.im.CData, 2)], eventdata.VerticalScrollCount);
+        h.mainAx.YLim = ZoomImage(mouseMainAxLocY, ylimsMain, [0 size(h.im.CData, 1)], eventdata.VerticalScrollCount);
+    elseif inSigX && inSigY % Zoom signal axes
+        data = getappdata(h.hGUI, 'data');
+        h.(sigAxStr).XLim = ZoomImage(mouseSigAxLocX, xlimsSig, data.xas([1 end]), eventdata.VerticalScrollCount);
+        h.(sigAxStr).YLim = ylimsSig;
+    end
+end
+
+
+function limsNew = ZoomImage(seed, lims, constraint, scrollMulti)
+    % new = current edge + (distance from edge * zoomfactor)
+    zoomfactor = 0.1; % fraction change of FOV
+    zoomfactor = 1 + (zoomfactor*scrollMulti);
+    limsNew = seed - ((seed - lims(1)) * zoomfactor);
+    limsNew(2) = seed + ((lims(2) - seed) * zoomfactor);
+    limsNew(limsNew < constraint(1)) = constraint(1);
+    limsNew(limsNew > constraint(2)) = constraint(2);
+end
