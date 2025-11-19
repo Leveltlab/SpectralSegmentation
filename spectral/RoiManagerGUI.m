@@ -2711,7 +2711,8 @@ function myKeyPressFcn(hObject, eventdata, h)
 %     h.im % Handles are fickle. Check if im is still present.
     key = eventdata.Key;
     resetFcn = false;
-    moveAmount = 0.1; % for arrow key movements
+    moveAmount = 0.1; % for arrow key movements (fraction of visible limits)
+    moveAmountSig = 0.033;
     switch key
         case 'z' % toggle zoom
             zoom
@@ -2759,44 +2760,33 @@ function myKeyPressFcn(hObject, eventdata, h)
             minorToggles_Callback(h.blackButton, [], h)
         case 'leftarrow'
             xLims = h.mainAx.XLim;
-            if xLims(1)>0
-                 % Moving amount is based on current zoomlevel
-                 h.mainAx.XLim = xLims - diff(xLims).*moveAmount;
-            end
+            % Moving amount is based on current zoomlevel
+            h.mainAx.XLim = xLims - min(diff(xLims).*moveAmount, xLims(1));
         case 'rightarrow'
             xLims = h.mainAx.XLim;
             xmax = size(h.im.CData, 2);
-            if xLims(2)<xmax
-                 h.mainAx.XLim = xLims + diff(xLims).*moveAmount;
-            end
+            maxAllowed = xmax-xLims(2);
+            h.mainAx.XLim = xLims + min(diff(xLims).*moveAmount, maxAllowed);
         case 'uparrow'
             yLims = h.mainAx.YLim;
-            if yLims(1)>0
-                 h.mainAx.YLim = yLims - diff(yLims).*moveAmount;
-            end
+            h.mainAx.YLim = yLims - min(diff(yLims).*moveAmount, yLims(1));
         case 'downarrow'
             yLims = h.mainAx.YLim;
             ymax = size(h.im.CData, 1);
-            if yLims(2)<ymax
-                 h.mainAx.YLim = yLims + diff(yLims).*moveAmount;
-            end
+            maxAllowed = ymax-yLims(2);
+            h.mainAx.YLim = yLims + min(diff(yLims).*moveAmount, maxAllowed);
         case 'k' % Move the active signal axes to the left
             switches = getappdata(h.hGUI, 'switches');
             sigAxStr = sprintf('signalAx%d', switches.activeSignalAx);
             data = getappdata(h.hGUI, 'data');
-            h.(sigAxStr).XLim = h.(sigAxStr).XLim - (diff(h.(sigAxStr).XLim)*moveAmount/3);
-            if h.(sigAxStr).XLim(1)<data.xas(1)
-                h.(sigAxStr).XLim = h.(sigAxStr).XLim - (h.(sigAxStr).XLim(1) - data.xas(1));
-            end
+            maxAllowed =  h.(sigAxStr).XLim(1) - data.xas(1);
+            h.(sigAxStr).XLim = h.(sigAxStr).XLim - min((diff(h.(sigAxStr).XLim)*moveAmountSig), maxAllowed);
         case 'l'
             switches = getappdata(h.hGUI, 'switches');
             sigAxStr = sprintf('signalAx%d', switches.activeSignalAx);
             data = getappdata(h.hGUI, 'data');
-            h.(sigAxStr).XLim = h.(sigAxStr).XLim + (diff(h.(sigAxStr).XLim)*moveAmount/3);
-            if h.(sigAxStr).XLim(2)>data.xas(end)
-                h.(sigAxStr).XLim = h.(sigAxStr).XLim - (h.(sigAxStr).XLim(2) - data.xas(end));
-            end
-
+            maxAllowed = data.xas(end) - h.(sigAxStr).XLim(2);
+            h.(sigAxStr).XLim = h.(sigAxStr).XLim + min((diff(h.(sigAxStr).XLim)*moveAmountSig), maxAllowed);
     end
     
     if resetFcn
