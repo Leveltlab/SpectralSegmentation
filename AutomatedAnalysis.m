@@ -108,9 +108,10 @@ if timed
         return
 % %         or run following code to create a new timedFile there: 
         timedData = struct('computerName',{},'fileSize',[],'filePath', [], 'fileName',{},...
-                     'nSplits', [], 'error', {}, 'memory', {}, 'alignMethod', {}, 'normcorrT',[],'transposeT',[],'decimatT',[],...
-                     'spectralT',[],'fluorescenceT',[], 'backSubT', [], 'getRoisT', [],...
-                     'nRois', [], 'date', {});
+                         'nSplits', [], 'error', {}, 'memory', {}, 'alignMethod', {},...
+                         'lineShiftT', [], 'normcorrT',[],'transposeT',[],'decimatT',[],...
+                         'spectralT',[],'fluorescenceT',[], 'backSubT', [], 'getRoisT', [],...
+                         'nRois', [], 'date', {});
         save(timedFile, 'timedData')
     end
 end
@@ -343,7 +344,8 @@ if timed
                 fprintf('\nPlease change default timedFile name to the new file for future use:\n%s\n', timedFile)
             end
             timedData = struct('computerName',{},'fileSize',[],'filePath', [], 'fileName',{},...
-                         'nSplits', [], 'error', {}, 'memory', {}, 'alignMethod', {}, 'normcorrT',[],'transposeT',[],'decimatT',[],...
+                         'nSplits', [], 'error', {}, 'memory', {}, 'alignMethod', {},...
+                         'lineShiftT', [], 'normcorrT',[],'transposeT',[],'decimatT',[],...
                          'spectralT',[],'fluorescenceT',[], 'backSubT', [], 'getRoisT', [],...
                          'nRois', [], 'date', {});
             save(timedFile, 'timedData')
@@ -369,16 +371,19 @@ for i = 1:nfiles
         clearvars info ME
         clearvars -global info
         timedDatai = struct('computerName',{},'fileSize',[],'filePath', [], 'fileName',{},...
-                     'nSplits', [], 'error', {}, 'memory', {}, 'alignMethod', {}, 'normcorrT',[],'transposeT',[],'decimatT',[],...
+                     'nSplits', [], 'error', {}, 'memory', {}, 'alignMethod', {},...
+                     'lineShiftT', [], 'normcorrT',[],'transposeT',[],'decimatT',[],...
                      'spectralT',[],'fluorescenceT',[], 'backSubT', [], 'getRoisT', [],...
                      'nRois', [], 'date', {});
         nRois = 0; % number of detected ROIs for this recording
-
+        
         
         %% Shift lines, and replace erroneously high values (>65530)
-        if doLineShift
+        if doLineShift & lineShift~=0
+            tics.lineShift = tic;
             fprintf('Shifting lines & replacing high value of file %s...\n', fn)
             ShiftLinesSbx({pn fn}, doLineShiftTrans, lineShift, pno)
+            timedDatai(1).lineShiftT = toc(tics.lineShift);
             pnUpdate = pno;
             fnUpdate = [fn '_shiftedLines'];
             clearvars info 
@@ -480,9 +485,9 @@ for i = 1:nfiles
             info.AlignMethod = alignMethod;
             
             % START NORMCORR REGISTRATION % % % % %
-            normcorrTic = tic;
+            tics.normcorr = tic;
             simonalign3(pno);
-            timedDatai(1).normcorrT = toc(normcorrTic);
+            timedDatai(1).normcorrT = toc(tics.normcorr);
             
             filenameNormcorr = cell(nSlices,1);
             if info.bsplit
@@ -508,7 +513,7 @@ for i = 1:nfiles
         if doBackgroundSubtract
             filenameBackgroundSub = cell(nSlices, 1);
             fprintf('Doing background subtraction...\n')
-            backSubtic = tic;
+            tics.backSub = tic;
             
             for j = 1:nSlices
                 filenameBackgroundSub{j} = [filenameNormcorr{j} '_Sub'];
@@ -516,7 +521,7 @@ for i = 1:nfiles
                                       filenameBackgroundSub{j}, filterRadius,...
                                       filterMethod, shifter, smoothDim, smoothSe, plotter)
             end
-            timedDatai(1).backSubT = toc(backSubtic);
+            timedDatai(1).backSubT = toc(tics.backSub);
             % Replacing the normcorr names! So next analysis takes correct file
             filenameNormcorr = filenameBackgroundSub;
         else % No background subtraction
@@ -541,56 +546,56 @@ for i = 1:nfiles
         filenameTrans = cell(nSlices,1);
         fprintf('Starting Transposing the %d splits!\n', nSlices)
         
-        transposeTic = tic;
+        tics.transpose = tic;
         for j = 1:nSlices
             StackTranspose([filepathNormcorr filenameNormcorr{j} '.sbx'], pno)
             filenameTrans{j} = [pno filenameNormcorr{j} '_Trans.dat'];
         end
-        timedDatai(1).transposeT = toc(transposeTic);
+        timedDatai(1).transposeT = toc(tics.backSub);
         
         
         %% DECIMATE DATASETS % % % % % %  
         freqDec = 1;
         fprintf('Decimating the %d datasets to %.1fHz!\n', nSlices, freqDec)
         filenameDecTrans = cell(nSlices,1);
-        decTic = tic;
+        tics.decimate = tic;
         for j = 1:nSlices
             DecimateTrans(filenameTrans{j}, freqDec)
             filenameDecTrans{j} = [pno filenameNormcorr{j} '_DecTrans.dat'];
         end
-        timedDatai(1).decimatT = toc(decTic);
+        timedDatai(1).decimatT = toc(tics.decimate);
         
         
         %% SPECTRAL % % % % % % % %
         fprintf('Doing spectral analysis on the transposed files\n')
         filenameSpectral = cell(nSlices, 1);
         
-        spectralTic = tic;
+        tics.spectral = tic;
         for j = 1:nSlices
             spectral(filenameDecTrans{j});
             filenameSpectral{j} = [pno filenameNormcorr{j} '_SPSIG.mat'];
         end
-        timedDatai(1).spectralT = toc(spectralTic);
+        timedDatai(1).spectralT = toc(tics.spectral);
         
         
         %% FLUORESCENCE PROJECTION IMAGES % % % % % 
         clearvars info
         clearvars -global info
         
-        fluorescenceTic = tic;
+        tics.fluorescenceImg = tic;
         for j = 1:nSlices
             FluorescenceImgSbx([pno filenameNormcorr{j}]);
         end
-        timedDatai(1).fluorescenceT = toc(fluorescenceTic);
+        timedDatai(1).fluorescenceT = toc(tics.fluorescenceImg);
         
         
         %% Automatic ROI creation
         if getROIs
-            getRoisTic = tic;
+            tics.getRois = tic;
             for j = 1:nSlices
                 getSpectrois(filenameSpectral{j}, spar)
             end
-            timedDatai(1).getRoisT = toc(getRoisTic);
+            timedDatai(1).getRoisT = toc(tics.getRois);
             load(filenameSpectral{j},'PP')
             nRois = nRois + PP.Cnt;
         else
