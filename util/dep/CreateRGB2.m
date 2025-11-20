@@ -23,6 +23,7 @@ function [RGB] = CreateRGB2(data, colors, varargin)
 % 
 % Leander de Kraker
 % 2019-3-1
+% 2025-11-20: Updated to ignore nan values as 0 (not adding brightness)
 %
 
 % normalize?
@@ -57,12 +58,12 @@ RGB = zeros(maxdim(1), maxdim(2), 3);
 
 
 for i = 1:nslices
-    
     if norma % normalize intensities of the channel
         data{i} = (data{i}-min(data{i}(:)))./ range(data{i}(:));
     else % Set the data to minimum 0
         data{i} = data{i}-min(data{i}(:));
     end
+    data{i}(isnan(data{i})) = 0;
     
     for c = 1:3
         if colors(i,c)>0

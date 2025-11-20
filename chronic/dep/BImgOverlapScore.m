@@ -1,39 +1,64 @@
-function [corrScore] = BImgOverlapScore(BImg)
-% Takes a cell array of 2D doubles as input.
-% outputs the correlation values
-% of the comparisons between the different 2D doubles.
-%
+function [corrScore, calculatedBool] = BImgOverlapScore(imgs, toCorr)
+% Calculate correlation between pixelvalues of multiple images
 % If the 2D double matrixes are not the same size, the larger ones will be
 % cut.
+% 
+% [corrScore, calculatedBool] = BImgOverlapScore(imgs, toCorr)
+% corrScore = BImgOverlapScore(imgs)
 %
+% Input: 
+%   - imgs ([n x 1] cell array with doubles inside)
+%   - (optional) toCorr ([m x 1] double): For which images to calculate
+%               correlation to all the other images to
+%
+% Output:
+%   - corrScore ([n x n] double): correlation between each image pair
+%   - calculatedBool ([n x n] logical): which value got calculated, based
+%                                       on toCorr
+% 
 % Leander de Kraker
 % 2018-8-3
+% 2025-11-20: Changed to be able to ignore nans, and added ability to
+%             select which images to calculate correlations for
+% 
+arguments (Input)
+    imgs
+    toCorr = 1:length(imgs)
+end
 
-nfiles = length(BImg);
+if size(toCorr, 1)>1 && size(toCorr,2)==1
+    toCorr = toCorr';
+elseif all(size(toCorr)>1) 
+    warning('toCorr variable has unexpected size')
+end
+
+nfiles = length(imgs);
+% Calculate once if there are nans in the images
 nanMasks = cell(nfiles, 1);
 for i = 1:nfiles
-    nanMasks{i} = isnan(BImg{i});
+    nanMasks{i} = isnan(imgs{i});
 end
+
 corrScore = zeros(nfiles);
-for i = 1:nfiles
-    others = find((1:nfiles) < i);
+for i = toCorr
+    others = find((1:nfiles) > i);
     for j = others
-        if all(size(BImg{i}) == size(BImg{j}))% The images are the same size :)
-            if any(nanMasks{i}(:)) || any(nanMasks{j}(:))
-                idx = nanMasks{i}(:) || nanMasks{j}(:);
-                corrScore(i, j) = corr(BImg{i}(idx), BImg{j}(idx));
+        if all(size(imgs{i}) == size(imgs{j}))% The images are the same size :)
+            nanPresent = nanMasks{i}(:) | nanMasks{j}(:);
+            if any(nanPresent)
+                corrScore(i, j) = corr(imgs{i}(~nanPresent), imgs{j}(~nanPresent));
             else
-                corrScore(i, j) = corr(BImg{i}(:), BImg{j}(:)); % Get linear correlation value
+                corrScore(i, j) = corr(imgs{i}(:), imgs{j}(:)); % Get linear correlation value
             end
         else
             % The images need to be cut
-            minsize1 = 1:min(size(BImg{i}, 1), size(BImg{j},1));
-            minsize2 = 1:min(size(BImg{i}, 2), size(BImg{j},2));
-            BImgi = BImg{i}(minsize1, minsize2);
-            BImgj = BImg{j}(minsize1, minsize2);
-            if any(nanMasks{i})(minsize1, minsize2) || any(nanMasks{j}(minsize1, minsize2))
-                idx = nanMasks{i}(minsize1, minsize2) || nanMasks{j}(minsize1, minsize2);
-                corrScore(i, j) = corr(BImgi(idx(:)), BImgj(idx(:)));
+            minsize1 = 1:min(size(imgs{i}, 1), size(imgs{j},1));
+            minsize2 = 1:min(size(imgs{i}, 2), size(imgs{j},2));
+            BImgi = imgs{i}(minsize1, minsize2);
+            BImgj = imgs{j}(minsize1, minsize2);
+            nanPresent = nanMasks{i}(minsize1, minsize2) | nanMasks{j}(minsize1, minsize2);
+            if any(nanPresent(:))
+                corrScore(i, j) = corr(BImgi(~nanPresent(:)), BImgj(~nanPresent(:)));
             else
                 corrScore(i, j) = corr(BImgi(:), BImgj(:));
             end
@@ -43,7 +68,9 @@ end
 % To save time, only the lower triangle has been calculated by the for loop
 % fill upper triangle of matrix from lower triangle (output should be
 % symmetrical over diagonal)
-corrScore = corrScore + tril(corrScore,-1).';
+corrScore = corrScore + triu(corrScore,-1).';
 
-end
+calculatedBool = false(nfiles);
+calculatedBool(toCorr, :) = true;
+calculatedBool(:, toCorr) = true;
 
