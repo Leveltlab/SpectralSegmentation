@@ -18,14 +18,17 @@
 % accompanying files
 %% 1. Navigate to mouse folder and collect sbx files
 removeDuplicates = false;
-searchDepth = 1;
-[filepaths, filenames] = CollectResFiles(removeDuplicates, '.sbx', searchDepth);
+searchDepth = 1;  % 1=Search inside folders in the selected folder
+searchFolder = cd;
+[filepaths, filenames] = CollectFiles('.sbx', searchFolder, searchDepth, removeDuplicates);
 nfiles = length(filenames);
 
 clear removeDuplicates searchDepth
 %% 1. Or navigate to mouse folder and collect SPSIG files
-[filepaths, filenames] = CollectResFiles(false, 'SPSIG.mat', 1);
-nfiles = length(filenames);
+removeDuplicates = false;
+searchDepth = 1; % 1=Search inside folders in the selected folder
+searchFolder = cd;
+[filepaths, filenames] = CollectFiles('SPSIG.mat', searchFolder, searchDepth, removeDuplicates);nfiles = length(filenames);
 
 
 %% 1. Or find SPSIG files via chronic file

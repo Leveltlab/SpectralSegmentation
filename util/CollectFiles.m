@@ -9,9 +9,10 @@ function [filepaths, filenames, fileList] = CollectFiles(searcher, strFolder, de
 % - searcher (string): string to use to search for files. 
 %                       (by default: 'SPSIG_Res.mat')
 % - strFolder (string): which folder to start search from
-% - depth (integer): how deep, folder-wise, to search for files. 0=search
-% in current folder. 1 (default), look one folder deep, 2, look inside the
-%   folders that are inside those folders, etc.
+% - depth (integer): how deep, folder-wise, to search for files. 
+%       0 =search in current folder. 
+%       1 = look one folder deep (excluding current folder)  (default).
+%       2 = look also inside the folders that are inside those folders, etc
 % - removeDuplicates (true | false): true deletes the different splits of a 
 %       recording, leaving only unique recordings. (by default: false)
 % 
@@ -27,12 +28,15 @@ function [filepaths, filenames, fileList] = CollectFiles(searcher, strFolder, de
 arguments (Input)
     searcher = 'SPSIG_Res.mat'
     strFolder = cd
-    depth (1, 1) = 1
+    depth = 1
     removeDuplicates (1, 1) logical = false
 end
 
+if isempty(depth)
+    depth = 1;
+end
 % remove \ if present in folderStr
-if ~strcmp(strFolder(end), '\')
+if ~isempty(strFolder) && ~strcmp(strFolder(end), '\')
     strFolder = [strFolder '\'];
 end
 

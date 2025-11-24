@@ -14,8 +14,9 @@ clc
 
 %% 1. Navigate to mouse folder and collect sbx files
 removeDuplicates = false;
-searchDepth = 1;
-[filepaths, filenames] = CollectResFiles(removeDuplicates, '.sbx', searchDepth);
+searchDepth = 1;  % 1=Search inside folders in the selected folder
+searchFolder = cd;
+[filepaths, filenames] = CollectFiles('.sbx', searchFolder, searchDepth, removeDuplicates);
 nfiles = length(filenames);
 
 clear removeDuplicates searchDepth

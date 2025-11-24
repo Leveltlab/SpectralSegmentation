@@ -5,7 +5,9 @@
 
 %% SELECTION option 1: Collect all files
 removeDuplicate = false;
-[filepaths, filenames] = CollectResFiles(removeDuplicate, 'SPSIG.mat', 1);
+depth = 1;
+searchFolder = cd;
+[filepaths, filenames] = CollectFiles('SPSIG.mat', searchFolder, depth, removeDuplicates);
 nfiles = length(filenames);
 
 %% SELECTION option 2: pop-up, Press 'cancel' when done selecting.
