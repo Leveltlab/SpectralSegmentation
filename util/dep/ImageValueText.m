@@ -9,6 +9,12 @@ function h = ImageValueText(img, color, rounding, ha)
 % Leander de Kraker
 % 2023-5-30
 % 
+arguments
+    img
+    color = 'w';
+    rounding = 0;
+    ha = gca;    
+end
 
 dims = size(img);
 x = repmat(1:dims(2), [dims(1), 1]);
@@ -21,5 +27,10 @@ valsText = num2str(valsText);
 valsText(sum(ismember(valsText, 'Na'),2)==3,:) = ' '; % replace nans with empty
 
 h = text(ha, x, y, valsText, 'Color', color, 'HorizontalAlignment', 'center', 'FontName', 'calibri');
+
+% Don't output handle if not requested
+if nargout==0
+    clear h
+end
 
 
