@@ -1293,7 +1293,7 @@ function ManualRoi(pos, button, h)
             h.signalAx2.YDir = 'normal';
             
             str = cell(6,1); % Print text for new manual mask
-            if npixels > 35 % MINIMUM NUMBER OF PIXELS FOR ROI: ALLOW CREATION
+            if npixels > 20 % MINIMUM NUMBER OF PIXELS FOR ROI: ALLOW CREATION
                 switches.creationManAllow = true;
                 str{1} = sprintf('contour size = %d pixels', npixels);
             else
