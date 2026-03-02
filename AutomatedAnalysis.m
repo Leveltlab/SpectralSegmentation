@@ -551,7 +551,7 @@ for i = 1:nfiles
             StackTranspose([filepathNormcorr filenameNormcorr{j} '.sbx'], pno)
             filenameTrans{j} = [pno filenameNormcorr{j} '_Trans.dat'];
         end
-        timedDatai(1).transposeT = toc(tics.backSub);
+        timedDatai(1).transposeT = toc(tics.transpose);
         
         
         %% DECIMATE DATASETS % % % % % %  

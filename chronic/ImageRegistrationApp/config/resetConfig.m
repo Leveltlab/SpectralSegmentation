@@ -38,5 +38,5 @@ function config = resetConfig()
     end
     addpref('imageReg2P', 'config_name', name)
     
-    fprintf('\imageReg2P Preference config has been set for your MATLAB via resetConfig()\n')
+    fprintf('imageReg2P Preference config has been set for your MATLAB via resetConfig()\n')
 end

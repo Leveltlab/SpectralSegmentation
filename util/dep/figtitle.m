@@ -1,4 +1,4 @@
-function [ fth ] = figtitle(titlestring,varargin)
+function [ fth ] = figtitle(titlestring, doFigTitle, optInputs)
 % FIGTITLE creates a title centered at the  top of a figure. This may be used 
 % to add a title to a figure with several subplots.
 % 
@@ -6,7 +6,7 @@ function [ fth ] = figtitle(titlestring,varargin)
 %% Syntax
 % 
 % figtitle('TitleString')
-% figtitle('TitleString','TextProperty','TextValue')
+% figtitle('TitleString', doFigtitle, 'TextProperty','TextValue')
 % h = figtitle(...)
 % 
 %
@@ -15,8 +15,11 @@ function [ fth ] = figtitle(titlestring,varargin)
 % figtitle('TitleString') centers a title at the top of a figure and sets
 % the figure name to TitleString. 
 % 
-% figtitle('TitleString','TextProperty',TextValue) formats the title with
-% property name value pairs (e.g., 'FontSize',20)
+% figtitle('TitleString', false) centers a title at the top of a figure 
+% and does not name the figure to TitleString.
+% 
+% figtitle('TitleString', true, 'TextProperty',TextValue) formats the
+% title with property name value pairs (e.g., 'FontSize',20)
 %
 % h = figtitle(...) returns a handle of the newly-created title. 
 %
@@ -91,7 +94,11 @@ function [ fth ] = figtitle(titlestring,varargin)
 % * * * * * * * * * * * * * * * * * * * * * * * * * * * * * % 
 % 
 % See also title, text, and ntitle. 
-
+arguments
+    titlestring
+    doFigTitle = true;
+    optInputs = [];
+end
 
 % Get the handle of the current axes and properties:
 hca = gca; 
@@ -115,14 +122,16 @@ fth = text(.5,1,titlestring,...
     'fontsize',fontsize+2); 
 
 % Set optional inputs: 
-if nargin>1
-    set(fth,varargin{:});
+if ~isempty(optInputs)
+    set(fth,optInputs{:});
 end
 
 % Now go back to from where we came: 
 delete(h)
 
-set(gcf,'CurrentAxes',hca,'name',titlestring); 
+if doFigTitle
+    set(gcf,'CurrentAxes',hca,'name',titlestring); 
+end
 
 % Return the title handle only if it is desired: 
 if nargout==0
