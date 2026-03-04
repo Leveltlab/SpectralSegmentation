@@ -34,6 +34,17 @@ else
     strSavepath = uigetdir(pn,'Where to save the output file?');
 end
 
+% get or make local temporary folder for saving intermediate files.
+localpth = fileparts(mfilename("fullpath"));
+tmpfolder = fullfile(localpth, '\temp');
+
+warning('off', 'MATLAB:MKDIR:DirectoryExists')
+status = mkdir(tmpfolder);
+if status == 0
+    disp('Failed to make a temp folder!!')
+    return
+end
+
 strfp = fullfile(pn, filename);
 %load([strfp '.mat'])
 sbxread(strfp, 1, 1);
@@ -51,7 +62,7 @@ d = dir([strfp, '.sbx']);
 max_idx = d.bytes/info.nsamples; 
 
 %parameters for transposing
-Inf.StrPath = strSavepath; %Path for temporary files
+Inf.StrPath = tmpfolder; %Path for temporary files
 Inf.Save = fullfile(strSavepath, [filename '_Trans.dat']);
 Inf.Source = [strfp '.sbx'];        %source input .sbx file
 Inf.Dimensions = [info.Shape(1) info.Shape(2) info.Shape(3) max_idx];

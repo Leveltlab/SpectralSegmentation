@@ -16,6 +16,7 @@ typedef unsigned int UINT;
 struct _Sinf
 {
     char* SrcFn;
+    char* Tmpfolder;
     char* SaveFn;
     char* StrPath;
     double* Dimensions;
@@ -92,6 +93,19 @@ void mexFunction(
             Sinf.StrPath = Filename;
         }else{
            mexErrMsgTxt("Path string empty");
+           return;
+        }
+    }
+
+        tmp = mxGetField(prhs[0], 0, "Tmpfolder"  );
+    if( tmp == NULL )
+        mexErrMsgTxt("Tmpfolder string not found");
+    else {
+        Filename = mxArrayToString(tmp);
+        if(strlen(Filename) != 0){
+            Sinf.Tmpfolder = Filename;
+        }else{
+           mexErrMsgTxt("Tmpfolder string empty");
            return;
         }
     }
