@@ -6,41 +6,41 @@ function spar = Spectroiparm()
 % Leander de Kraker
 %
 
-global DISPLAY
-DISPLAY = false;  %toggle roiselection display on or off
-
 valid = false;
 if exist('spar.mat', 'file')
      load spar.mat
      flds = fieldnames(spar);
      aflds = { 'cutOffHzMin', 'cutOffHzMax', 'border', 'areasz',...
                'roundedness', 'voxel', 'cutOffCorr', 'useFluorescenceImg'};
-     if sum(ismember(aflds, flds)) == 8
+     if sum(ismember(aflds, flds)) == 9
          valid = true; 
      end
 end
-if ~valid    
+if ~valid
     spar.cutOffHzMin = 0.0;
     spar.cutOffHzMax = 0.2; %upper value(Hz) of range of spectral components to use for roi selection
     spar.border = 15;       %border width of image to ignore
     spar.areasz = [25 250]; %minimal and maximal size of the rois in number of pixels
     spar.roundedness = 0.9; %roundedness between 0 and 1.0;
     spar.voxel = 50;        %size of area to find roi contour in spectral image
-    spar.cutOffCorr = 0.5;  %Fraction of maximal correlation in ROI:
-    spar.useFluorescenceImg = false; % Also use maximum and average fluorescence projection in automatic search
+    spar.cutOffCorr = 0.5;  %Minimum signal correlation within ROI:
     %ROIs drawn from a spectral image, in many cases, represent overlapping
     %cell bodies or dendrites. To separate these overlapping structures
     %pixel correlations are calculated within the ROI drawn from a spectral
     %image. cutoffcorr determines at which correlation strength a new contour will be selected. 
-
+    spar.useFluorescenceImg = true; % Also use maximum and average fluorescence projection in automatic search
+    spar.doPlot = false;
 end
-% 
-% figure()
-% subplot(2,1,1)
+
 if spar.useFluorescenceImg
     defansFluo = 'yes';
 else
     defansFluo = 'no';
+end
+if spar.doPlot
+    defansDoPlot = 'yes';
+else
+    defansDoPlot = 'no';
 end
 
 prompt = {'cutOffHzMin: spectral cut-off Hz minimum', 'cutOffHzMax: spectral cut-off Hz maximum',...
@@ -50,14 +50,13 @@ prompt = {'cutOffHzMin: spectral cut-off Hz minimum', 'cutOffHzMax: spectral cut
           'voxel: ROI search field size (px)',...
           'cutOffCorr: signal correlation cut-off',...
           'Also use fluorescence projection images (Max and average) in ROI search (yes or no)',...
-          'DISPLAY (on or off)'};
+          'Plot all individual ROI detection attempts (yes or no)'};
 dlgtitle = 'Enter parameters for ROI segmentation';
 defans = {num2str(spar.cutOffHzMin), num2str(spar.cutOffHzMax), num2str(spar.border), num2str(spar.areasz), ...
-          num2str(spar.roundedness), num2str(spar.voxel), num2str(spar.cutOffCorr), defansFluo, 'off'};
+          num2str(spar.roundedness), num2str(spar.voxel), num2str(spar.cutOffCorr), defansFluo, defansDoPlot};
 
 answer = inputdlg(prompt, dlgtitle, 1, defans);
 if ~isempty(answer)
-    
     spar.cutOffHzMin = str2double(answer{1}); 
     spar.cutOffHzMax = str2double(answer{2}); 
     spar.border = str2double(answer{3}); 
@@ -66,14 +65,16 @@ if ~isempty(answer)
     spar.voxel = str2double(answer{6});
     spar.cutOffCorr = str2double(answer{7});
     
-    if strcmpi(answer{8}, 'no')
-        spar.useFluorescenceImg = false;
-    else
+    if strcmpi(answer{8}, 'yes')
         spar.useFluorescenceImg = true;
+    else
+        spar.useFluorescenceImg = false;
     end
     
-    if strcmpi(answer(9), 'on')
-        DISPLAY = true;
+    if strcmpi(answer(9), 'yes')
+        spar.doPlot = true;
+    else
+        spar.doPlot = false;
     end
     
     save('spar.mat', 'spar')

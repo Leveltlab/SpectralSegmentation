@@ -1,5 +1,5 @@
 function [Con, A, F, V, roundedness, Rvar] = PixelCor(...
-                Dim, F, sbxt, py, px, Iy, Ix, yrange, xrange, ThC, aspRat)
+                Dim, F, sbxt, py, px, Iy, Ix, yrange, xrange, ThC, aspRat, doPlot)
 % Correlates all pixels in an ROI selected as valid in roisfromlocalmax, with 
 % the median trace associated with the pixels surrounding a localmax in the spectral image
 % 2018
@@ -29,7 +29,7 @@ function [Con, A, F, V, roundedness, Rvar] = PixelCor(...
 % Chris van der Togt, 2021
 % Netherlands Institute for Neuroscience 
 
-global DISPLAY
+
 Con = []; %found contour
 A = 0; %area of found contour
 roundedness = 0; %Roundedness of contour
@@ -55,7 +55,7 @@ Sigpix = double(sbxt.Data.y(:,Mt(:)));
 Mb = logical(Mb');
 Sigborder = double(sbxt.Data.y(:,Mb(:)));
 
-if DISPLAY
+if doPlot
     figure(4)
     plot(median(Sigpix,2), 'b'), hold on
     plot(median(Sigborder,2), 'g'), hold off
@@ -124,7 +124,7 @@ for j = 1:length(iv)
     end
 end
 
-if A > 0 && DISPLAY
+if A > 0 && doPlot
     Vimg = V;
     Vimg(Vimg==0) = nan;
     figure(3), hold off, imagesc(Vimg), caxis([0 1]), hold on

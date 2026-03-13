@@ -15,7 +15,7 @@ function [Savedrois, Mask, SC, rejlog] = roisfromlocalmax(IM, Savedrois, Mask, v
 % rois.
 % Chris van der Togt, 2017, Netherlands Institute for Neuroscience 
 
-global DISPLAY
+doPlot = false;
 % Parameters for ROI search
 distance = 10;     % Minimum distance between roi maxima
 fractionmax = 0.2; % Higest fraction of maxima (pnt) to use
@@ -31,26 +31,28 @@ cutOffCorr = 0.5;  % Cutoff threshold for pixel correlations
 
 
 if ~isempty(varargin)
-    % Minimum distance between two correlation maxima
-    p = varargin{1};
+    spar = varargin{1};
         
-    if isfield(p, 'areasz')
-        area = p.areasz;
+    if isfield(spar, 'areasz')
+        area = spar.areasz;
     end
-    if isfield(p, 'border')
-        border = p.border;
+    if isfield(spar, 'border')
+        border = spar.border;
     end
-    if isfield(p, 'voxel')
-        VoxelSz = p.voxel;
+    if isfield(spar, 'voxel')
+        VoxelSz = spar.voxel;
         if mod(VoxelSz, 2) == 1 % Voxel size should be an even number
             VoxelSz = VoxelSz + 1;
         end
     end
-    if isfield(p, 'roundedness')
-        PAf = p.roundedness;
+    if isfield(spar, 'roundedness')
+        PAf = spar.roundedness;
     end
-    if isfield(p, 'cutOffCorr')
-        cutOffCorr = p.cutOffCorr;
+    if isfield(spar, 'cutOffCorr')
+        cutOffCorr = spar.cutOffCorr;
+    end
+    if isfield(spar, 'doPlot')
+        doPlot = spar.doPlot;
     end
 end
 
@@ -116,8 +118,7 @@ for i = 1:Nmp
             while ~bval && it < 10
                 [Con, A, F, Pin, Ro] = getCon(If, th, area, PAf*0.9, py, px, Iy, Ix, aspRat);
                 if ~isempty(Con) %valid contour: contains point and has valid roundedness
-                    if DISPLAY == 1
-                        figure(2), hold off, imagesc(I), colormap gray, hold on
+                    if doPlot                        figure(2), hold off, imagesc(I), colormap gray, hold on
                         plot(px, py, '+r')
                         plot(Con.x, Con.y, 'r')
                         title(sprintf('seedpoint x: %d, y: %d', pnt(i,1), pnt(i,2)))
@@ -152,7 +153,7 @@ for i = 1:Nmp
                     if bval
                         yrange = lyw:hyw;
                         xrange = lxw:hxw;                             
-                        [NwCon, NwA, NwF, NwV, Ro, Rvar] = PixelCor(size(Mask), F, sbxt, py, px, Iy, Ix, yrange, xrange, cutOffCorr, aspRat);
+                        [NwCon, NwA, NwF, NwV, Ro, Rvar] = PixelCor(size(Mask), F, sbxt, py, px, Iy, Ix, yrange, xrange, cutOffCorr, aspRat, doPlot);
                         if ~isempty(NwCon) &&  NwA > area(1) && Ro >= PAf % Exists and area greater than minimum, and roundedness > roundedness factor
                             Con = NwCon;
                             Con.y = Con.y + lyw - 1;
@@ -174,7 +175,7 @@ for i = 1:Nmp
                             Mask(lyw:hyw, lxw:hxw) = M;
                             
                             rejlog(i,:) = [2 NwA, Ro, Rvar];
-                            if DISPLAY == 1
+                            if doPlot
                                 figure(3), 
                                 title(sprintf('good!: rounded %.2f, rvar %.2f,', Ro, Rvar)) 
                                 %pause
@@ -183,7 +184,7 @@ for i = 1:Nmp
                             bval = false;
                             th = th + thxd; 
                             
-                        elseif DISPLAY == 1
+                        elseif doPlot
                                 figure(3), 
                                 title([ 'rejected: A ' num2str(NwA) ', Ro '  num2str(Ro) ', Rvar ' num2str(Rvar)] )
                                 %pause
@@ -202,7 +203,7 @@ for i = 1:Nmp
             end
             if bval == false || it >= 10
                 rejlog(i,:) = [isempty(Con), A, Ro, 0];
-                if DISPLAY == 1
+                if doPlot
                         figure(3), 
                         title([ 'rejected: A ' num2str(NwA) ', Ro '  num2str(Ro) ] )
                         %pause

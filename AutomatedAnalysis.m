@@ -1,3 +1,4 @@
+function timedData = AutomatedAnalysis(do, files)
 % Execute all preprocessing steps from raw sbx file to RoiManagerGUI step.
 % 
 % Doing the normcorr motion correction, transposing, spectral analysis and
@@ -15,45 +16,18 @@
 % 
 % 
 % Leander de Kraker
+arguments
+    do = 
+    files = selectFiles
+end
 
+asFunction = exist('nargin', 'var');
+if asFunction && exist('do', 'var')
+    fprintf('of course\n')
+    
+end
 % Load as many files as user wants
-filenames = {};
-filepaths = {};
-selecting = true;
-i = 0;
-while selecting
-    i = i + 1;
-    if i > 1
-        prompt = sprintf('file %d. Previous file: %s',i, filenames{i-1});
-    else
-        prompt = sprintf('file %d. Press cancel when done.', i);
-    end
-    
-    [filenames{i}, filepaths{i}] = uigetfile('*sbx', prompt, 'MultiSelect', 'on');
-    
-    if ~iscell(filenames{i}) & filenames{i} == 0 % Cancel is pressed probably: stop with selecting
-        filenames(i) = [];
-        filepaths(i) = [];
-        selecting = false;
-    elseif iscell(filenames{i}) % multiple files have been selected at once
-        nselected = length(filenames{i});
-        filenames(i:i+nselected-1) = filenames{i};
-        filepaths(i:i+nselected-1) = filepaths(i);
-        i = i + nselected - 1;
-    end
-end
-filenames = filenames';
-filepaths = filepaths';
-nfiles = length(filenames);
 
-for i = 1:nfiles
-    filenames{i} = strsplit(filenames{i}, {'.sbx', '.mat'});
-    filenames{i} = filenames{i}{1};
-end
-clearvars selecting i
-
-
-global info
 
 %% Settings via script
 
@@ -65,30 +39,30 @@ x = 3:793; % HORIZONTAL CROP
 y = 5:510;  % VERTICAL CROP
 
 % Do line shifting correction? % % % % % % % % %
-doLineShift = false;
-doLineShiftTrans = false; % false=correct for horizontal lines, true=correct for vertical lines
-lineShift = 0;
+do.LineShift = false;
+do.LineShiftTrans = false; % false=correct for horizontal lines, true=correct for vertical lines
+do.lineShiftValue = 0;
 
 % Run motion normcorre correction? % % % % % % % % % % % % %
-doNoRMCorre = false; % (if false, cropping settings aren't used)
-alignMethod = 'Rigid'; % options: 'Nonrigid' | 'Rigid'
+do.NoRMCorre = false; % (if false, cropping settings aren't used)
+do.alignMethod = 'Rigid'; % options: 'Nonrigid' | 'Rigid'
 
 % Convert *_eye.mat file into .mp4 file?
-doEyeConvert = true;
-doEyeInvert = true; % Invert black-white?
-doEyeDeFlicker = false; % Diminish flickering brightness between subsequent frames?
+do.EyeConvert = true;
+do.EyeInvert = true; % Invert black-white?
+do.EyeDeFlicker = false; % Diminish flickering brightness between subsequent frames?
 
-filepathsOutput = filepaths;
+files.pathsOutput = files.paths;
 
 % BACKGROUND SUBTRACTION parameters % % % % % Necessary for 1 photon data
-doBackgroundSubtract = false;
-filterRadius = 55; % The radius of the filter for background subtraction
-filterMethod = 'Circular Average'; % Options Gaussian Average | Circular Average
-shifter = 9000; % The data values has to be increased to prevent underexposure/ over correction
+do.BackgroundSubtract = false;
+do.BackgroundSub.FilterRadius = 55; % The radius of the filter for background subtraction
+do.BackgroundSub.filterMethod = 'Circular Average'; % Options Gaussian Average | Circular Average
+do.BackgroundSub.Shifter = 9000; % The data values has to be increased to prevent underexposure/ over correction
 % 1D gaussian smoothing to slightly decrease vertical or horizontal banding noise. 
-smoothDim = 1; % options: 0 (no smoothing), 1 (horizontal smoothing), 2 (vertical smoothing)
-smoothSe  = 1.75; % size for the smoothing
-plotter = true; % plot last frame
+do.BackgroundSub.SmoothDim = 1; % options: 0 (no smoothing), 1 (horizontal smoothing), 2 (vertical smoothing)
+do.BackgroundSub.SmoothSe  = 1.75; % size for the smoothing
+do.BackgroundSub.plotter = true; % plot last frame
 
 % Also run getSpectrois to detect the ROIs? % % % % % % % %
 getROIs = false;
@@ -122,45 +96,45 @@ dlgdims = [1 85];
 clearvars info; clearvars -global info
 
 % Do line shift? %
-doLineShift = questdlg('Do line shifting? to correct bi-directional scanning misalignment', 'line shift?',...
+do.LineShift = questdlg('Do line shifting? to correct bi-directional scanning misalignment', 'line shift?',...
                        'yes', 'no', 'no');
-if strcmp(doLineShift, 'yes')
-    doLineShift = true;
-    doLineShiftTrans = questdlg('correct for horizontal or vertical lines?', 'orientation of lines?',...
+if strcmp(do.LineShift, 'yes')
+    do.LineShift = true;
+    do.LineShiftTrans = questdlg('correct for horizontal or vertical lines?', 'orientation of lines?',...
                                 'horizontal', 'vertical', 'horizontal');
-    if strcmp(doLineShiftTrans, 'horizontal')
-        doLineShiftTrans = false;
+    if strcmp(do.LineShiftTrans, 'horizontal')
+        do.LineShiftTrans = false;
     else
-        doLineShiftTrans = true;
+        do.LineShiftTrans = true;
     end
-elseif strcmp(doLineShift, 'no')
-    doLineShift = false;
+elseif strcmp(do.LineShift, 'no')
+    do.LineShift = false;
 else
     fprintf('Canceled selecting settings\n')
     return
 end
-if doLineShift
-    im = sbxread([filepaths{1}, filenames{1}], 5, 100);
-    lineShift = ShiftLinesCheck(im, doLineShiftTrans, true);
+if do.LineShift
+    im = sbxread([files.paths{1}, files.names{1}], 5, 100);
+    do.lineShiftValue = ShiftLinesCheck(im, do.LineShiftTrans, true);
 end
 
 
 % Do NoRMCorre? %
 %
-doNoRMCorre = questdlg('do NoRMCorre motion correction?', 'run NoRMCorre?', 'yes', 'no', 'yes');
-if strcmp(doNoRMCorre, 'yes')
-    doNoRMCorre = true;
-elseif strcmp(doNoRMCorre, 'no')
-    doNoRMCorre = false;
+do.NoRMCorre = questdlg('do NoRMCorre motion correction?', 'run NoRMCorre?', 'yes', 'no', 'yes');
+if strcmp(do.NoRMCorre, 'yes')
+    do.NoRMCorre = true;
+elseif strcmp(do.NoRMCorre, 'no')
+    do.NoRMCorre = false;
 else
     fprintf('canceled selecting settings\n')
     return
 end
-alignMethod = '';
-if doNoRMCorre
+do.alignMethod = '';
+if do.NoRMCorre
     % Get crop for NoRMCorre
     if exist('filepaths', 'var')
-        load([filepaths{1} filenames{1} '.mat'], 'info');
+        load([files.paths{1} files.names{1} '.mat'], 'info');
         definput = {sprintf('1:%d', info.sz(2)), sprintf('1:%d', info.sz(1))};
         clearvars info
     else
@@ -179,27 +153,27 @@ if doNoRMCorre
     y = str2num(answer{2});
     
     % Set rigid or non rigid
-    alignMethod = questdlg('Which registration method to use? (rigid = default)',...
+    do.alignMethod = questdlg('Which registration method to use? (rigid = default)',...
                            'NoRMCorre registration method',...
                            'Rigid','Nonrigid','Rigid');
 end
 
 
 % Save in original file location ? % 
-doSaveLocation = questdlg('Save new files in original folder? (yes = default)',...
+do.saveLocation = questdlg('Save new files in original folder? (yes = default)',...
                           'Output location',...
                           'yes', 'no (select different folders)', 'yes');
-filepathsOutput = filepaths;
-if strcmp(doSaveLocation, 'yes')
-    doSaveLocation = false;
-elseif strcmp(doSaveLocation, 'no (select different folders)') % select folder for every file
-    doSaveLocation = true;
+files.pathsOutput = files.paths;
+if strcmp(do.saveLocation, 'yes')
+    do.saveLocation = false;
+elseif strcmp(do.saveLocation, 'no (select different folders)') % select folder for every file
+    do.saveLocation = true;
     outputpathi = 'lalala';
     i = 1;
     while i <= nfiles && ischar(outputpathi)
-        outputpathi = uigetdir(cd, sprintf('output path for file %d: %s',i, filenames{i}));
+        outputpathi = uigetdir(cd, sprintf('output path for file %d: %s',i, files.names{i}));
         if ischar(outputpathi)
-            filepathsOutput{i} = [outputpathi '\'];
+            files.pathsOutput{i} = [outputpathi '\'];
         end
         i = i + 1;
     end
@@ -210,43 +184,43 @@ end
 
 
 % Do eye file format conversion? (keeps the original)
-doEyeConvert = questdlg('Convert "*_eye.mat" file into "*_eye.mp4" (keeps original)',...
+do.EyeConvert = questdlg('Convert "*_eye.mat" file into "*_eye.mp4" (keeps original)',...
                         'Create videofile for eye tracking?',...
                         'yes','no','yes');
-if strcmp(doEyeConvert, 'yes')
-    doEyeConvert = true;
-    doEyeInvert = questdlg('Invert black-white in eye video file?',...
+if strcmp(do.EyeConvert, 'yes')
+    do.EyeConvert = true;
+    do.EyeInvert = questdlg('Invert black-white in eye video file?',...
                                'Eye video file settings',...
                                'yes', 'no', 'yes');
-    doEyeDeFlicker = questdlg('Deflicker the eye video?',...
+    do.EyeDeFlicker = questdlg('Deflicker the eye video?',...
                               'Eye video file settings',...
                                'yes', 'no', 'yes');
-    if strcmp(doEyeInvert, 'yes')
-        doEyeInvert = true;
+    if strcmp(do.EyeInvert, 'yes')
+        do.EyeInvert = true;
     else
-        doEyeInvert = false;
+        do.EyeInvert = false;
     end
-    if strcmp(doEyeDeFlicker, 'yes')
-        doEyeDeFlicker = true;
+    if strcmp(do.EyeDeFlicker, 'yes')
+        do.EyeDeFlicker = true;
     else
-        doEyeDeFlicker = false;
+        do.EyeDeFlicker = false;
     end
-elseif strcmp(doEyeConvert, 'no')
-    doEyeConvert = false;
+elseif strcmp(do.EyeConvert, 'no')
+    do.EyeConvert = false;
 else
     fprintf('Canceling selecting settings\n')
     return
 end
 % Do background subtraction? %
-doBackgroundSubtract = questdlg('Do background subtraction (for 1-photon data)',...
+do.BackgroundSubtract = questdlg('Do background subtraction (for 1-photon data)',...
                                 'background subtraction settings',...
                                 'yes','no','no');
-if strcmp(doBackgroundSubtract, 'yes');    doBackgroundSubtract = true;
-elseif strcmp(doBackgroundSubtract, 'no'); doBackgroundSubtract = false;
+if strcmp(do.BackgroundSubtract, 'yes');    do.BackgroundSubtract = true;
+elseif strcmp(do.BackgroundSubtract, 'no'); do.BackgroundSubtract = false;
 else; fprintf('Cancelling selecting settings\n'); return
 end
 % Get the specific background subtraction settings
-if doBackgroundSubtract
+if do.BackgroundSubtract
     prompt = {'filterRadius (actual size of filter = [radius*2, radius*2])', ...
         ['shift data to prevent underexposure/ over correction\n'...
         '(only change if BackgroundSubtract gives exposure warnings)'],...
@@ -258,40 +232,40 @@ if doBackgroundSubtract
         fprintf('stopping settings selection\n')
         return
     end
-    filterRadius = str2double(answer{1});
-    shifter = str2double(answer{2});
+    do.BackgroundSub.FilterRadius = str2double(answer{1});
+    do.BackgroundSub.Shifter = str2double(answer{2});
     if strcmpi(answer{3}, 'yes')
-        plotter = true;
+        do.BackgroundSub.plotter = true;
     else
-        plotter = false;
+        do.BackgroundSub.plotter = false;
     end
-    filterMethod = questdlg('filtering method for background image estimation', 'background subtract settings',...
+    do.BackgroundSub.filterMethod = questdlg('filtering method for background image estimation', 'background subtract settings',...
                             'Circular Average (advised)',...
                             'Gaussian Average',...
                             'Circular Average (advised)');
-    if strcmp(filterMethod, 'Circular Average (advised)')
-        filterMethod = 'Circular Average';
-    elseif strcmp(filterMethod, 'Gaussian Average')
+    if strcmp(do.BackgroundSub.filterMethod, 'Circular Average (advised)')
+        do.BackgroundSub.filterMethod = 'Circular Average';
+    elseif strcmp(do.BackgroundSub.filterMethod, 'Gaussian Average')
         % That's the correct string already: do nothing
     else
         fprintf('Stopping setting selection, no valid method for background subtraction\n')
         return
     end
-    smoothDim = questdlg('1D gaussian smoothing to diminish (vertical or horizontal banding) noise?',...
+    do.BackgroundSub.SmoothDim = questdlg('1D gaussian smoothing to diminish (vertical or horizontal banding) noise?',...
                          'background subtract setings',...
                          'no', 'horizontal smoothing', 'vertical smoothing', 'vertical smoothing');
-    if strcmp(smoothDim, 'no')
-        smoothDim = 0;
-        smoothSe = [];
-    elseif strcmp(smoothDim, 'horizontal smoothing')
-        smoothDim = 1;
-    elseif strcmp(smoothDim, 'vertical smoothing')
-        smoothDim = 2;
+    if strcmp(do.BackgroundSub.SmoothDim, 'no')
+        do.BackgroundSub.SmoothDim = 0;
+        do.BackgroundSub.SmoothSe = [];
+    elseif strcmp(do.BackgroundSub.SmoothDim, 'horizontal smoothing')
+        do.BackgroundSub.SmoothDim = 1;
+    elseif strcmp(do.BackgroundSub.SmoothDim, 'vertical smoothing')
+        do.BackgroundSub.SmoothDim = 2;
     else % canceled
         fprintf('Canceling selecting settings\n')
         return
     end
-    if smoothDim > 0
+    if do.BackgroundSub.SmoothDim > 0
         answer = inputdlg('size of smoothing (standard deviation of gaussian)',...
                           'background subtract settings',...
                           dlgdims, {'1.7'});
@@ -299,7 +273,7 @@ if doBackgroundSubtract
             fprintf('Canceled selecting settings at final dlg\n')
             return
         end
-        smoothSe = str2num(answer{1});
+        do.BackgroundSub.SmoothSe = str2num(answer{1});
     end
 end
 
@@ -364,9 +338,9 @@ i = 1;
 
 for i = 1:nfiles
     try
-        fn = filenames{i};
-        pn = filepaths{i};
-        pno = filepathsOutput{i};
+        fn = files.names{i};
+        pn = files.paths{i};
+        pno = files.pathsOutput{i};
         % prepare to load a different sbx file: thoroughly delete info variable
         clearvars info ME
         clearvars -global info
@@ -379,10 +353,10 @@ for i = 1:nfiles
         
         
         %% Shift lines, and replace erroneously high values (>65530)
-        if doLineShift & lineShift~=0
+        if do.LineShift & do.lineShiftValue~=0
             tics.lineShift = tic;
             fprintf('Shifting lines & replacing high value of file %s...\n', fn)
-            ShiftLinesSbx({pn fn}, doLineShiftTrans, lineShift, pno)
+            ShiftLinesSbx({pn fn}, do.LineShiftTrans, do.lineShiftValue, pno)
             timedDatai(1).lineShiftT = toc(tics.lineShift);
             pnUpdate = pno;
             fnUpdate = [fn '_shiftedLines'];
@@ -462,7 +436,7 @@ for i = 1:nfiles
                 imagesc(mean(squeeze(Img(:,:,1,j:nSlices:end)),3))
             end
             caxis(cLimits)
-            if doNoRMCorre
+            if do.NoRMCorre
                 hold on
                 rectangle('position',[x(1), y(1), x(end)-x(1), y(end)-y(1)],...
                           'edgecolor',[1 1 0.75],'linewidth',2.5)
@@ -473,7 +447,7 @@ for i = 1:nfiles
         colormap(cmapL('greenFancy', 256))
         drawnow
         
-        if doNoRMCorre
+        if do.NoRMCorre
             % critical info for NoRMCorre
             info.crop.x = x; 
             info.crop.y = y;
@@ -482,60 +456,60 @@ for i = 1:nfiles
             % info.skipFrame = 65537; % Skip frame 65537 (for old recordings which
                        % have a bug that repeats a frame after 65537 (2^16) frames)
             info.Skipframe = -1; % Don't skip any frames
-            info.AlignMethod = alignMethod;
+            info.AlignMethod = do.alignMethod;
             
             % START NORMCORR REGISTRATION % % % % %
             tics.normcorr = tic;
             simonalign3(pno);
             timedDatai(1).normcorrT = toc(tics.normcorr);
             
-            filenameNormcorr = cell(nSlices,1);
+            files.nameNormcorr = cell(nSlices,1);
             if info.bsplit
                 for j = 1:nSlices
-                    filepathNormcorr = pno;
-                    filenameNormcorr{j} = [fnUpdate sprintf('_Split%d_normcorr', j)];
+                    files.pathNormcorr = pno;
+                    files.nameNormcorr{j} = [fnUpdate sprintf('_Split%d_normcorr', j)];
                 end
             else
-                filepathNormcorr = pno;
-                filenameNormcorr{j}= [fnUpdate '_normcorr'];
+                files.pathNormcorr = pno;
+                files.nameNormcorr{j}= [fnUpdate '_normcorr'];
             end
             
         else % No NoRMCorre
             nSlices = 1;
-            filepathNormcorr = pn;
-            filenameNormcorr = {fnUpdate};
+            files.pathNormcorr = pn;
+            files.nameNormcorr = {fnUpdate};
             timedDatai(1).normcorrT = NaN;
         end
         
         %% BACKGROUND SUBTRACTION % % % %
         % Basically only necessary for 1P & miniscope data, to remove extreme
         % vignetting, out of focus fluorescence, blur
-        if doBackgroundSubtract
-            filenameBackgroundSub = cell(nSlices, 1);
+        if do.BackgroundSubtract
+            files.nameBackgroundSub = cell(nSlices, 1);
             fprintf('Doing background subtraction...\n')
             tics.backSub = tic;
             
             for j = 1:nSlices
-                filenameBackgroundSub{j} = [filenameNormcorr{j} '_Sub'];
-                BackgroundSubtractSbx([filepathNormcorr filenameNormcorr{j}],...
-                                      filenameBackgroundSub{j}, filterRadius,...
-                                      filterMethod, shifter, smoothDim, smoothSe, plotter)
+                files.nameBackgroundSub{j} = [files.nameNormcorr{j} '_Sub'];
+                BackgroundSubtractSbx([files.pathNormcorr files.nameNormcorr{j}],...
+                                      files.nameBackgroundSub{j}, do.BackgroundSub.FilterRadius,...
+                                      do.BackgroundSub.filterMethod, do.BackgroundSub.Shifter, do.BackgroundSub.SmoothDim, do.BackgroundSub.SmoothSe, do.BackgroundSub.plotter)
             end
             timedDatai(1).backSubT = toc(tics.backSub);
             % Replacing the normcorr names! So next analysis takes correct file
-            filenameNormcorr = filenameBackgroundSub;
+            files.nameNormcorr = files.nameBackgroundSub;
         else % No background subtraction
             timedDatai(1).backSubT = NaN;
         end
         
         
         %% Eye file file conversion % % % % 
-        if doEyeConvert
-            filenameEye = strsplit(fn, {'_normcorr','_Split','_split','_copy','.sbx'});
-            filenameEye = [filenameEye{1}, '_eye.mat'];
-            % Check presence eye file
-            if exist([pn filenameEye], 'file')
-                EyeData2Avi(pn, filenameEye, doEyeDeFlicker, doEyeInvert)
+        if do.EyeConvert
+            files.nameEye = strsplit(fn, {'_normcorr','_Split','_split','_copy','.sbx'});
+            files.nameEye = [files.nameEye{1}, '_eye.mat'];
+            % Check presence eye files.
+            if exist([pn files.nameEye], 'files.')
+                EyeData2Avi(pn, files.nameEye, do.EyeDeFlicker, do.EyeInvert)
             else
                 fprintf('No Eye file found!\n')
             end
@@ -543,13 +517,13 @@ for i = 1:nfiles
         
         
         %% TRANSPOSE DATASETS % % % % %
-        filenameTrans = cell(nSlices,1);
+        files.nameTrans = cell(nSlices,1);
         fprintf('Starting Transposing the %d splits!\n', nSlices)
         
         tics.transpose = tic;
         for j = 1:nSlices
-            StackTranspose([filepathNormcorr filenameNormcorr{j} '.sbx'], pno)
-            filenameTrans{j} = [pno filenameNormcorr{j} '_Trans.dat'];
+            StackTranspose([files.pathNormcorr files.nameNormcorr{j} '.sbx'], pno)
+            files.nameTrans{j} = [pno files.nameNormcorr{j} '_Trans.dat'];
         end
         timedDatai(1).transposeT = toc(tics.transpose);
         
@@ -557,23 +531,23 @@ for i = 1:nfiles
         %% DECIMATE DATASETS % % % % % %  
         freqDec = 1;
         fprintf('Decimating the %d datasets to %.1fHz!\n', nSlices, freqDec)
-        filenameDecTrans = cell(nSlices,1);
+        files.nameDecTrans = cell(nSlices,1);
         tics.decimate = tic;
         for j = 1:nSlices
-            DecimateTrans(filenameTrans{j}, freqDec)
-            filenameDecTrans{j} = [pno filenameNormcorr{j} '_DecTrans.dat'];
+            DecimateTrans(files.nameTrans{j}, freqDec)
+            files.nameDecTrans{j} = [pno files.nameNormcorr{j} '_DecTrans.dat'];
         end
         timedDatai(1).decimatT = toc(tics.decimate);
         
         
         %% SPECTRAL % % % % % % % %
         fprintf('Doing spectral analysis on the transposed files\n')
-        filenameSpectral = cell(nSlices, 1);
+        files.nameSpectral = cell(nSlices, 1);
         
         tics.spectral = tic;
         for j = 1:nSlices
-            spectral(filenameDecTrans{j});
-            filenameSpectral{j} = [pno filenameNormcorr{j} '_SPSIG.mat'];
+            spectral(files.nameDecTrans{j});
+            files.nameSpectral{j} = [pno files.nameNormcorr{j} '_SPSIG.mat'];
         end
         timedDatai(1).spectralT = toc(tics.spectral);
         
@@ -584,7 +558,7 @@ for i = 1:nfiles
         
         tics.fluorescenceImg = tic;
         for j = 1:nSlices
-            FluorescenceImgSbx([pno filenameNormcorr{j}]);
+            FluorescenceImgSbx([pno files.nameNormcorr{j}]);
         end
         timedDatai(1).fluorescenceT = toc(tics.fluorescenceImg);
         
@@ -593,10 +567,10 @@ for i = 1:nfiles
         if getROIs
             tics.getRois = tic;
             for j = 1:nSlices
-                getSpectrois(filenameSpectral{j}, spar)
+                getSpectrois(files.nameSpectral{j}, spar)
             end
             timedDatai(1).getRoisT = toc(tics.getRois);
-            load(filenameSpectral{j},'PP')
+            load(files.nameSpectral{j},'PP')
             nRois = nRois + PP.Cnt;
         else
             timedDatai(1).getRoisT = NaN;
@@ -606,14 +580,14 @@ for i = 1:nfiles
         if timed
             timedDatai(1).error = ME;
             timedDatai(1).memory = memory;
-            FillTimedData(timedDatai, timedFile, pn, fn, nRois, nSlices, alignMethod)
+            FillTimedData(timedDatai, timedFile, pn, fn, nRois, nSlices, do.alignMethod)
             fprintf('Saved timed data for file %d\n', i)
         end
         rethrow(ME)
     end
     %% fill in the timedData tracker investigation file
     if timed
-        FillTimedData(timedDatai, timedFile, pn, fn, nRois, nSlices, alignMethod)
+        FillTimedData(timedDatai, timedFile, pn, fn, nRois, nSlices, do.alignMethod)
         fprintf('Saved timed data for file %d\n', i)
     end
 end

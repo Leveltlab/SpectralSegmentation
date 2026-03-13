@@ -83,10 +83,8 @@ function SpectParArm_OpeningFcn(hObject, eventdata, h, varargin)
         fprintf('Created placeholder spectral axis')
     end 
     
-    global DISPLAY % to activate plotting in roisfromlocalmax.m
     global spar
     setappdata(h.hGUI, 'sparBackup', spar) % in case close-cross is pressed, undo changes to spar
-    DISPLAY = false; % global variable, which lowercase name is also a function..
 
     
     % Check if a spar is present in current folder.
@@ -511,9 +509,8 @@ end
 
 % --- Executes on button press in DisplayCheckBox.
 function DisplayCheckBox_Callback(hObject, ~, ~)
-    % Sets the global DISPLAY boolean
-    global DISPLAY
-    DISPLAY = hObject.Value;
+    global spar
+    spar.doPlot = hObject.Value;
 end
 
 

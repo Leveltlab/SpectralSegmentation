@@ -37,9 +37,7 @@ function getSpectrois(varargin)
 % Chris van der togt, 01-07-2020 
 % Netherlands Institute for Neuroscience, 
 
-global DISPLAY
 global spar
-DISPLAY = false;
 
 if exist('varargin', 'var') && nargin >= 1
     filenameSPSIG = varargin{1};
@@ -53,8 +51,8 @@ if exist('varargin', 'var') && nargin >= 2
     runSparArm = false;
     flds = fieldnames(spar);
     aflds = {'cutOffHzMax', 'cutOffHzMin', 'border', 'areasz',...
-             'roundedness', 'voxel', 'cutOffCorr','useFluorescenceImg'};
-    if sum(ismember(aflds, flds)) < 8
+             'roundedness', 'voxel', 'cutOffCorr','useFluorescenceImg', 'doPlot'};
+    if sum(ismember(aflds, flds)) < 9
         warning('number of input values is not valid')
         runSparArm = true;
     end
