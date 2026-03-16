@@ -1,4 +1,4 @@
-function timedData = AutomatedAnalysis(do, files)
+function timedData = AutomatedAnalysis(do, files, spar)
 % Execute all preprocessing steps from raw sbx file to RoiManagerGUI step.
 % 
 % Doing the normcorr motion correction, transposing, spectral analysis and
@@ -17,17 +17,36 @@ function timedData = AutomatedAnalysis(do, files)
 % 
 % Leander de Kraker
 arguments
-    do = 
-    files = selectFiles
+    do = [];
+    files = [];
 end
 
-asFunction = exist('nargin', 'var');
-if asFunction && exist('do', 'var')
-    fprintf('of course\n')
+% Set the files to analyse
+if isempty(files) % Select files via pop up if nothing is given
+    [files, nfiles] = SelectFiles();
+
+elseif ischar(files) || isstring(files) % if text is given
+    [filesTxtFolder, filesTxtName, filesTxtExt] = fileparts(files);
+    
+    % If the input was the location to a text file, read it to extract the foldernames filenames
+    if strcmpi(filesTxtExt, 'txt')
+        filesTxt = files;
+        files = readtable(filesTxt, 'ReadVariableNames', false, 'TextType', 'string', 'Delimiter', '\n');
+        [files.path, files.name] = fileparts(files.path);
+    elseif ismember(filesTxtExt, '.sbx') % If it was a mat file, load the mat file
+        analyseThisFile = true;
+    elseif ismember()
+    end
+end
+if isstruct(files)
     
 end
-% Load as many files as user wants
 
+if isempty(do)
+    SetAnalysisSettings
+end
+
+global info
 
 %% Settings via script
 
@@ -35,8 +54,8 @@ end
 % Most important part of cropping is removing the lines (on the left
 % and right side) which have value 653357 and will thus overpower all 
 % relevant data during motion correction.
-x = 3:793; % HORIZONTAL CROP
-y = 5:510;  % VERTICAL CROP
+do.motion.crop.x = 3:793; % HORIZONTAL CROP
+do.motion.crop.y = 5:510;  % VERTICAL CROP
 
 % Do line shifting correction? % % % % % % % % %
 do.LineShift = false;
@@ -45,14 +64,14 @@ do.lineShiftValue = 0;
 
 % Run motion normcorre correction? % % % % % % % % % % % % %
 do.NoRMCorre = false; % (if false, cropping settings aren't used)
-do.alignMethod = 'Rigid'; % options: 'Nonrigid' | 'Rigid'
+do.motion.alignMethod = 'Rigid'; % options: 'Nonrigid' | 'Rigid'
 
 % Convert *_eye.mat file into .mp4 file?
 do.EyeConvert = true;
 do.EyeInvert = true; % Invert black-white?
 do.EyeDeFlicker = false; % Diminish flickering brightness between subsequent frames?
 
-files.pathsOutput = files.paths;
+files.pathOut = files.path;
 
 % BACKGROUND SUBTRACTION parameters % % % % % Necessary for 1 photon data
 do.BackgroundSubtract = false;
@@ -65,20 +84,20 @@ do.BackgroundSub.SmoothSe  = 1.75; % size for the smoothing
 do.BackgroundSub.plotter = true; % plot last frame
 
 % Also run getSpectrois to detect the ROIs? % % % % % % % %
-getROIs = false;
-if getROIs
+do.getROIs = false;
+if do.getROIs
     % Arm the spar: Spectral roi finder PARameters
     global spar
     spar = Spectroiparm();
 end
 
 % Save timing info? % % % % % % % % % % % % % % % % % % % % 
-timed = true;
-if timed
+do.timed = true;
+if do.timed
     % File in which timing info is stored
-    timedFile = 'E:\data\spectralTimed4.mat';
-    if ~isfile(timedFile)
-        warning('%s does not exist!! please say which file to add the timing data to!', timedFile)
+    do.timedFile = 'E:\data\spectralTimed4.mat';
+    if ~isfile(do.timedFile)
+        warning('%s does not exist!! please say which file to add the timing data to!', do.timedFile)
         return
 % %         or run following code to create a new timedFile there: 
         timedData = struct('computerName',{},'fileSize',[],'filePath', [], 'fileName',{},...
@@ -86,7 +105,7 @@ if timed
                          'lineShiftT', [], 'normcorrT',[],'transposeT',[],'decimatT',[],...
                          'spectralT',[],'fluorescenceT',[], 'backSubT', [], 'getRoisT', [],...
                          'nRois', [], 'date', {});
-        save(timedFile, 'timedData')
+        save(do.timedFile, 'timedData')
     end
 end
 
@@ -114,7 +133,7 @@ else
     return
 end
 if do.LineShift
-    im = sbxread([files.paths{1}, files.names{1}], 5, 100);
+    im = sbxread([files.path{1}, files.name{1}], 5, 100);
     do.lineShiftValue = ShiftLinesCheck(im, do.LineShiftTrans, true);
 end
 
@@ -130,11 +149,11 @@ else
     fprintf('canceled selecting settings\n')
     return
 end
-do.alignMethod = '';
+do.motion.alignMethod = '';
 if do.NoRMCorre
     % Get crop for NoRMCorre
     if exist('filepaths', 'var')
-        load([files.paths{1} files.names{1} '.mat'], 'info');
+        load([files.path{1} files.name{1} '.mat'], 'info');
         definput = {sprintf('1:%d', info.sz(2)), sprintf('1:%d', info.sz(1))};
         clearvars info
     else
@@ -149,11 +168,11 @@ if do.NoRMCorre
         fprintf('canceling selecting settings\n')
         return
     end
-    x = str2num(answer{1});
-    y = str2num(answer{2});
+    do.motion.crop.x = str2num(answer{1});
+    do.motion.crop.y = str2num(answer{2});
     
     % Set rigid or non rigid
-    do.alignMethod = questdlg('Which registration method to use? (rigid = default)',...
+    do.motion.alignMethod = questdlg('Which registration method to use? (rigid = default)',...
                            'NoRMCorre registration method',...
                            'Rigid','Nonrigid','Rigid');
 end
@@ -163,7 +182,7 @@ end
 do.saveLocation = questdlg('Save new files in original folder? (yes = default)',...
                           'Output location',...
                           'yes', 'no (select different folders)', 'yes');
-files.pathsOutput = files.paths;
+files.pathOut = files.path;
 if strcmp(do.saveLocation, 'yes')
     do.saveLocation = false;
 elseif strcmp(do.saveLocation, 'no (select different folders)') % select folder for every file
@@ -171,9 +190,9 @@ elseif strcmp(do.saveLocation, 'no (select different folders)') % select folder 
     outputpathi = 'lalala';
     i = 1;
     while i <= nfiles && ischar(outputpathi)
-        outputpathi = uigetdir(cd, sprintf('output path for file %d: %s',i, files.names{i}));
+        outputpathi = uigetdir(cd, sprintf('output path for file %d: %s',i, files.name{i}));
         if ischar(outputpathi)
-            files.pathsOutput{i} = [outputpathi '\'];
+            files.pathOut{i} = [outputpathi '\'];
         end
         i = i + 1;
     end
@@ -278,51 +297,51 @@ if do.BackgroundSubtract
 end
 
 % get ROIs? %
-getROIs = questdlg('automatic ROI detection?', 'get ROIs?', 'yes', 'no', 'yes');
-if strcmp(getROIs, 'yes')
-    getROIs = true;
+do.getROIs = questdlg('automatic ROI detection?', 'get ROIs?', 'yes', 'no', 'yes');
+if strcmp(do.getROIs, 'yes')
+    do.getROIs = true;
     global spar
     spar = Spectroiparm();
-elseif strcmp(getROIs, 'no')
-    getROIs = false;
+elseif strcmp(do.getROIs, 'no')
+    do.getROIs = false;
 else
     fprintf('Cancelling selecting settings\n')
     return
 end
 
 % Timing info % 
-timed = questdlg('Save processing time/log of the analysis?', 'time/log analysis?',...
+do.timed = questdlg('Save processing time/log of the analysis?', 'time/log analysis?',...
     'yes', 'no', 'no');
-if strcmp(timed, 'yes')
-    timed = true;
-elseif strcmp(timed, 'no')
-    timed = false;
+if strcmp(do.timed, 'yes')
+    do.timed = true;
+elseif strcmp(do.timed, 'no')
+    do.timed = false;
 else
-    timed = false;
+    do.timed = false;
 end
-if timed
+if do.timed
     % File in which timing info is stored
-    timedFile = 'D:\2Pdata\spectralTimed.mat'; % Default timedFile name! % % % 
+    do.timedFile = 'D:\2Pdata\spectralTimed.mat'; % Default timedFile name! % % % 
     timedFileLinePos = dbstack;
-    if ~isfile(timedFile) % Creating new file for timing data
-        warning('%s does not exist! please say which file to add the timing data to!', timedFile)
+    if ~isfile(do.timedFile) % Creating new file for timing data
+        warning('%s does not exist! please say which file to add the timing data to!', do.timedFile)
         [timedFileName, timedFilePath] = uiputfile('*.mat', 'Where to save timing file', 'spectralTimed.mat');
-        timedFile = [timedFilePath timedFileName];
+        do.timedFile = [timedFilePath timedFileName];
         if timedFileName==0 % User didn't select a file so forget about saving timed data
-            timed = false;
-        elseif ~isfile(timedFile) % Save new requested file
+            do.timed = false;
+        elseif ~isfile(do.timedFile) % Save new requested file
             if isscalar(timedFileLinePos) && isscalar(timedFileLinePos.line)
                 fprintf('\nPlease change default timedFile name (line %d) to the new file for future use:\n%s\n',...
-                    timedFileLinePos.line-1, timedFile)
+                    timedFileLinePos.line-1, do.timedFile)
             else
-                fprintf('\nPlease change default timedFile name to the new file for future use:\n%s\n', timedFile)
+                fprintf('\nPlease change default timedFile name to the new file for future use:\n%s\n', do.timedFile)
             end
             timedData = struct('computerName',{},'fileSize',[],'filePath', [], 'fileName',{},...
                          'nSplits', [], 'error', {}, 'memory', {}, 'alignMethod', {},...
                          'lineShiftT', [], 'normcorrT',[],'transposeT',[],'decimatT',[],...
                          'spectralT',[],'fluorescenceT',[], 'backSubT', [], 'getRoisT', [],...
                          'nRois', [], 'date', {});
-            save(timedFile, 'timedData')
+            save(do.timedFile, 'timedData')
         end
     end
 end
@@ -338,9 +357,9 @@ i = 1;
 
 for i = 1:nfiles
     try
-        fn = files.names{i};
-        pn = files.paths{i};
-        pno = files.pathsOutput{i};
+        fn = files.name{i};
+        pn = files.path{i};
+        pno = files.pathOut{i};
         % prepare to load a different sbx file: thoroughly delete info variable
         clearvars info ME
         clearvars -global info
@@ -449,14 +468,14 @@ for i = 1:nfiles
         
         if do.NoRMCorre
             % critical info for NoRMCorre
-            info.crop.x = x; 
-            info.crop.y = y;
+            info.crop.x = do.motion.crop.x; 
+            info.crop.y = do.motion.crop.y;
             info.d1 = length(info.crop.x);
             info.d2 = length(info.crop.y);
             % info.skipFrame = 65537; % Skip frame 65537 (for old recordings which
                        % have a bug that repeats a frame after 65537 (2^16) frames)
             info.Skipframe = -1; % Don't skip any frames
-            info.AlignMethod = do.alignMethod;
+            info.AlignMethod = do.motion.alignMethod;
             
             % START NORMCORR REGISTRATION % % % % %
             tics.normcorr = tic;
@@ -564,7 +583,7 @@ for i = 1:nfiles
         
         
         %% Automatic ROI creation
-        if getROIs
+        if do.getROIs
             tics.getRois = tic;
             for j = 1:nSlices
                 getSpectrois(files.nameSpectral{j}, spar)
@@ -577,17 +596,17 @@ for i = 1:nfiles
         end
         
     catch ME
-        if timed
+        if do.timed
             timedDatai(1).error = ME;
             timedDatai(1).memory = memory;
-            FillTimedData(timedDatai, timedFile, pn, fn, nRois, nSlices, do.alignMethod)
+            FillTimedData(timedDatai, do.timedFile, pn, fn, nRois, nSlices, do.motion.alignMethod)
             fprintf('Saved timed data for file %d\n', i)
         end
         rethrow(ME)
     end
     %% fill in the timedData tracker investigation file
-    if timed
-        FillTimedData(timedDatai, timedFile, pn, fn, nRois, nSlices, do.alignMethod)
+    if do.timed
+        FillTimedData(timedDatai, do.timedFile, pn, fn, nRois, nSlices, do.motion.alignMethod)
         fprintf('Saved timed data for file %d\n', i)
     end
 end

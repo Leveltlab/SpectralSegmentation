@@ -5,7 +5,11 @@ function s = ShiftLinesCheck(im, varargin)
 % input: 
 %    - im (2D, 3D or 4D double): The image where to figure out the shift.
 %                                if 3D, please no more than 2 elements.
-%    - trans (string): do 
+%    - trans (string): transpose data? (put true if vertical artifact)
+%    - doPlot (boolean): plotting the different options of lineshift 
+%                                       (default=true)
+%    - hax (axis graphic object): where to plot results which is 
+%                                       always generated.
 % output: s (digid integer): shift in px that the lines should have
 % 
 % Leander de Kraker
@@ -18,10 +22,13 @@ if exist('varargin', 'var') && nargin >= 2
 else
     trans = false;
 end
-if exist('varargin', 'var') && nargin == 3
-    doPlot = varargin{1};
+if exist('varargin', 'var') && nargin >= 3
+    doPlot = varargin{2};
 else
     doPlot = true;
+end
+if exist('varargin', 'var') && nargin == 4
+    hax = varargin{3};
 end
 if doPlot
     figure('WindowStyle','docked')
@@ -99,16 +106,19 @@ s = shifts(idx);
 if s < 1; y = 1;
 else;     y = 2;
 end
+if ~exist('hax', 'var')
+    hax = subplot(1,1,1);
+end
 x = abs(s);
 imS = im; % image with shifted lines
 imS(y:2:d1, 1:end-x) = imS(y:2:d1, 1+x:end);
 if size(imS, 3)==2; imS = CreateRGB2_mat(imS, [1 0 0; 0 1 0]); end 
-imagesc(MidtoneBalance(imS, 0.2))
-colormap(cmapL('greenFancy', 256)); colorbar
-title(sprintf('shift %dpx. correl %.5f', s, maxCor))
-if length(size(imS))==2; clim(clims); end
-xlim(xlims)
-ylim(ylims)
+imagesc(MidtoneBalance(imS, 0.2), 'Parent', hax)
+% colormap(hax, cmapL('greenFancy', 256)); colorbar
+title(hax, sprintf('shift %dpx. correl %.5f', s, maxCor))
+if length(size(imS))==2; clim(hax, clims); end
+xlim(hax, xlims)
+ylim(hax, ylims)
 
 % printing
 fprintf('best shift = %d pixels\n', s)

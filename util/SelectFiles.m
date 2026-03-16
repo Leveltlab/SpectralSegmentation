@@ -1,11 +1,12 @@
-function files = selectFiles
-% files = selectFiles();
+function [files, nfiles]= SelectFiles()
+% [files, nfiles] = SelectFiles();
 % 
 % select as many files as the user wants via pop-up dialog. Multiselect is
 % possible per individual selection. Press cancel to stop selecting
 % 
 % output:
-%   - files (struct). 
+%   - files (table). column 1=path, column 2=name 
+%   - nfiles(scalar integer). Number of files selected.
 % Leander de Kraker
 % 2026-3-13
 % 

@@ -1,23 +1,26 @@
-function spar = Spectroiparm()
+function spar = Spectroiparm(spar)
 % Set spar (Spectral PARameters). Without the need for a SPSIG file to show
 % what the parameters mean (use SpectParArm for that).
 % 
 % Chris v.d. Togt
 % Leander de Kraker
 %
-
-valid = false;
-if exist('spar.mat', 'file')
-     load spar.mat
-     flds = fieldnames(spar);
-     aflds = { 'cutOffHzMin', 'cutOffHzMax', 'border', 'areasz',...
-               'roundedness', 'voxel', 'cutOffCorr', 'useFluorescenceImg'};
-     if sum(ismember(aflds, flds)) == 9
-         valid = true; 
-     end
+arguments
+    spar = [];
 end
+
+% Try to find spar in current folder
+if isempty(spar) & exist('spar.mat', 'file')
+     load spar.mat
+end
+% Check if spar contains all the required fields
+valid = false;
+if ~isempty(spar)
+    valid = SparCheckValid(spar)
+end
+% 
 if ~valid
-    spar.cutOffHzMin = 0.0;
+    spar(1).cutOffHzMin = 0.0;
     spar.cutOffHzMax = 0.2; %upper value(Hz) of range of spectral components to use for roi selection
     spar.border = 15;       %border width of image to ignore
     spar.areasz = [25 250]; %minimal and maximal size of the rois in number of pixels
@@ -77,5 +80,5 @@ if ~isempty(answer)
         spar.doPlot = false;
     end
     
-    save('spar.mat', 'spar')
+    save('spar.mat', 'spar') % Save spar to current folder for future quick loading
 end
