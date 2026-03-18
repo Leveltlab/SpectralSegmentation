@@ -14,6 +14,12 @@ function [img, bestS, bestMethod, p] = ShiftLinesImg(img, varargin)
 %   - trans (string): to correct vertical lines, or horizontal lines
 %                   'horizontal' (default) | 'vertical'
 % 
+% Output:
+%   - img: image with best shifted lines
+%   - bestS (scalar double): best shift
+%   - bestSMethod (scalar double): best method (1=shift, 2=resizing)
+%   - p: correlation between even and uneven lines for every shift done
+% 
 % Leander de Kraker
 % 2023-8-6
 % 
@@ -144,6 +150,10 @@ if bestS~=0
             img(1:2:end, :) = imresize(img(1:2:end, bestS:end), dimsS);
         end
     end
+end
+
+if isempty(p)
+    p = corr(img(1:2:end, :), 2:2:end, :)
 end
 
 if trans

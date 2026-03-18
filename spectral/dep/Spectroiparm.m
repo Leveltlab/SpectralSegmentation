@@ -1,4 +1,4 @@
-function spar = Spectroiparm(spar)
+function [spar, succesBool]= Spectroiparm(spar)
 % Set spar (Spectral PARameters). Without the need for a SPSIG file to show
 % what the parameters mean (use SpectParArm for that).
 % 
@@ -9,6 +9,8 @@ arguments
     spar = [];
 end
 
+succesBool = false;
+    
 % Try to find spar in current folder
 if isempty(spar) & exist('spar.mat', 'file')
      load spar.mat
@@ -16,7 +18,7 @@ end
 % Check if spar contains all the required fields
 valid = false;
 if ~isempty(spar)
-    valid = SparCheckValid(spar)
+    valid = SparCheckValid(spar);
 end
 % 
 if ~valid
@@ -81,4 +83,5 @@ if ~isempty(answer)
     end
     
     save('spar.mat', 'spar') % Save spar to current folder for future quick loading
+    succesBool = true;
 end

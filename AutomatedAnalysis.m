@@ -87,7 +87,6 @@ do.BackgroundSub.plotter = true; % plot last frame
 do.getROIs = false;
 if do.getROIs
     % Arm the spar: Spectral roi finder PARameters
-    global spar
     spar = Spectroiparm();
 end
 
@@ -300,7 +299,6 @@ end
 do.getROIs = questdlg('automatic ROI detection?', 'get ROIs?', 'yes', 'no', 'yes');
 if strcmp(do.getROIs, 'yes')
     do.getROIs = true;
-    global spar
     spar = Spectroiparm();
 elseif strcmp(do.getROIs, 'no')
     do.getROIs = false;

@@ -72,13 +72,7 @@ if isfield(info, 'crop')
     %if imported sbx already has been cropped
     Crop = info.crop;
     % Set crop to position that doesn't cause crashes
-    if isfield(info, 'simon') || (isfield(info, 'scanbox_version') &&  info.scanbox_version == 2.5 )
-        dwidth = info.Shape(info.Perm(2));
-        dheight = info.Shape(info.Perm(1));
-    else
-        dwidth = info.sz(2);
-        dheight = info.sz(1);
-    end
+    [dwidth, dheight] = SbxGetDims(info);
     if Crop.x(end)>dwidth
         Crop.x = Crop.x - (Crop.x(end)-dwidth);
     end
