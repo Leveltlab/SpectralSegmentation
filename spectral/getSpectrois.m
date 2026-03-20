@@ -1,4 +1,4 @@
-function getSpectrois(varargin)
+function getSpectrois(filenameSPSIG, spar)
 % 
 % get rois from cross spectral components
 %
@@ -36,28 +36,21 @@ function getSpectrois(varargin)
 % Leander de Kraker
 % Chris van der togt, 01-07-2020 
 % Netherlands Institute for Neuroscience, 
+arguments
+    filenameSPSIG = [];
+    spar = [];
+end
 
-global spar
-
-if exist('varargin', 'var') && nargin >= 1
-    filenameSPSIG = varargin{1};
-else
+if isempty(filenameSPSIG)
     [fn, pn] = uigetfile('*_SPSIG.mat');
     filenameSPSIG = [pn fn];
 end
-
-if exist('varargin', 'var') && nargin >= 2
-    spar = varargin{2};
-    runSparArm = false;
-    flds = fieldnames(spar);
-    aflds = {'cutOffHzMax', 'cutOffHzMin', 'border', 'areasz',...
-             'roundedness', 'voxel', 'cutOffCorr','useFluorescenceImg', 'doPlot'};
-    if sum(ismember(aflds, flds)) < 9
-        warning('number of input values is not valid')
-        runSparArm = true;
-    end
-else
+if isempty(spar)
     runSparArm = true;
+else
+    valid = SparCheckValid(spar);
+    runSparArm = ~valid;
+    fprintf('spar was not correct, will start manual check UI\n')
 end
 
 %% Load and Process Spectral Images:  load('SPic.mat')
@@ -93,6 +86,7 @@ Sax(1) = []; %first spectral component is the average power over al components
 
 imgStackT = permute(imgStack,[2 1 3]); % transpose the SPic variable so it's same as BImg
 imgStackT = setminlevel(imgStackT); %replaces -infs and subtracts minimum
+
 
 %% Choosing the ROI search parameters: Spectral PARameters: spar
 

@@ -19,6 +19,7 @@ function timedData = AutomatedAnalysis(do, files, spar)
 arguments
     do = [];
     files = [];
+    spar = [];
 end
 
 % Set the files to analyse
