@@ -36,7 +36,7 @@ end
 
 % get or make local temporary folder for saving intermediate files.
 localpth = fileparts(mfilename("fullpath"));
-tmpfolder = fullfile(localpth, '\temp');
+tmpfolder = fullfile(localpth, '\TEMP_stackTransposing_', strrep(filename, ' ', '_'));
 
 warning('off', 'MATLAB:MKDIR:DirectoryExists')
 status = mkdir(tmpfolder);

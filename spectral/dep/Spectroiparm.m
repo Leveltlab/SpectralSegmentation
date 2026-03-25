@@ -26,7 +26,7 @@ if ~valid
     spar.cutOffHzMax = 0.2; %upper value(Hz) of range of spectral components to use for roi selection
     spar.border = 15;       %border width of image to ignore
     spar.areasz = [25 250]; %minimal and maximal size of the rois in number of pixels
-    spar.roundedness = 0.9; %roundedness between 0 and 1.0;
+    spar.roundedness = 0.8; %roundedness between 0 and 1.0;
     spar.voxel = 50;        %size of area to find roi contour in spectral image
     spar.cutOffCorr = 0.5;  %Minimum signal correlation within ROI:
     %ROIs drawn from a spectral image, in many cases, represent overlapping
@@ -48,7 +48,8 @@ else
     defansDoPlot = 'no';
 end
 
-prompt = {'cutOffHzMin: spectral cut-off Hz minimum', 'cutOffHzMax: spectral cut-off Hz maximum',...
+prompt = {'cutOffHzMin: spectral cut-off Hz minimum',...
+          'cutOffHzMax: spectral cut-off Hz maximum',...
           'border: width (pixels) around image that does not allow ROI centers [minimum = 5]',...
           'areasz: area size of ROIs [min max]', ...
           'ROI roundedness, between 0 (any shape) and 1 (perfectly round)',...
@@ -60,7 +61,9 @@ dlgtitle = 'Enter parameters for ROI segmentation';
 defans = {num2str(spar.cutOffHzMin), num2str(spar.cutOffHzMax), num2str(spar.border), num2str(spar.areasz), ...
           num2str(spar.roundedness), num2str(spar.voxel), num2str(spar.cutOffCorr), defansFluo, defansDoPlot};
 
+
 answer = inputdlg(prompt, dlgtitle, 1, defans);
+
 if ~isempty(answer)
     spar.cutOffHzMin = str2double(answer{1}); 
     spar.cutOffHzMax = str2double(answer{2}); 
