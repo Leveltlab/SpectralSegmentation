@@ -54,7 +54,7 @@ global info
 % Set the i if you want to run a specific section of the analysis for a
 % specific file (after things crash or are unsatisfactory for example)
 i = 1;
-
+[files, nSlices] = FilenamesAutomatedAnalysis(files, do);
 %% Process all the files
 
 for i = 1:nfiles
@@ -74,10 +74,10 @@ for i = 1:nfiles
         
         
         %% Shift lines, and replace erroneously high values (>65530)
-        if do.LineShift & do.lineShiftValue~=0
+        if do.LineShift && do.LineShiftValue~=0
             tics.lineShift = tic;
             fprintf('Shifting lines & replacing high value of file %s...\n', fn)
-            ShiftLinesSbx({pn fn}, do.LineShiftTrans, do.lineShiftValue, pno)
+            ShiftLinesSbx({pn fn}, do.LineShiftTrans, do.LineShiftValue, pno)
             timedDatai(1).lineShiftT = toc(tics.lineShift);
             pnUpdate = pno;
             fnUpdate = [fn '_shiftedLines'];
@@ -94,46 +94,7 @@ for i = 1:nfiles
         
         global info
         
-        % set the name of the recording
-        if ~isfield(info, 'strfp')
-            info.strfp = [pnUpdate fnUpdate];
-        elseif ~strcmp(info.strfp, [pnUpdate fnUpdate]) % inconsitent names, maybe it'll all go wrong
-            info.strfp
-            [pnUpdate fnUpdate]
-            fprintf('expected name and name in info are inconsistent\nPROBLEM\n\n')
-        else
-            fprintf('everything is going well\n')
-        end
-        
-        %number of splits
-        if ~isfield(info, 'Slices')
-            if isfield(info, 'otparam') && length(info.otparam)>=3
-                 info.Slices = info.otparam(3);
-            else
-    %             % Maybe the info file is super bad, ask how many slices there are
-    %             if ~isfield(info, 'Slices')
-    %                 answ = inputdlg('How many Slices?', 'Slice info!!...', [1 40],  {'1'});
-    %                  info.Slices = str2double(answ{1});
-    %             end
-    
-                % The info file could have no slices because only 1 depth is imaged
-                 info.Slices = 1;
-            end
-        end
-        if size(Img,1) < 3
-            info.bVers = true; % bvers means data is permuted because of GPU recording..
-        else
-            info.bVers = false;
-        end
-        
-        nSlices = info.Slices;
-        if ~isfield(info, 'bsplit')
-            if nSlices > 1 % bsplit true means there are more than 1 split
-                info.bsplit = true;
-            else
-                info.bsplit = false;
-            end
-        end
+        [info, nSlices] = UpdateSbxInfo(info);
         
         
         %% Normcorr    
@@ -156,7 +117,7 @@ for i = 1:nfiles
             else
                 imagesc(mean(squeeze(Img(:,:,1,j:nSlices:end)),3))
             end
-            caxis(cLimits)
+            clim(cLimits)
             if do.doNoRMCorre
                 hold on
                 rectangle('position',[x(1), y(1), x(end)-x(1), y(end)-y(1)],...
@@ -184,21 +145,20 @@ for i = 1:nfiles
             simonalign3(pno);
             timedDatai(1).normcorrT = toc(tics.normcorr);
             
-            files.nameNormcorr = cell(nSlices,1);
+            fnNormcorr = cell(nSlices,1);
             if info.bsplit
                 for j = 1:nSlices
-                    files.pathNormcorr = pno;
-                    files.nameNormcorr{j} = [fnUpdate sprintf('_Split%d_normcorr', j)];
+                    pnNormcorr = pno;
+                    fnNormcorr{j} = [fnUpdate sprintf('_Split%d_normcorr', j)];
                 end
             else
-                files.pathNormcorr = pno;
-                files.nameNormcorr{j}= [fnUpdate '_normcorr'];
+                pnNormcorr = pno;
+                fnNormcorr{j}= [fnUpdate '_normcorr'];
             end
-            
         else % No NoRMCorre
             nSlices = 1;
-            files.pathNormcorr = pn;
-            files.nameNormcorr = {fnUpdate};
+            pnNormcorr = pn;
+            fnNormcorr = {fnUpdate};
             timedDatai(1).normcorrT = NaN;
         end
         
@@ -206,19 +166,19 @@ for i = 1:nfiles
         % Basically only necessary for 1P & miniscope data, to remove extreme
         % vignetting, out of focus fluorescence, blur
         if do.doBackgroundSubtract
-            files.nameBackgroundSub = cell(nSlices, 1);
+            fnBackgroundSub = cell(nSlices, 1);
             fprintf('Doing background subtraction...\n')
             tics.backSub = tic;
             
             for j = 1:nSlices
-                files.nameBackgroundSub{j} = [files.nameNormcorr{j} '_Sub'];
-                BackgroundSubtractSbx([files.pathNormcorr files.nameNormcorr{j}],...
-                                      files.nameBackgroundSub{j}, do.BackgroundSubtract.FilterRadius,...
+                fnBackgroundSub{j} = [fnNormcorr{j} '_Sub'];
+                BackgroundSubtractSbx([pnNormcorr fnNormcorr{j}],...
+                                      fnBackgroundSub{j}, do.BackgroundSubtract.FilterRadius,...
                                       do.BackgroundSubtract.filterMethod, do.BackgroundSubtract.Shifter, do.BackgroundSubtract.SmoothDim, do.BackgroundSubtract.SmoothSe, do.BackgroundSubtract.plotter)
             end
             timedDatai(1).backSubT = toc(tics.backSub);
             % Replacing the normcorr names! So next analysis takes correct file
-            files.nameNormcorr = files.nameBackgroundSub;
+            fnNormcorr = fnBackgroundSub;
         else % No background subtraction
             timedDatai(1).backSubT = NaN;
         end
@@ -226,11 +186,11 @@ for i = 1:nfiles
         
         %% Eye file file conversion % % % % 
         if do.doEyeConvert
-            files.nameEye = strsplit(fn, {'_normcorr','_Split','_split','_copy','.sbx'});
-            files.nameEye = [files.nameEye{1}, '_eye.mat'];
+            fnEye = strsplit(fn, {'_normcorr','_Split','_split','_copy','.sbx'});
+            fnEye = [fnEye{1}, '_eye.mat'];
             % Check presence eye files.
-            if exist([pn files.nameEye], 'files.')
-                EyeData2Avi(pn, files.nameEye, do.EyeDeFlicker, do.EyeInvert)
+            if exist([pn fnEye], 'files.')
+                EyeData2Avi(pn, fnEye, do.EyeDeFlicker, do.EyeInvert)
             else
                 fprintf('No Eye file found!\n')
             end
@@ -238,13 +198,13 @@ for i = 1:nfiles
         
         
         %% TRANSPOSE DATASETS % % % % %
-        files.nameTrans = cell(nSlices,1);
+        fnTrans = cell(nSlices,1);
         fprintf('Starting Transposing the %d splits!\n', nSlices)
         
         tics.transpose = tic;
         for j = 1:nSlices
-            StackTranspose([files.pathNormcorr files.nameNormcorr{j} '.sbx'], pno)
-            files.nameTrans{j} = [pno files.nameNormcorr{j} '_Trans.dat'];
+            StackTranspose([pnNormcorr fnNormcorr{j} '.sbx'], pno)
+            fnTrans{j} = [pno fnNormcorr{j} '_Trans.dat'];
         end
         timedDatai(1).transposeT = toc(tics.transpose);
         
@@ -252,23 +212,23 @@ for i = 1:nfiles
         %% DECIMATE DATASETS % % % % % %  
         freqDec = 1;
         fprintf('Decimating the %d datasets to %.1fHz!\n', nSlices, freqDec)
-        files.nameDecTrans = cell(nSlices,1);
+        fnDecTrans = cell(nSlices,1);
         tics.decimate = tic;
         for j = 1:nSlices
-            DecimateTrans(files.nameTrans{j}, freqDec)
-            files.nameDecTrans{j} = [pno files.nameNormcorr{j} '_DecTrans.dat'];
+            DecimateTrans(fnTrans{j}, freqDec)
+            fnDecTrans{j} = [pno fnNormcorr{j} '_DecTrans.dat'];
         end
         timedDatai(1).decimatT = toc(tics.decimate);
         
         
         %% SPECTRAL % % % % % % % %
         fprintf('Doing spectral analysis on the transposed files\n')
-        files.nameSpectral = cell(nSlices, 1);
+        fnSpectral = cell(nSlices, 1);
         
         tics.spectral = tic;
         for j = 1:nSlices
-            spectral(files.nameDecTrans{j});
-            files.nameSpectral{j} = [pno files.nameNormcorr{j} '_SPSIG.mat'];
+            spectral(fnDecTrans{j});
+            fnSpectral{j} = [pno fnNormcorr{j} '_SPSIG.mat'];
         end
         timedDatai(1).spectralT = toc(tics.spectral);
         
@@ -279,7 +239,7 @@ for i = 1:nfiles
         
         tics.fluorescenceImg = tic;
         for j = 1:nSlices
-            FluorescenceImgSbx([pno files.nameNormcorr{j}]);
+            FluorescenceImgSbx([pno fnNormcorr{j}]);
         end
         timedDatai(1).fluorescenceT = toc(tics.fluorescenceImg);
         
@@ -288,7 +248,7 @@ for i = 1:nfiles
         if do.doGetROIs
             tics.getRois = tic;
             for j = 1:nSlices
-                getSpectrois(files.nameSpectral{j}, spar)
+                getSpectrois(fnSpectral{j}, spar)
             end
             timedDatai(1).getRoisT = toc(tics.getRois);
             load(files.nameSpectral{j},'PP')
