@@ -30,7 +30,7 @@ while selecting
         selecting = false;
     elseif iscell(filenames) % multiple files have been selected at once
         nselected = length(filenames);
-
+        
         files = [files; table(repmat({filepaths}, [nselected, 1]), filenames', 'VariableNames', varNames)];
         i = i + nselected;
     else

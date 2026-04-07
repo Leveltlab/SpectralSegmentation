@@ -33,6 +33,8 @@ if ischar(files) || isstring(files) % if text is given
         [files.path, files.name] = fileparts(files.path);
     elseif ismember(filesTxtExt, '.sbx') % If it was a mat file, load the mat file
         analyseThisFile = true;
+        files.name = filesTxtName;
+        files.path = filesTxtFolder;
     elseif ismember()
         
     end
@@ -41,9 +43,12 @@ if isstruct(files)
     
 end
 
-if isempty(do) || isempty(spar)
+if isempty(do) || isempty(spar) % if either spar or do is missing, start app
     SetAnalysisSettings(files, do, spar)
-elseif isempty(files) % Select files via pop up if nothing is given
+elseif (isstruct(do) && do.saveLocation) && (isstruct(files) && isfield(files.saveFolder))
+    % If it should save in different folders, but those folders are not defined
+    SetAnalysisSettings(files, do, spar)
+elseif isempty(files) % Select files via pop up if files are not given
     [files, nfiles] = SelectFiles();
 end
 
@@ -264,7 +269,9 @@ for i = 1:nfiles
             FillTimedData(timedDatai, do.timedFile, pn, fn, nRois, nSlices, do.doNoRMCorre.alignMethod)
             fprintf('Saved timed data for file %d\n', i)
         end
-        rethrow(ME)
+        warning('\nCrashed in iteration %d\n%s\n\n', i, ME.message)
+        continue
+        % rethrow(ME)
     end
     %% fill in the timedData tracker investigation file
     if do.doTimedFile
