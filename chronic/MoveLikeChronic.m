@@ -7,7 +7,7 @@ function imgs = MoveLikeChronic(varargin)
 % 
 
 %% Load chronic file
-saveImgs = false; % save each individual image to png?
+saveImgs = true; % save each individual image to png?
 if exist('varargin', 'var') && nargin>=2
     chronicPath = varargin{1};
     chronicName = varargin{2};
@@ -24,10 +24,11 @@ load([chronicPath, chronicName], 'transformed',...
 %% Load and chronically register requested images
 
 % Which variables to load from each file?
-toLoad = {'SPic', 'BImg', 'BImgAverage', 'BImgMax', 'BImgR', 'BImgG'};
+% toLoad = {'SPic', 'BImg', 'BImgAverage', 'BImgMax', 'BImgR', 'BImgG'};
 % toLoad = {'SPic', 'BImg', 'BImgAverage', 'BImgMax'};
 % toLoad = {'SPic', 'BImg'};
 % toLoad = {'BImg', 'BImgAverage', 'BImgMax'};
+toLoad = {'BImgMax'};
 useimgsMean = true; % Use imgsMean from files which contain that variable?
 
 nToLoad = length(toLoad);
@@ -38,7 +39,7 @@ for i = 1:nToLoad
     imgsi = cell(nfiles, 1);
     for f = 1:nfiles
         notdone = true;
-        if useimgsMean && ~isempty(who('-file', [filepaths{f}, filenames{f}], 'imgsMean'))
+        if useimgsMean && ~isempty(who('-file', fullfile(filepaths{f}, filenames{f}), 'imgsMean'))
             % Use imgsMean if present because it has data from multiple files
             if i==1; fprintf('Trying to use imgsMean struct for file %d\n', f);end
             imgsi{f} = load([filepaths{f} filenames{f}], 'imgsMean');
@@ -48,7 +49,7 @@ for i = 1:nToLoad
             end
         end
         if notdone
-            imgsi{f} = load([filepaths{f} filenames{f}], toLoad{i});
+            imgsi{f} = load(fullfile(filepaths{f}, filenames{f}), toLoad{i});
             imgsi{f} = imgsi{f}.(toLoad{i});
         end
         if strcmp(toLoad{i}, 'SPic')
@@ -71,10 +72,11 @@ clearvars imgsi i f notdone
 %% Plot them overlayed on each other
 
 
-colorsRGB = jet(nfiles+1); 
-% colorsRGB(end-1,:)=[];
-colorsRGB(2,:) = [];
-norma = false; % normalize each image in colored overlay?
+% colorsRGB = jet(nfiles+1); 
+% % colorsRGB(end-1,:)=[];
+% colorsRGB(2,:) = [];
+colorsRGB = [1 0 0; 0 0 0; 0 1 0; 0 0 1; 0 0 0]; 
+norma = true; % normalize each image in colored overlay?
 whiteBalance = true; % white balance resulting image? (makes colorbar untrue)
 
 % Activate tighter subplots
@@ -94,6 +96,8 @@ for i = 1:nToLoad
     hcbar.YTick = ((1:nfiles)-0.5)/nfiles;
     hcbar.YTickLabel = filenamesShort;
     figtitle(sprintf('%s overlayed',toLoad{i}))
+    saveName = ['overlayed', toLoad{i}, '_', chronicName];
+    SaveImg({'png'}, saveName)
 end
 linkaxes(hax, 'xy')
 
@@ -151,14 +155,27 @@ end
 if saveImgs
     %% Save images of every recording
     
-    doPlotForOurEyes = false;
+    doPlotForOurEyes = true;
     doLineshift = false;
+
+%     dims = size(imgs.(toLoad{i}){1});
+    dims = [512 796]; % standard size before cropping and registering
+    
+    % Set these parameters manually!
+    fov = 1000; % amount of um the microscope images with 1x zoom
+    zoomlevel = 1.6;
+    scale =  dims(2) / (fov/zoomlevel); % number of pixels / µm images (depends on zoom)
+    scaleBarUm = 100; % How big you want your scalebar
+    scaleBarSize = scaleBarUm * scale;
     
     for i = 1:nToLoad
         imgsi = imgs.(toLoad{i});
         for f = 1:nfiles
             saveName = [toLoad{i}, '_', filenamesShort{f}, '.png'];
             img = imgsi{f};
+
+            img = img(100:end-50, 160:end-80); % CROPPING MANUAL
+
             if strcmp(toLoad{i}, 'SPic')
                 img = permute(img, [2 1 3]);
                 img = SpectralColorImg('data', {img, 1:size(img, 3)}, [], false);
@@ -179,13 +196,15 @@ if saveImgs
                     doPercLim = true;
                 elseif any(strcmp(toLoad{i}, {'BImgAverage', 'BImgMax'}))
                     colors = cmapL('greenFancy', 256);
-                    lims = [1000 20000];
+%                     lims = [1000 20000];
+                    lims = [2000 30000]; % 2026-4-24
+%                     lims = [2, 99.95]; % Or do a perctile value based lims
                     doPercLim = false;
                 end
     %             colors = cmapL('greenFancy', 256);
     %             lims = [1000, 20000]; % handpick based on images created using previous section
     %             doPercLim = false;
-                img = PrintBImg(img, lims, colors,  doPlotForOurEyes, saveName, [], doPercLim, doLineshift);    
+                img = PrintBImg(img, lims, colors,  doPlotForOurEyes, saveName, scaleBarSize, doPercLim, doLineshift);    
             end
         end
     end

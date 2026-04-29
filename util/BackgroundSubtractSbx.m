@@ -33,7 +33,8 @@ function BackgroundSubtractSbx(varargin)
 %       in the accompanying .mat file there will be info about the
 %       filtering parameters used in info.filtered
 %           
-% 
+% See also: BackgroundSubtractSbxExampleFrame
+%  
 % Leander de Kraker
 % 2020-11-9
 % 

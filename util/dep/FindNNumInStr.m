@@ -15,8 +15,8 @@ good = pos(b(c==n));
 
 if isscalar(good)
     strOut = str(good-n+1:good);
-else
-    strOut = [];
+else % just get the first one if multiple of length 8 were found
+    strOut = str(good(1)-n+1:good(1));
 end
 
 

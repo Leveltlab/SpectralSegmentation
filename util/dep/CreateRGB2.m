@@ -106,6 +106,13 @@ if wbalance
             RGB(:,:,i) = (RGB(:,:,i)-minvals(i)) ./ range([minvals(i), maxvals(i)]);
         end
     end
+%     % Normalize in an extreme way
+%     for i = 1:3
+%         % Normalize
+%         if range([minvals(i), maxvals(i)])>0
+%             RGB(:,:,i) = (RGB(:,:,i)-minvals(i)) ./ range([minvals(i), maxvals(i)]);
+%         end
+%     end
 end
 
 end

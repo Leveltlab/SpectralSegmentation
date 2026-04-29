@@ -1,4 +1,4 @@
-function filedates = getDate(filenames)
+function filedates = FindDate(filenames)
     % Find filedates that is hidden somewhere in filename
     % Format: yyyyMMdd  = 20220708
     % 

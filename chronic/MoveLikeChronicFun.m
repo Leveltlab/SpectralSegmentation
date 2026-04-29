@@ -10,6 +10,16 @@ function imgs = MoveLikeChronicFun(imgs, tr)
 
 nfiles = length(imgs);
 
+% Scale the images if needed
+if isfield(tr(1), 'scaleFac')
+    for f = tr(1).scaleRecs
+        dims = size(imgs{f});
+        scaling = round(dims([1 2]) .* tr(1).scaleFac([2 1]));
+        imgs{f} = imresize(imgs{f}, scaling, 'bilinear');
+    end
+end
+
+
 for i = 1:length(tr)
     tri = tr(i);
     

@@ -25,7 +25,7 @@ function [filepaths, filenames, fileList] = CollectFiles(searcher, strFolder, de
 % 2025-11-21
 %
 
-arguments (Input)
+arguments
     searcher = 'SPSIG_Res.mat'
     strFolder = cd
     depth = 1

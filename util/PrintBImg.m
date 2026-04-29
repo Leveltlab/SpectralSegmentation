@@ -68,10 +68,13 @@ if exist('varargin', 'var') && nargin>7 && ~isempty(varargin{7})
 else
     doLineShift = false;
 end
+AR = 796/512;
 if exist('varargin', 'var') && nargin>8
     pos = varargin{8};
 else
-    pos = GetCenteredFigPos(dims([2 1])); % figure that does not get saved
+    desiredSize = dims([2 1]);
+    desiredSize(2) = desiredSize(2) .* AR;
+    pos = GetCenteredFigPos(desiredSize); % figure that does not get saved
 end
 
 
@@ -104,6 +107,6 @@ end
 
 % save image
 if ~isempty(saveName)
-    imwrite(img, saveName)
+    imwrite(imresize(img, [AR, 1].*dims, 'bilinear'), saveName)
 end
 
