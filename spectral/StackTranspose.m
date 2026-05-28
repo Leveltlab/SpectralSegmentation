@@ -27,11 +27,18 @@ elseif exist('varargin', 'var') && nargin == 1
     
 else
     [filename , pn] = uigetfile('*.sbx');
-    if ~isempty(filename) 
+    if any(filename==0)
+        fprintf('Cancelled selecting file to transpose. Quitting StackTranspose\n')
+        return
+    else
         fnsplit = strsplit(filename, '.');
         filename = fnsplit{1};
     end
     strSavepath = uigetdir(pn,'Where to save the output file?');
+    if any(strSavepath==0)
+        fprintf('Cancelled selecting output folder. Quitting StackTranspose\n')
+        return
+    end
 end
 
 % get or make local temporary folder for saving intermediate files.

@@ -110,6 +110,51 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     
     
     [fn, pn] = uigetfile('*SPSIG.mat');
+    
+    % Try to find the 2P transposed datafile based on given SPSIG file
+    basename = strsplit(fn, '_SPSIG');
+    basename = basename{1};
+    datafile = [pn basename '_DecTrans.dat'];
+    
+    % nargin == varargin + hObject, evendata and handles.
+    if nargin == 4 % If RoiManagerGUI got false as only input, do not use decimated data
+        if varargin{1} == false
+            datafile =  [pn basename '_Trans.dat'];
+        end
+    end
+    if exist(datafile, 'file') ~= 2 % Try to find requested transposed data
+        datafile =  [pn basename '_Trans.dat']; % If not found, maybe switch from decTrans to Trans
+        fprintf('Decimated transposed data not found, trying full DecTrans.dat file\n')
+        if exist(datafile,'file') ~= 2 % if not found, request it
+            [fn, pn] = uigetfile('*Trans*.dat', 'Select the file with 2P data');
+            if any(fn ~= 0)
+                datafile = [pn fn];
+            else % if cancelled, ask if it should be created
+                nameSbx = [basename '.sbx'];
+                sbxFound = exist([pn nameSbx], 'file') == 2;
+                strQuest = 'Create transposed data via StackTranspose? (will take time)';
+                strQuestTitle = 'Transposed data is essential for RoiManagerGUI';
+                if sbxFound % If sbx is found, easy
+                    strQuest = {sprintf('original data found %s', nameSbx),...
+                                strQuest};
+                    answ = questdlg(strQuest, strQuestTitle);
+                    if strcmp(answ, 'Yes')
+                        StackTranspose([pn nameSbx])
+                    end
+                else % If sbx is not found
+                    strQuest = {'Original data not found yet',...
+                                strQuest};
+                    answ = questdlg(strQuest, strQuestTitle);
+                    if strcmp(answ, 'Yes')
+                        StackTranspose % Let stacktranspose handle the questions
+                    end
+                end
+                return % quit
+            end
+        end
+    end
+    
+    % Load SPSIG file
     fprintf('Loading...\n')
     SPSIGfile = [pn fn];
     load(SPSIGfile,'Mask','PP','Sax','SPic', 'SpatialCorr', 'rmSliderSettings', 'pixelAspectRatio');
@@ -118,29 +163,6 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     if ~exist('pixelAspectRatio', 'var')
         pixelAspectRatio = 1;
     end
-    
-    % Try to find the 2P transposed datafile based on given SPSIG file
-    datafile = [pn fn(1:end-9) 'DecTrans.dat'];
-    
-    % nargin == varargin + hObject, evendata and handles.
-    if nargin == 4 % If RoiManagerGUI got false as only input, do not use decimated data
-        if varargin{1} == false
-            datafile =  [pn fn(1:end-9) 'Trans.dat'];
-        end
-    end
-    if exist(datafile, 'file') ~= 2
-        datafile =  [pn fn(1:end-9) 'Trans.dat'];
-        if exist(datafile,'file') ~= 2 % if not found, request it
-            [fn, pn] = uigetfile('*Trans*.dat', 'Select the file with 2P data');
-            if any(fn ~= 0)
-                datafile = [pn fn];
-            else
-                fprintf('cannot run RoiManagerGUI without transposed data file\n')
-                return
-            end
-        end
-    end
-    
     
     Sax = Sax(2:end);
     imgStackT = permute(SPic(:,:,2:end),[2 1 3]);

@@ -1,4 +1,4 @@
-function colmap = cmapL(colors, n)
+function colmap = cmapL(colors, n, flipit)
 % 
 % Create a custom colormap from multiple RGB triplets or a string
 % If only one RGB triplet is given, that color will be the maximum color, 
@@ -73,6 +73,11 @@ function colmap = cmapL(colors, n)
 % 2018-10-22, edited 2020-5-1
 % 2022-2-11: added ability to use different amounts of colors per color
 %
+arguments
+    colors
+    n = 256;
+    flipit = true;
+end
 
 % Change string request to
 if ischar(colors)
@@ -213,6 +218,7 @@ for i = (ncolors-1):-1:1
     end
 end
 
-colmap = flipud(colmap);
-
+if flipit
+    colmap = flipud(colmap);
+end
 end
