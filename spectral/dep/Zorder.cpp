@@ -97,19 +97,19 @@ void mexFunction(
         }
     }
 
-        tmp = mxGetField(prhs[0], 0, "Tmpfolder"  );
-    if( tmp == NULL )
-        mexErrMsgTxt("Tmpfolder string not found");
-    else {
-        Filename = mxArrayToString(tmp);
-        if(strlen(Filename) != 0){
-            Sinf.Tmpfolder = Filename;
-        }else{
-           mexErrMsgTxt("Tmpfolder string empty");
-           return;
-        }
-    }
-        
+    //     tmp = mxGetField(prhs[0], 0, "Tmpfolder"  );
+    // if( tmp == NULL )
+    //     mexErrMsgTxt("Tmpfolder string not found");
+    // else {
+    //     Filename = mxArrayToString(tmp);
+    //     if(strlen(Filename) != 0){
+    //         Sinf.Tmpfolder = Filename;
+    //     }else{
+    //        mexErrMsgTxt("Tmpfolder string empty");
+    //        return;
+    //     }
+    // }
+    // 
     tmp = mxGetField(prhs[0],0, "Freq" );
     if( tmp == NULL ){
         mexErrMsgTxt("Freq not found");
@@ -160,7 +160,7 @@ void mexFunction(
     size_t Bsz = LineSz * lines * 2 * ChanSz;
     char* BUFO = new char[Bsz];
     
-    printf("\nProcessing Frames:       ");
+    mexPrintf("\nProcessing Frames:       ");
     for(UINT i = 0; i < StackSz; i++){
         UINT cnt = (UINT)fread(BUFO, sizeof(char), Bsz, infile);
         if( cnt == Bsz){
@@ -168,7 +168,7 @@ void mexFunction(
                 fwrite( (void*)(BUFO + j*LineSz*2), sizeof(char), LineSz*2, ppfile[j]);    
             }
             if(i%100 == 0){
-                printf("\b\b\b\b\b%5i", i);
+                mexPrintf("\b\b\b\b\b%5i", i);
                 mexEvalString("drawnow");
             }
              
@@ -195,7 +195,7 @@ void mexFunction(
     
     Outfile = fopen(Sinf.SaveFn, "wb");
     fwrite(Header, 1, 500, Outfile);
-    printf("\nAll Frames processed. \nTransposing lines: ");
+    mexPrintf("\nAll Frames processed. \nTransposing lines: ");
     
     Bsz = LineSz * StackSz * 2;
     char* BUFI = new char[Bsz];
@@ -222,11 +222,11 @@ void mexFunction(
         remove(Fn[i]);
         delete [] Fn[i];
         if(i%10 == 0){
-            printf(".");
+            mexPrintf(".");
             mexEvalString("drawnow");
         }
     }
-    printf("\nDone!\n");
+    mexPrintf("\nDone!\n");
     
     delete [] Fn;
     delete [] BUFI;
