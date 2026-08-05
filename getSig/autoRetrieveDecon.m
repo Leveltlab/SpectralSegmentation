@@ -4,7 +4,7 @@
 % 
 
 %% SELECTION option 1: Collect all files
-removeDuplicate = false;
+removeDuplicates = false;
 depth = 1;
 searchFolder = cd;
 [filepaths, filenames] = CollectFiles('SPSIG.mat', searchFolder, depth, removeDuplicates);
@@ -39,7 +39,7 @@ sigToLoad = {'sigCorrected'};
 decToSave = {'deconCorrected'};
 
 for i = 1:nfiles
-    % retrievesignals([filepaths{i},  filenames{i}]);
+    retrievesignals([filepaths{i},  filenames{i}]);
     % SealSignals([filepaths{i},  filenames{i}]);
     % ZscoreSignals([filepaths{i},  filenames{i}])
     DeconvolveSignals([filepaths{i},  filenames{i}], doParamEstimation, sigToLoad, decToSave);

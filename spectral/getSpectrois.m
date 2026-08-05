@@ -41,9 +41,18 @@ global DISPLAY
 global spar
 DISPLAY = false;
 
+
 if exist('varargin', 'var') && nargin >= 1
-    filenameSPSIG = varargin{1};
+    if ~isempty(varargin{1})
+        filenameSPSIG = varargin{1};
+        requestFile = false;
+    else
+        requestFile = true;
+    end
 else
+    requestFile = true;
+end
+if requestFile
     [fn, pn] = uigetfile('*_SPSIG.mat');
     filenameSPSIG = [pn fn];
 end
