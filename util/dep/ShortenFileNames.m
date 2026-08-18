@@ -45,7 +45,11 @@ for i = 1:nfiles
         elseif parts(j)<0 && ~isempty(delims0)
             filenamesShort{i} = [filenamesShort{i}, pn(delims0(end+parts(j)):delims0(end+parts(j)+1)-1)];
         elseif parts(j)==0
-            filenamesShort{i} = [filenamesShort{i}, ' ', datestr(varargin{1}(i), 'yyyy-mm-dd')];
+            if iscell(varargin{1}(1))
+                filenamesShort{i} = [filenamesShort{i}, ' ', datestr(varargin{1}{i}, 'yyyy-mm-dd')];
+            else
+                filenamesShort{i} = [filenamesShort{i}, ' ', datestr(varargin{1}(i), 'yyyy-mm-dd')];
+            end
         else
             fprintf('filename part %d not found for name %d', parts(j), i)
         end

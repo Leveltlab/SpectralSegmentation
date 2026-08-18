@@ -15,6 +15,7 @@ if exist('registration_data', 'var')
     Masks = registration_data.Mask_warped;
     transformed.method = 'affine2D';
     transformed.transforms = registration_data.tForm;
+    transformed.finalView = registration_view;
     BImgs = registration_data.Image_warped;
     nfiles = length(filenames);
     

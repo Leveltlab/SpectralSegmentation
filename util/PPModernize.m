@@ -1,19 +1,22 @@
-function PP = PPModernize(varargin)
+function PP = PPModernize(pn, fn, doSave)
 % PP = PPModernize(pathname, filename) saves an updated PP (contour & ROI
 %   information) to the [pathname filename] SPSIG.mat file
-%
+% 
 % Script requires the transposed .dat file in order to retrieve essential data  
 % 
 % Code can be run as function or as script
 % As function: 
 %   input:
-%       pathname = string of filepath
-%       filename = string of filename (SPSIG.mat)
-%   output: A potentially edited PP variable
-%
+%       pathname [string] e.g. 'E:\myData\mousy\'
+%       filename [string] *_SPSIG.mat'
+%       doSave [boolean] (default = true) save the new PP to file directly
+%       
+%   output: PP [struct].
+% 
 % Modernize the PP variable.
 % The PP variable has changed over the years. This script will make sure it
-% corresponds to the latest version.
+% corresponds to the latest version. It has to calculate the properties
+% using the DecTrans data
 % 
 % Essential correct fields in PP are: 
 %       PP.Con.x, PP.Con.y, PP.P([1,2],:), PP.Cnt
@@ -22,17 +25,24 @@ function PP = PPModernize(varargin)
 %   PPfromMask.m
 % 
 % Leander de Kraker
-% 2020-4-3, last updated 2020-6-23
+% 2020-4-3
+% 2026-8-5: optional save
 % 
 
 %% Load file
-if exist('varargin', 'var') && nargin==2 % called as function with input
-    pn = varargin{1};
-    fn = varargin{2};
-    fprintf('loading %s %s\n', pn, fn)
-else % which file to load
+arguments
+    pn = [];
+    fn = [];
+    doSave = true;
+end
+if isempty(fn)
     [fn, pn] = uigetfile('*SPSIG.mat');
 end
+if isempty(fn)
+    fprintf('\nno valid file given, quitting PPModernize\n')
+    return
+end
+fprintf('loading %s %s\n', pn, fn)
 load([pn fn], 'PP', 'BImg', 'Mask', 'SPic', 'Sax')
 
 % obtain average spectral density for each image
@@ -63,7 +73,7 @@ if calcSpecProfile
     fprintf('done\n')
 end
 
-%% Calcualte A (Area) (and replace old)
+%% Calcualte A (Area)
 
 Anew = zeros(1, PP.Cnt);
 for i = 1:PP.Cnt
@@ -118,7 +128,7 @@ if calcRvar
     end
     [sbxt, dim, freq] = transmemap([pnSbx, fnSbx]);
     
-    % Calculate the new SpatialCorr
+    % Calculate SpatialCorr
     SpatialCorrNew = zeros(size(Mask));
     rvar = zeros(PP.Cnt, 1);
     tic
@@ -140,8 +150,10 @@ if calcRvar
     load([pn fn], 'SpatialCorr')
     if ~exist('SpatialCorr', 'var')
         SpatialCorr = SpatialCorrNew;
-        fprintf('Saving new spatialCorr\n')
-        save([pn fn], 'SpatialCorr', '-append')
+        if doSave
+            fprintf('Saving new spatialCorr\n')
+            save([pn fn], 'SpatialCorr', '-append')
+        end
     end
 end
 
@@ -174,7 +186,7 @@ else
 end
 
 
-%% Check PP.P?
+%% Check PP.P, should only contain seedpoint coordinates
 
 % Check for error in number of ROIs
 if size(PP.P,2) ~= PP.Cnt
@@ -197,8 +209,10 @@ end
 
 
 %% Save the updated PP to the file
-save([pn fn], 'PP', '-append')
-fprintf('saved PP\n')
+if doSave
+    save([pn fn], 'PP', '-append')
+    fprintf('saved PP\n')
+end
 
 
 
