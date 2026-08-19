@@ -2526,7 +2526,8 @@ function Help_Callback(~, eventdata, h)
                    ' the surrounding 256 pixels. The correlation values are then'...
                    ' shown in the main image.']};
                str{3} = 'This can be helpful to see individual neurons and close dendrites, which have a correlated signal.';
-               str{5} = 'Remove the overlay image by pressing "delete" on your keyboard.';
+               str{5} = 'Toggle this functionality on by pressing "c" on your keyboard';
+               str{7} = 'Remove the overlay image by pressing "delete" on your keyboard.';
                
         case 'sigSelectHelp' % in tab Show data
             strTitle = 'main image signal plotting help';
@@ -2644,16 +2645,19 @@ function Help_Callback(~, eventdata, h)
             str{9} = 'arrow keys: Change position of the main plot';
             str{10} = '"k": scroll left on the signal axes';
             str{11} = '"l": scroll right  on the signal axes';
-            str{12} = '"enter": Can be used to apply ROI creation or splitting';
-            str{13} = '"w": Toggle ROI white listing';
-            str{14} = '"b": Toggle ROI black listing';
-            str{15} = '"delete": Remove local time trace correlation overlay image';
-            str{16} = '"z": Toggle zoom (shift click to zoom out)';
-            str{17} = '"g": Grab/pan image';
-            str{18} = '"d": Datacursor (pretty useless)';
-            str{20} = ['They hotkeys only work if you have not selected a different functionality using the mouse',...
+            str{12} = '"m": activate manual ROI drawing panel';
+            str{13} = '"n": activate create ROI panel ';
+            str{14} = '"enter": Can be used to apply ROI creation or splitting';
+            str{15} = '"w": Toggle ROI white listing';
+            str{16} = '"b": Toggle ROI black listing';
+            str{17} = '"c": Turn on local time trace correlation function';
+            str{18} = '"delete": Remove local time trace correlation overlay image';
+            str{19} = '"z": Toggle zoom (shift click to zoom out)';
+            str{20} = '"g": Grab/pan image';
+            str{21} = '"d": Datacursor (pretty useless)';
+            str{22} = ['They hotkeys only work if you have not selected a different functionality using the mouse',...
                 '(e.g. you clicked on zooming functionality of the plotting)'];
-            str{21} = ['If the hotkeys are still not working, click next to the axis or on the figure bar to put the figure',...
+            str{23} = ['If the hotkeys are still not working, click next to the axis or on the figure bar to put the figure',...
                 ' better into focus for MATLAB'];
             
         otherwise
@@ -2809,6 +2813,28 @@ function myKeyPressFcn(hObject, eventdata, h)
             data = getappdata(h.hGUI, 'data');
             maxAllowed = data.xas(end) - h.(sigAxStr).XLim(2);
             h.(sigAxStr).XLim = h.(sigAxStr).XLim + min((diff(h.(sigAxStr).XLim)*moveAmountSig), maxAllowed);
+        case 'c'            
+            switches = getappdata(h.hGUI, 'switches');
+            if switches.currentMajor ~= 4
+                hImitiationObject.Tag = '4';
+                majorToggles_Callback(hImitiationObject, [], h)
+            end
+            % switches.currentMinor = 'corrButton';
+            % Act as if the corrButton button was pressed
+            h.corrButton.Value = true;
+            minorToggles_Callback(h.corrButton, [], h)
+        case 'n'
+            switches = getappdata(h.hGUI, 'switches');
+            if switches.currentMajor~=3
+                hImitiationObject.Tag = '3';
+                majorToggles_Callback(hImitiationObject, [], h)
+            end
+        case 'm'
+            switches = getappdata(h.hGUI, 'switches');
+            if switches.currentMajor~=5
+                hImitiationObject.Tag = '5';
+                majorToggles_Callback(hImitiationObject, [], h)
+            end
     end
     
     if resetFcn
