@@ -26,6 +26,8 @@ mfn = strsplit(fn, '_DecTrans');
 % Try to find scale of pixels in the info of sbx file
 scaleUm = NaN;
 pixelAspectRatio = NaN;
+foundScale = false;
+foundAR = false;
 fnBase = strsplit(fn, {'_DecTrans'});
 fnBase = fnBase{1};
 if exist([fp fnBase '.mat'], 'file')==2
@@ -33,12 +35,23 @@ if exist([fp fnBase '.mat'], 'file')==2
     if isfield(sbxinfo, 'info')
         if isfield(sbxinfo.info, 'scaleUm')
             scaleUm = sbxinfo.info.scaleUm;
+            foundScale = true;
         end
         if isfield(sbxinfo.info, 'pixelAspectRatio')
             pixelAspectRatio = sbxinfo.info.pixelAspectRatio;
+            foundAR = true;
         end
     end
 end
+if ~foundScale
+    fprintf('No scale value found. Assuming scale = 1um per px\n')
+    scaleUm = 1;
+end
+if ~foundAR
+    fprintf('No pixel aspect ratio found. Assuming the pixel aspect ratio is square (= 1)\n')
+    pixelAspectRatio = 1;
+end
+
 
 [dim, freq, strType] = Zgetinfo(strfp);
 

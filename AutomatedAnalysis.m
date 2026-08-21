@@ -368,15 +368,15 @@ for i = 1:nfiles
         pn = filepaths{i};
         pno = filepathsOutput{i};
         % prepare to load a different sbx file: thoroughly delete info variable
-        clearvars info ME
-        clearvars -global info
+        CloseSbx()
         timedDatai = struct('computerName',{},'fileSize',[],'filePath', [], 'fileName',{},...
                      'nSplits', [], 'error', {}, 'memory', {}, 'alignMethod', {},...
                      'lineShiftT', [], 'normcorrT',[],'transposeT',[],'decimatT',[],...
                      'spectralT',[],'fluorescenceT',[], 'backSubT', [], 'getRoisT', [],...
                      'nRois', [], 'date', {});
+        % preallocate all variables that are required in case of crash
         nRois = 0; % number of detected ROIs for this recording
-        
+        nSlices = nan; 
         
         %% Shift lines, and replace erroneously high values (>65530)
         if doLineShift & lineShift~=0
@@ -385,9 +385,7 @@ for i = 1:nfiles
             ShiftLinesSbx({pn fn}, doLineShiftTrans, lineShift, pno)
             timedDatai(1).lineShiftT = toc(tics.lineShift);
             pnUpdate = pno;
-            fnUpdate = [fn '_shiftedLines'];
-            clearvars info 
-            clearvars -global info
+            fnUpdate = [fn '_shiftedLines'];        
         else
             pnUpdate = pn;
             fnUpdate = fn;
@@ -506,7 +504,8 @@ for i = 1:nfiles
             filenameNormcorr = {fnUpdate};
             timedDatai(1).normcorrT = NaN;
         end
-        
+        CloseSbx()
+
         %% BACKGROUND SUBTRACTION % % % %
         % Basically only necessary for 1P & miniscope data, to remove extreme
         % vignetting, out of focus fluorescence, blur

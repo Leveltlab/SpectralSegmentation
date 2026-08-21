@@ -251,6 +251,7 @@ else
 end
 
 fprintf('saved background images to %s\n\n',spsigName)
+CloseSbx()
 
 
 

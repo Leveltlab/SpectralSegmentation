@@ -26,8 +26,9 @@ global info
 persistent Perm Shape
 
 
-% check if already loaded...
+% check if another file is already loaded.
 if isempty(info) || (~isempty(info) && ~strcmp(fname, info.strfp))
+    % close other file
     if ~isempty(info)
         try
             fclose(info.fid);       
@@ -35,7 +36,8 @@ if isempty(info) || (~isempty(info) && ~strcmp(fname, info.strfp))
         end
         info = [];
     end
-
+    
+    % load requested file
     load(fname);
     info.strfp = fname;
     
@@ -96,7 +98,7 @@ if(isfield(info,'fid') && info.fid ~= -1 && k + N > 0)
         x = fread(info.fid,info.nsamples/2 * N,'uint16=>uint16');        
         %changed for gpu version
         x = reshape(x,[Shape N]);
-            
+        
     catch
         error('Cannot read frame.  Index range likely outside of bounds.');
     end

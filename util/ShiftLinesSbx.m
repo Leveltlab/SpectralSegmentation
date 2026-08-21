@@ -39,10 +39,9 @@ else
 end
 pnfn = [filepath filename];
 
-clearvars -global info
-clearvars info
+CloseSbx()
 
-load(pnfn) % load info
+load(pnfn, 'info') % load info
 
 if ~isfield(info, 'max_idx')
     d = dir([pnfn '.sbx']); 
@@ -162,5 +161,6 @@ if isfield(info, 'simon')
     info = rmfield(info, 'simon');
 end
 save(filenameOut(1:end-4), 'info')
+CloseSbx()
 
 

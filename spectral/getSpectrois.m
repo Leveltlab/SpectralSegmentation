@@ -77,6 +77,7 @@ fprintf('\nloading...')
 load(filenameSPSIG, 'SPic', 'Sax', 'pixelAspectRatio')
 
 if ~exist('pixelAspectRatio', 'var')
+    fprintf('No pixel aspect ratio value found. Assuming pixels are square (pixelAspectRatio=1)\n')
     pixelAspectRatio = 1;
 end
 
