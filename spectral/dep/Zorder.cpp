@@ -137,8 +137,9 @@ void mexFunction(
     char* strp = Sinf.StrPath;
  
     #ifdef _WIN32
-    //stdio has a limit on open files < 512 in windows
-    if(lines > 500) _setmaxstdio(lines+12);
+    //stdio has a limit on open files < 512 in windows 
+    // if(lines > 500) _setmaxstdio(lines+12);
+    if(lines > 500) _setmaxstdio(2048);
     #endif
     
     
