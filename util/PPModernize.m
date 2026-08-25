@@ -120,7 +120,7 @@ if calcRvar
     
     % Calculate the new SpatialCorr
     SpatialCorrNew = zeros(size(Mask));
-    rvar = zeros(PP.Cnt, 1);
+    rvar = zeros(1, PP.Cnt);
     tic
     for i = 1:PP.Cnt
         [Corri, idx, rvari] = SpatialCorrCalcFun(sbxt, freq, Mask, i, PP.P([1 2], i), calcRvar);
