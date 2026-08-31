@@ -126,6 +126,6 @@ if s~=0
     fprintf('going to shift %seven %s %d pixels to %s\n', stri, strOri, abs(s), strDirection)
     fprintf('which is %.5f better than no shift\n', maxCor-correls(shifts==0))
 else
-    fprintf('no shift recommended I guess')
+    fprintf('no shift recommended')
 end
 

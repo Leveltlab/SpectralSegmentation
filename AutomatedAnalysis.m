@@ -67,7 +67,11 @@ y = 5:510;  % VERTICAL CROP
 % Do line shifting correction? % % % % % % % % %
 doLineShift = false;
 doLineShiftTrans = false; % false=correct for horizontal lines, true=correct for vertical lines
-lineShift = 0;
+if doLineShift
+    im = sbxread([filepaths{1}, filenames{1}], 5, 100);
+    dolineshiftplot = false
+    lineShift = ShiftLinesCheck(im, doLineShiftTrans, dolineshiftplot);
+end
 
 % Run motion normcorre correction? % % % % % % % % % % % % %
 doNoRMCorre = false; % (if false, cropping settings aren't used)
