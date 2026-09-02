@@ -39,6 +39,7 @@ bVers = 0; %gpu or master
 Splitnm = 1;
 bUpCrop = 0;%has the crop been changed after loading the stack
 bFilt = 1; %Median filter images (Yes(1)/No(0))
+Framerate = SbxGetFramerate(info);
 
 %number of splits
 if ~isfield(info, 'Slices')
@@ -190,6 +191,7 @@ p.CData = imread('iconvideo.png');
 
 
 im = imagesc(medfilt2(Img(:,:,Chan)), clim); colormap gray
+AddTitle
 
 if isstruct(Crop)
     hCropRectangle = rectangle('Position', [Crop.x(1), Crop.y(1), length(Crop.x), length(Crop.y)],...
@@ -239,7 +241,7 @@ uimenu(cm,'Label','Save cropped sbx file','Callback', @cropfile);
             Slider.Value = Pos;
         end
         DrawFrame
-        title(im.Parent, num2str(Pos))
+        AddTitle
         drawnow
     end
 
@@ -256,7 +258,7 @@ uimenu(cm,'Label','Save cropped sbx file','Callback', @cropfile);
             DrawFrame
             
             Slider.Value = Slider.Value +1;
-            title(im.Parent, num2str(Pos)) % Useful for debugging
+            AddTitle()
             drawnow, pause(0.01)
             Pos = Slider.Value;
         end
@@ -286,6 +288,15 @@ uimenu(cm,'Label','Save cropped sbx file','Callback', @cropfile);
         end
     end
 
+    function AddTitle
+        try % Try to create a nicely formatted number with the thousands seperators
+            nf = java.text.DecimalFormat;
+            frameChr = char(nf.format(Pos));
+        catch ME
+            frameChr =  num2str(Pos);
+        end
+        title(im.Parent, sprintf('frame=%s.  sec=%4.2f', frameChr, Pos/Framerate))
+    end
 
     function ColormapScale(~,~)
         % Change the colormap scale
@@ -636,26 +647,13 @@ uimenu(cm,'Label','Save cropped sbx file','Callback', @cropfile);
         
         simonalign3();
     end
-
+    
     function sbxmp4out(~,~)
         % res = questdlg('Save image sequence to avi file', 'Avi', 'Yes', 'No', 'Yes');
         strFileOut = [strfp '.mp4'];
         [newFn, newPn] = uiputfile('.mp4','Save image sequence to avi file', strFileOut);
         
         if ischar(newPn) && ischar(newFn)
-            
-            if isfield(info, 'Freq')
-                Framerate = info.Freq;
-            elseif isfield(info, 'Tframe') %frame time
-                Framerate = round(1/info.Tframe);
-            else
-                if info.scanmode
-                    Framerate = round(info.resfreq/512); %unidirectional
-                else
-                    Framerate = round(info.resfreq/256); %bidirectional
-                end
-            end
-            
             if bsplit
                 [~, fname, ~] = fileparts(newFn);
                 newFn = [fname '_Split' num2str(Splitnm) '.mp4' ];
