@@ -19,12 +19,17 @@ selecting = true; % true as long as files are being selected
 i = 0;
 while selecting
     i = i + 1;
-    [filenames{i}, filepaths{i}] = uigetfile('*SPSIG.mat', sprintf('file %d',i));
+    [filenames{i}, filepaths{i}] = uigetfile('*SPSIG.mat', sprintf('file %d',i), 'MultiSelect', 'on');
     
-    if filenames{i} == 0 % Cancel is pressed probably: stop with selecting
+    if ~iscell(filenames{i}) & filenames{i} == 0 % Cancel is pressed probably: stop with selecting
         filenames(i) = [];
         filepaths(i) = [];
         selecting = false;
+    elseif iscell(filenames{i}) % multiple files have been selected at once
+        nselected = length(filenames{i});
+        filenames(i:i+nselected-1) = filenames{i};
+        filepaths(i:i+nselected-1) = filepaths(i);
+        i = i + nselected - 1;
     end
 end
 filenames = filenames';
@@ -42,5 +47,5 @@ for i = 1:nfiles
     retrievesignals([filepaths{i},  filenames{i}]);
     % SealSignals([filepaths{i},  filenames{i}]);
     % ZscoreSignals([filepaths{i},  filenames{i}])
-    DeconvolveSignals([filepaths{i},  filenames{i}], doParamEstimation, sigToLoad, decToSave);
+    % DeconvolveSignals([filepaths{i},  filenames{i}], doParamEstimation, sigToLoad, decToSave);
 end
