@@ -90,6 +90,7 @@ They are required for some of the functions and scripts in the toolbox.
 - Statistics Toolbox.
 - (optional) Parallel Computing Toolbox. 
 - (optional) Polyspace Bug Finder.
+- Optimization Toolbox. For parameter estimation of MLspike.
 
 
 Troubleshooting/ questions

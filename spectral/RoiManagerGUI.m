@@ -80,7 +80,7 @@ function varargout = RoiManagerGUI(varargin)
 % Made by: Leander de Kraker
 % 2018-2020
 
-% Last Modified by GUIDE v2.5 06-Nov-2025 14:22:25
+% Last Modified by GUIDE v2.5 09-Sep-2026 16:20:37
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -222,6 +222,7 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     switches.ThresToggle = h.thresToggle.Value; % 1 Which of the two threshold sliders to use
     switches.ThresCorToggle = h.thresCorToggle; % 2 threshold via mean correlation value
     switches.alph    = h.AlphaSlider.Value; % alpha value for ROI contours
+    switches.hue     = h.hueSlider.Value;
     switches.plotListing = h.plotListing.Value; % Plot signal of clicked ROI? false default
     switches.roiCorrIm = false; % roi correlation image is not made yet.
     switches.minSize = round(min(PP.A)-1); % The current minimum ROI size for rejection
@@ -416,6 +417,8 @@ function RoiManagerGUI_OpeningFcn(hObject, ~, h, varargin)
     guidata(hObject, h);
     set(hObject, 'WindowKeyPressFcn', @(hObject, eventdata)myKeyPressFcn(hObject, eventdata, h))
     
+    fakeHandle.Value = switches.hue;
+    hueSlider_Callback(fakeHandle, [], h)
 end
 % UIWAIT makes RoiManagerGUI wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
@@ -1846,6 +1849,18 @@ function AlphaSlider_Callback(hObject, ~, h)
 end
 
 
+% --- Executes on slider movement.
+function hueSlider_Callback(hObject, ~, h)
+    % Determines the hue of the default ROI contours
+    switches = getappdata(h.hGUI, 'switches');
+    switches.hue = hObject.Value;
+    h.hueSliderTitle.String = sprintf('Contour hue: %.2f', hObject.Value);
+    h.hueSliderTitle.ForegroundColor = hsv2rgb([switches.hue 0.5 0.5]);
+    setappdata(h.hGUI, 'switches', switches)
+    UpdateRois(h) % Immediately update the contours
+end
+
+
 % --- Executes on selection change in backGrdView.
 function backGrdView_Callback(hObject, ~, handles)
     backGrdView(hObject.Value, handles)
@@ -2174,13 +2189,13 @@ function UpdateRois(h)
     alph = switches.alph;
     
     % colors
-    cyan    = [0, 1, 1];
+    default    = hsv2rgb([switches.hue, 1, 1]);
     red     = [1, 0, 0];
     green   = [0, 1, 0];
     magenta = [1, 0, 1];
     for j = 1:length(h.Con)
-        set(h.Con(j), 'Color',[cyan, alph], 'linewidth',0.5);
-        set(h.PPP(j), 'Color', cyan);
+        set(h.Con(j), 'Color',[default, alph], 'linewidth',0.5);
+        set(h.PPP(j), 'Color', default);
         if h.thresToggle.Value
             if idx.Thres(j) == 1
                 set(h.Con(j), 'Color', [red, alph]);
@@ -2197,10 +2212,10 @@ function UpdateRois(h)
             set(h.PPP(j), 'Color', red);
         end
         if idx.White(j) == 1
-            set(h.Con(j), 'Color', [green, (alph/2)+0.5],'linewidth',1.2)
+            set(h.Con(j), 'Color', [green, (alph/2)+0.5],'linewidth',1.3)
         end
         if idx.Black(j) == 1
-            set(h.Con(j), 'Color', [magenta, (alph/2)+0.5], 'linewidth',1.2)
+            set(h.Con(j), 'Color', [magenta, (alph/2)+0.5], 'linewidth',1.3)
         end
     end
 end
