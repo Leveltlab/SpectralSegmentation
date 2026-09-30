@@ -303,9 +303,9 @@ function RoiEdit(source,event)
     % and also needs recalculated number of links and new score
     
     % Remember scrollposition
-    jscrollpane = javaObjectEDT(findjobj(source));
-    viewport    = javaObjectEDT(jscrollpane.getViewport);
-    P = viewport.getViewPosition();
+    % jscrollpane = javaObjectEDT(findjobj(source));
+    % viewport    = javaObjectEDT(jscrollpane.getViewport);
+    % P = viewport.getViewPosition();
     
     
     row = event.Indices(1);
@@ -314,11 +314,11 @@ function RoiEdit(source,event)
     newData = event.NewData;
     
     
-    if ((P.y-1) /tableRowHeight) > row 
-        % scroll position is bigger than row to go to, which has to mean it
-        % is not in view: change scroll position
-        P.y = (rowToGoTo-1) *tableRowHeight;
-    end
+    % if ((P.y-1) /tableRowHeight) > row 
+    %     % scroll position is bigger than row to go to, which has to mean it
+    %     % is not in view: change scroll position
+    %     P.y = (rowToGoTo-1) *tableRowHeight;
+    % end
     
     if newData > 0 
         % Where this ROI was previously should be deleted
@@ -372,8 +372,8 @@ function RoiEdit(source,event)
     
     % Reset Set scroll position
     drawnow() % This is necessary to ensure the view position is set after matlab hijacks it
-    viewport.setViewPosition(P);
-    
+    % viewport.setViewPosition(P);
+    scroll(source, 'row', row);
     eventToGive.Indices = selCells;
     RoiSelect(nan, eventToGive)
 end
@@ -411,11 +411,12 @@ function clickTableCallback(source, event)
             if rowToGoTo == 0
                 rowToGoTo = 1;
             end
-            jscrollpane = javaObjectEDT(findjobj(hRoisTable));
-            viewport    = javaObjectEDT(jscrollpane.getViewport);
-            P = viewport.getViewPosition();
-            P.y = (rowToGoTo-1) *tableRowHeight;
-            viewport.setViewPosition(P);
+            % jscrollpane = javaObjectEDT(findjobj(hRoisTable));
+            % viewport    = javaObjectEDT(jscrollpane.getViewport);
+            % P = viewport.getViewPosition();
+            % P.y = (rowToGoTo-1) *tableRowHeight;
+            % viewport.setViewPosition(P);
+            scroll(hRoisTable, 'row', rowToGoTo);
             % Also update current editable row
             selCells= rowToGoTo;
             RefreshInfoText
