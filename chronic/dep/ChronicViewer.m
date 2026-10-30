@@ -550,6 +550,14 @@ function hImgDown(~,event)
             tableMat = cell2mat(hRoisTable.Data(:,i+1));
             row = find(tableMat==roi);
             hClickedTable.Data{1,i} = roi;
+            if length(row)>1
+                strWarning = sprintf('Roi %d is present in multiple rows! Delete it from one of these rows!!', roi);
+                for j = 1:length(row)
+                    strWarning = [strWarning sprintf(' %d,', row(j))];
+                end
+                warndlg(strWarning)
+                row = row(1);
+            end
             if ~isempty(row)
     %             fprintf('recording %d, roi %d, row %d\n', i, roi, row)
                 hClickedTable.Data{2,i} = row;
