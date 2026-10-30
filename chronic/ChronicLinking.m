@@ -149,7 +149,39 @@ nLinks = nLinks(sorted);
 
 clearvars i j h h1  rois sorted i nameCol
 
-%% Chronic viewer checker UI
+%__________________________________________________________________________
+% Remove rows with duplicates
+keep_linkMat = linkMat;
+deleteRows = [];
+
+% = Find unique rows per column
+for iC = 1: size(linkMat, 2)
+
+    % initialise linkMatCol & isRowUnique
+    linkMatCol = linkMat(:, iC); 
+    isRowUnique = true(size(linkMat(:, iC)));
+
+    % find noneZeroRows that needs to be checked for uniqueness
+    noneZeroRows = find(linkMat(:, iC) > 0);
+    linkMatCol = linkMatCol(noneZeroRows);
+    isRowUnique(noneZeroRows) = false;
+
+    % find unique ROIs + their first position
+    [~, iFirst] = unique(linkMatCol , 'stable');
+    isRowUnique(noneZeroRows(iFirst)) = true;
+    deleteRows = [deleteRows; find(~isRowUnique)];
+end
+deleteRows = unique(deleteRows);
+
+linkMat(deleteRows, :) = [];
+score(deleteRows) = [];
+nLinks(deleteRows) = [];
+
+fprintf('\n%s\n', 'Complete Step 2 of ChronicLinking: Statistics of Matched ROIs');
+
+
+
+%% Step 3: Chronic viewer checker UI
 
 ChronicViewer(BImgs, Masks, filenamesShort, linkMat, PPs, score, inRoi)
 % If you saved changes in linkMat with the ChronicViewer, rerun previous
