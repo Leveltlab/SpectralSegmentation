@@ -12,10 +12,9 @@ if exist('registration_data', 'var')
     filenamesShort = cellstr(registration_data.IDName);
     filedates = cat(1, registration_data.Date{:});
     colors = registration_data.imgColor;
-    Masks = registration_data.Mask_warped; % <- why?
+    Masks = registration_data.Mask_warped;
     transformed.method = 'affine2D';
     transformed.transforms = registration_data.tForm;
-    transformed.finalView  = registration_view;
     BImgs = registration_data.Image_warped;
     nfiles = length(filenames);
     

@@ -35,34 +35,6 @@ else % which file to load
 end
 load([pn fn], 'PP', 'BImg', 'Mask', 'SPic', 'Sax')
 
-if exist('varargin', 'var') && nargin>=2 % called as function with transposed data input
-    [pnSbx, fnSbx] = fileparts(fullfile(varargin{3}));
-    if isempty(pnSbx)
-        pnSbx = pn;
-    end    
-    transGiven = exist([pnSbx fnSbx], 'file');
-end
-if ~transGiven % Try to assume 
-    pnSbx = pn;
-    fnBase = strsplit(fn, '_SPSIG');
-    fnBase = fnBase{1};
-    fnSbx = [fnBase, '_DecTrans.dat']; % Search for decimated trans file first
-    if ~exist([pnSbx fnSbx], 'file') % decimated not found -> Search for regular transposed file
-        fnSbx = [fnBase, '_Trans.dat'];
-        if ~exist([pnSbx fnSbx], 'file')   % regular transposed not found -> ask user
-            [fnSbx, pnSbx] = uigetfile('*TRANS.dat', 'load raw data (_DecTrans.dat file preferred)');
-            if isempty(fnSbx)
-                warning('cannot calculate ROI signal correlations without transposed data, quiting')
-                return
-            end
-        else
-            fprintf('using transposed data (non decimated) to calculate signal ROI correlations\n')
-        end
-    else
-        fprintf('using decimated transposed data to calculate signal ROI correlations\n')
-    end
-end
-
 % obtain average spectral density for each image
 imgStack = log(SPic(:,:,2:end));
 Sax(1) = []; %first spectral component is the average power over al components
@@ -128,7 +100,22 @@ end
 
 if calcRvar
     % Load transposed sbx data
-
+    pnSbx = pn;
+    fnSbx = [fn(1:end-10), '_DecTrans.dat']; % Search for decimated trans file first
+    if ~exist([pnSbx fnSbx], 'file') % decimated not found -> Search for regular transposed file
+        fnSbx = [fn(1:end-10), '_Trans.dat'];
+        if ~exist([pnSbx fnSbx], 'file')   % regular transposed not found -> ask user
+            [fnSbx, pnSbx] = uigetfile('*TRANS.dat', 'load raw data (_DecTrans.dat file preferred)');
+            if isempty(fnSbx)
+                warning('cannot calculate ROI signal correlations without transposed data, quiting')
+                return
+            end
+        else
+            fprintf('using transposed data (non decimated) to calculate signal ROI correlations\n')
+        end
+    else
+        fprintf('using decimated transposed data to calculate signal ROI correlations\n')
+    end
     [sbxt, dim, freq] = transmemap([pnSbx, fnSbx]);
     
     % Calculate the new SpatialCorr
