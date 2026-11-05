@@ -50,9 +50,9 @@ for i = 1:nfiles
 
     fileTif = [filePathTif{i}, fileNameTif{i}];
     fileSbx = [filePathSbx{i}, fileNameSbx{i}];
-
+    
     fileID = fopen(fileSbx, 'w'); % open sbx file
-
+    
     tiffInfo = imfinfo(fileTif);
     if isfield(tiffInfo(1), 'BitDepth') && tiffInfo(1).BitDepth == 8
         % Increase values by multiplying with 256 to allow increase in data
@@ -74,7 +74,7 @@ for i = 1:nfiles
     end
     fclose(fileID);
     close(hwb)  
-
+    
     % Write the info (.mat) file that belongs to the sbx
     info = struct();
     info.sz = size(im); %image dimension
@@ -90,7 +90,7 @@ for i = 1:nfiles
     info = RequestRecInfoProcess(info, hz{i}, scaleUm{i}, FOVum{i}, pixelAspectRatio{i}, squareFOV{i});
     info.recordsPerBuffer = 0;
     info.strfp = [fileSbx(1:end-4)];
-
+    
     save([fileSbx(1:end-4) '.mat'], 'info');
     fprintf('done saving %s\n', fileNameSbx{i})
 end

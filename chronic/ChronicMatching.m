@@ -55,7 +55,7 @@ nfiles = length(filenames); % The number of files that have been selected
 %% Load the data of the selected files
 tic
 
-filenamesShort = ShortenFileNames(filenames, 1, filedates);
+filenamesShort = ShortenFileNames(strcat(filepaths, filenames), [1 -1], filedates);
 
 clearvars data
 fprintf('\nloading in %d files:\n', nfiles)

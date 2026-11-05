@@ -1,0 +1,52 @@
+load('Archer_gray_v1_chronic.mat')
+>> whos
+  Name                     Size               Bytes  Class       Attributes
+
+  BImgs                    5x1             18805400  cell                  
+  Masks                    5x1             18805400  cell                  
+  PPs                      1x5              1851729  struct                
+  confusionFoundMat        6x6                  288  double                
+  filedates                5x1                   40  datetime              
+  filenames                5x1                  980  cell                  
+  filenamesShort           5x1                  770  cell                  
+  filepaths                5x1                 1050  cell                  
+  inRoi                    1x5               876936  cell                  
+  linkMat                268x5                10720  double                
+  linked                   5x5                16320  cell                  
+  nFoundBackMat            6x6                  288  double                
+  nFoundBackPercMat        6x6                  288  double                
+  nLinks                 268x1                 2144  double                
+  nLinksMask               1x5             15044328  cell                  
+  nfiles                   1x1                    8  double                
+  score                  268x1                 2144  double                
+  thres                    1x1                    8  double                
+  transformed              1x1                  995  struct                
+
+PPs(1) = 
+  struct with fields:
+               Cnt: 223
+               Con: [1×223 struct]
+                 A: [40 68 64 85 108 … ] (1×223 double) {Note: ROI pixel area}
+              Rvar: [0.0916 0.0355 … ] (1×223 double)   {Note: Correlation value to seed pixel, can be calculated via [cor, roiidx, PPs(i).Rvar(roi)] = SpatialCorrCalcFun(sbxt, freq, Masks{i}, roi, PPs(i).P([1 2],:), true);}
+       Roundedness: [0.8004 0.9288 … ] (1×223 double)	{Note: ROI roundedness, calculated via             roundedness = perimarea(vx, vy*aspRat);}
+                 P: (223×2 double) {Note: x and y coordinates of seedpoint}
+       SpecProfile: (31×223 double) {Note: spectral power for every frequency for every ROI}
+          peakFreq: [0.0161 0.0483 … ] (1×223 double) {frequency of highest spectral power value}
+           peakVal: [-0.3864 -0.4358 … ] (1×223 double) {higest spectral power}
+    creationMethod: {'manual click' 'auto' ...] (223×1 cell) {Note: way the ROI was created}
+	
+Masks =
+  5×1 cell array
+    {511×920 double}
+    {511×920 double}
+    {511×920 double}
+    {511×920 double}
+    {511×920 double}
+	
+filenames =
+  5×1 cell array
+    {'Archer_20211030_005_normcorr_SPSIG.mat'}
+    {'Archer_20211106_001_normcorr_SPSIG.mat'}
+    {'Archer_20211219_003_normcorr_SPSIG.mat'}
+    {'Archer_20211221_001_normcorr_SPSIG.mat'}
+    {'Archer_20220103_001_normcorr_SPSIG.mat'}
